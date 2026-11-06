@@ -30,14 +30,14 @@
       </svg>
       <h1>SPU <span>Pocket</span></h1>
       <p class="sous-titre">Système Parabolique Universel</p>
-      <p class="badge-eval">Version d'évaluation 1.1 — des mises à jour régulières viendront ✨</p>
+      <p class="badge-eval">Version d'évaluation 1.2 — des mises à jour régulières viendront ✨</p>
     </div>
 
     <div class="cartes">
       <button class="carte" data-nav="demander">
         <span class="carte-ico">💬</span>
         <span class="carte-titre">Poser une question <span class="badge-nouveau">nouveau</span></span>
-        <span class="carte-desc">Tape ta question, un serveur SPU répond : synthèse, parabole et histoire. <b>Nécessite une connexion</b>.</span>
+        <span class="carte-desc">Tape ta question et reçois une réponse — <b>sans serveur</b> (mode nomade) ou en narration complète avec un serveur SPU.</span>
       </button>
       <button class="carte" data-nav="bibliotheque">
         <span class="carte-ico">📖</span>
@@ -164,7 +164,8 @@
     </header>
     <div class="contenu">
       <div class="bloc">
-        <p id="dem-intro">Écris ta question de vie, ta situation, ton doute — comme tu la raconterais à un conteur. Un serveur SPU la mettra en résonance avec des paraboles du monde entier et te répondra par une synthèse, une parabole et une histoire.</p>
+        <p id="dem-intro">Écris ta question de vie, ta situation, ton doute — comme tu la raconterais à un conteur.</p>
+        <p id="dem-mode" class="note" style="margin-top:8px"></p>
       </div>
       <div class="bloc">
         <textarea id="dem-question" rows="4" maxlength="2000" placeholder="Ex. : comment aider un ami qui traverse une période difficile ?"></textarea>
@@ -176,7 +177,7 @@
       </div>
       <div id="dem-resultat" class="dem-resultat" hidden></div>
       <div class="bloc" id="dem-sans-serveur">
-        <p class="note">⚙️ Pour poser des questions, il faut l'adresse d'un <b>serveur SPU</b> (celui d'un proche, ou un serveur sur un cloud). <button class="btn-simple" data-nav="connexion">Configurer le serveur</button></p>
+        <p class="note">🌟 <b>Astuce :</b> ajoute l'adresse d'un <b>serveur SPU</b> (écran « Serveur complet ») pour la réponse narrée : synthèse sourcée, parabole liée et histoire originale. <button class="btn-simple" data-nav="connexion">Configurer un serveur</button></p>
       </div>
     </div>
   </section>
@@ -189,17 +190,18 @@
     </header>
     <div class="contenu">
       <div class="bloc centre">
-        <p class="grand-titre">SPU Pocket <b>1.1.0</b></p>
+        <p class="grand-titre">SPU Pocket <b>1.2.0</b></p>
         <p>Companion mobile du <b>Système Parabolique Universel</b> (v4.3) — un orchestrateur narratif qui répond aux questions de la vie par des paraboles, des histoires et un théâtre de voix.</p>
         <p class="badge-eval">Version d'évaluation publique — l'application évolue et s'améliore régulièrement.</p>
       </div>
       <div class="bloc">
         <h3>🗺️ Ce qui arrive dans les prochaines versions</h3>
         <ul class="roadmap">
-          <li><b>v1.1 ✓</b> — poser tes questions et recevoir une réponse narrée (synthèse, parabole, histoire)</li>
-          <li><b>v1.2</b> — nouvelles paraboles et fables chaque mois, partage de tes textes favoris</li>
-          <li><b>v1.3</b> — voix neuronales enrichies, création d'histoires depuis le téléphone</li>
-          <li><b>v1.4</b> — mode communautaire : proposer tes propres paraboles</li>
+          <li><b>v1.1 ✓</b> — poser tes questions et recevoir une réponse narrée (avec un serveur SPU)</li>
+          <li><b>v1.2 ✓</b> — <b>mode nomade</b> : poser tes questions sans aucun serveur, réponse directe</li>
+          <li><b>v1.3</b> — nouvelles paraboles et fables chaque mois, partage de tes textes favoris</li>
+          <li><b>v1.4</b> — voix neuronales enrichies, création d'histoires depuis le téléphone</li>
+          <li><b>v1.5</b> — mode communautaire : proposer tes propres paraboles</li>
           <li><b>et au-delà</b> — ta feuille de route, écrite avec vos retours</li>
         </ul>
         <p class="note">Quand un serveur est configuré (écran « Serveur complet »), le bouton <i>Vérifier les mises à jour</i> te signale chaque amélioration disponible.</p>
@@ -208,6 +210,7 @@
         <h3>🔓 Libertés &amp; technologies</h3>
         <ul class="puces">
           <li>65 textes du domaine public et de la tradition orale, avec leurs sources.</li>
+          <li>Questions : mode nomade via une IA publique gratuite, ou serveur SPU complet.</li>
           <li>Lecture vocale par la synthèse de ton téléphone (Google TTS) — aucune donnée envoyée.</li>
           <li>Le SPU utilise des outils libres : Piper TTS (licence MIT), Next.js, Prisma.</li>
         </ul>

@@ -10,14 +10,14 @@ export async function GET() {
   return NextResponse.json(
     {
       app: 'SPU Pocket',
-      apk: { version: '1.1.0', code: 2 },
+      apk: { version: '1.2.0', code: 3 },
       serveur: { version: '4.4', nom: 'Système Parabolique Universel' },
       ameliorations: true,
       note: 'Le SPU évolue régulièrement : nouvelles paraboles, voix enrichies, mode création. Reviens sur ta page de distribution pour récupérer la dernière version de l\'application.',
       nouveautes: [
-        'v1.1 — nouvel écran « Poser une question » : tape ta question, le serveur répond (synthèse, parabole, histoire)',
-        'v4.3 — voix masculines neuronales réelles (Tom, Pierre), correctifs audio',
-        'À venir — plus de paraboles et de fables, voix supplémentaires, mode communautaire',
+        'v1.2 — mode nomade : pose tes questions sans aucun serveur, réponse directe 🌤️',
+        'v1.1 — écran « Poser une question » avec serveur : synthèse sourcée, parabole, histoire',
+        'À venir — paraboles mensuelles, voix enrichies, mode communautaire',
       ],
     },
     { headers: { 'Access-Control-Allow-Origin': '*' } },

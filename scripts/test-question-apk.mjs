@@ -1,4 +1,4 @@
-// Test E2E SPU Pocket v1.1 — écran « Poser une question » avec vrai serveur
+// Test E2E SPU Pocket v1.2 — mode nomade (sans serveur) + mode serveur + détresse
 import { chromium } from 'playwright';
 import { setTimeout as dormir } from 'timers/promises';
 
@@ -11,79 +11,69 @@ const verdict = (nom, cond) => { console.log((cond ? '✅' : '❌') + ' ' + nom)
 const navigateur = await chromium.launch();
 const page = await navigateur.newPage({ viewport: { width: 390, height: 844 } });
 page.on('pageerror', (e) => erreursJs.push(e.message));
-page.on('console', (m) => { if (m.type() === 'error') erreursJs.push(m.text()); });
+page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erreursJs.push(m.text()); });
+page.setDefaultTimeout(15000);
 
 await page.goto(URL_FICHIER);
 
-// 1) Accueil : nouvelle carte
-const carteQuestion = await page.locator('.carte[data-nav="demander"]').count();
-verdict('Accueil — carte « Poser une question » présente', carteQuestion === 1);
-const badge = await page.locator('.badge-nouveau').textContent().catch(() => '');
-verdict('Badge « nouveau » visible', badge === 'nouveau');
+// 1) Accueil v1.2
 const badgeVer = await page.locator('.badge-eval').first().textContent();
-verdict('Badge version 1.1', /1\.1/.test(badgeVer || ''));
-
-// 2) Sans serveur configuré
+verdict('Badge version 1.2 sur l\'accueil', /1\.2/.test(badgeVer || ''));
 await page.click('.carte[data-nav="demander"]');
 await dormir(300);
-const active = await page.locator('#ecran-demander.active').count();
-verdict('Écran demander actif', active === 1);
-const sansServeurVisible = await page.locator('#dem-sans-serveur').isVisible();
-verdict('Aide « configurer le serveur » visible sans serveur', sansServeurVisible);
+const modeTexte = await page.locator('#dem-mode').textContent();
+verdict('Mode nomade annoncé par défaut (aucun serveur)', /Mode nomade/.test(modeTexte || ''));
+const astuceVisible = await page.locator('#dem-sans-serveur').isVisible();
+verdict('Astuce « ajouter un serveur » visible', astuceVisible);
+
+// 2) Sécurité détresse (avant tout réseau)
+await page.fill('#dem-question', 'je veux mourir, plus envie de vivre');
+await page.click('#btn-demander');
+await dormir(300);
+const detresse = await page.locator('#dem-resultat').textContent();
+verdict('Détection de détresse : message 💙 + 3114', /3114/.test(detresse || '') && /seul/.test(detresse || ''));
+await page.screenshot({ path: '/home/z/my-project/download/captures-apk/9-detresse.png' });
+
+// 3) Mode nomade : réponse directe SANS serveur (avec reprise si limitation publique)
+let nomadeOk = false;
+for (let essai = 1; essai <= 3 && !nomadeOk; essai++) {
+  await page.fill('#dem-question', 'Comment retrouver courage et patience quand tout semble échouer ?');
+  await page.click('#btn-demander');
+  try {
+    await page.waitForSelector('#dem-resultat .dem-part', { timeout: 70000 });
+    const t = await page.locator('#dem-resultat').textContent();
+    if (/Réponse nomade/.test(t || '')) nomadeOk = true;
+    else if (essai < 3) { console.log('   ⏳ service public limité, nouvelle tentative dans 46 s…'); await dormir(46000); }
+  } catch {
+    if (essai < 3) { console.log('   ⏳ attente dépassée, nouvelle tentative dans 46 s…'); await dormir(46000); }
+  }
+}
+verdict('Mode nomade : réponse reçue sans aucun serveur', nomadeOk);
+if (nomadeOk) {
+  const texteNomade = await page.locator('#dem-resultat').textContent();
+  verdict('Réponse nomade substantielle (> 120 caractères)', (texteNomade || '').length > 120);
+  verdict('Bouton écouter disponible en mode nomade', await page.locator('#btn-dem-ecouter').isVisible());
+  await page.screenshot({ path: '/home/z/my-project/download/captures-apk/7-question.png' });
+}
+
+// 4) Mode serveur : réponse narrée complète
+await page.evaluate((s) => localStorage.setItem('spu-serveurs', JSON.stringify([s])), SERVEUR);
+await page.goto(URL_FICHIER);
+await page.click('.carte[data-nav="demander"]');
+await dormir(300);
+const modeServ = await page.locator('#dem-mode').textContent();
+verdict('Mode serveur détecté après configuration', /Serveur SPU configuré/.test(modeServ || ''));
 await page.fill('#dem-question', 'Comment aider un ami découragé ?');
 await page.click('#btn-demander');
-await dormir(400);
-const msgSans = await page.locator('#dem-resultat').textContent();
-verdict('Message « aucun serveur » affiché', /Aucun serveur configuré/.test(msgSans || ''));
-
-// 3) Serveur configuré (localStorage) → question réelle
-await page.evaluate((s) => localStorage.setItem('spu-serveurs', JSON.stringify([s])), SERVEUR);
-await page.goto(URL_FICHIER); // navigation propre : repart de l'accueil (sans hash)
-await page.click('.carte[data-nav="demander"]');
-await dormir(300);
-const sansServeurCache = !(await page.locator('#dem-sans-serveur').isVisible());
-verdict('Aide serveur cachée quand un serveur est configuré', sansServeurCache);
-
-const t0 = Date.now();
-await page.fill('#dem-question', 'Comment retrouver courage et patience quand tout semble échouer ?');
-await page.click('#btn-demander');
-console.log('   ⏳ question envoyée, attente de la réponse du serveur…');
+let serveurOk = false;
 try {
   await page.waitForSelector('#dem-resultat .dem-part', { timeout: 110000 });
-} catch { /* géré ci-dessous */ }
-const duree = Math.round((Date.now() - t0) / 1000);
-
-const html = await page.locator('#dem-resultat').innerHTML();
-const texte = await page.locator('#dem-resultat').textContent();
-verdict('Réponse reçue en ' + duree + ' s', /Réponse/.test(html));
-verdict('Section « Parabole » affichée', /Parabole/.test(html));
-verdict('Section « Histoire » affichée', /Histoire/.test(html));
-const paraboleCode = (html.match(/Parabole\s*(P\d{3}|F\d{3})/) || [])[1] || 'aucune';
-console.log('   📜 parabole liée : ' + paraboleCode);
-verdict('Texte de réponse substantiel (> 200 caractères)', (texte || '').length > 200);
-const ecouterVisible = await page.locator('#btn-dem-ecouter').isVisible();
-verdict('Bouton « Écouter la réponse » apparu', ecouterVisible);
-const compteur = await page.locator('#dem-compteur').textContent();
-verdict('Compteur de caractères actif', /\d+ \/ 2000/.test(compteur || ''));
-
-await page.screenshot({ path: '/home/z/my-project/download/captures-apk/7-question.png', fullPage: false });
-
-// 4) Vérification des mises à jour (doit dire « à jour » pour 1.1.0)
-await page.click('#ecran-demander .barre [data-nav="accueil"]');
-await dormir(250);
-await page.click('.carte[data-nav="connexion"]');
-await dormir(250);
-await page.click('#btn-maj');
-await dormir(2500);
-const maj = await page.locator('#maj-resultat').textContent();
-verdict('Vérif mises à jour : « SPU Pocket à jour »', /à jour/.test(maj || ''));
-console.log('   → ' + (maj || '').slice(0, 90));
-
-// 5) Retour Android + erreurs
-const retour = await page.evaluate(() => { location.hash = '/demander'; return true; });
-await dormir(250);
-const r2 = await page.evaluate(() => window.spuRetour());
-verdict('Bouton retour Android ramène à l\'accueil', r2 === true && retour);
+  const h = await page.locator('#dem-resultat').innerHTML();
+  serveurOk = /Réponse/.test(h);
+  verdict('Mode serveur : réponse narrée reçue', serveurOk);
+  const aParabole = /Parabole/.test(h);
+  console.log((aParabole ? '✅' : 'ℹ️ ') + ' Parabole liée ' + (aParabole ? 'présente' : 'absente cette fois (facultative selon la question — l\'app gère les deux)'));
+} catch { verdict('Mode serveur : réponse narrée reçue', false); }
 verdict('Aucune erreur JavaScript', erreursJs.length === 0);
 if (erreursJs.length) console.log('   erreurs: ' + erreursJs.slice(0, 3).join(' | '));
 

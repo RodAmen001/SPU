@@ -2,11 +2,11 @@
 # Kit SPU Pocket v1.1 — tout-en-un pour distribution
 set -euo pipefail
 cd /home/z/my-project
-KIT=kit-spu-pocket-v1.1
+KIT=kit-spu-pocket-v1.2
 rm -rf "download/$KIT" "download/$KIT.zip"
 mkdir -p "download/$KIT/sources-apk"
 
-cp download/spu-pocket-v1.1.0.apk download/spu-pocket-v1.1.0.aab download/spu-release.keystore "download/$KIT/"
+cp download/spu-pocket-v1.2.0.apk download/spu-pocket-v1.2.0.aab download/spu-release.keystore "download/$KIT/"
 cp download/GUIDE-PUBLICATION-PAS-A-PAS.txt "download/$KIT/"
 cp download/DISTRIBUTION-APK.txt "download/$KIT/"
 cp -r download/fiche-playstore download/captures-apk "download/$KIT/"
@@ -17,10 +17,10 @@ cp scripts/build-apk.sh scripts/build-aab.sh scripts/icones-apk.py scripts/test-
 
 # lisez-moi du kit
 cat > "download/$KIT/LISEZ-MOI.txt" << 'EOF'
-KIT SPU POCKET v1.1.0 — tout-en-un
+KIT SPU POCKET v1.2.0 — tout-en-un
 ══════════════════════════════════
-spu-pocket-v1.1.0.apk ....... l'application Android signée (58 Ko, Android 7+)
-spu-pocket-v1.1.0.aab ....... pour Google Play Store
+spu-pocket-v1.2.0.apk ....... l'application Android signée (62 Ko, Android 7+)
+spu-pocket-v1.2.0.aab ....... pour Google Play Store
 spu-release.keystore ........ clé de signature — TRÉSOR, à conserver
 GUIDE-PUBLICATION-PAS-A-PAS.txt → GitHub, partage, Play Store, les 25 $
 DISTRIBUTION-APK.txt ........ fiche technique
@@ -30,10 +30,11 @@ sources-apk/ ................ interface, code Java, scripts de build
                               (reconstruire v1.2 : modifier, augmenter
                                versionCode, lancer build-apk.sh)
 
-NOUVEAUTÉ v1.1 : écran « Poser une question » 💬
-L'utilisateur tape sa question, un serveur SPU répond par une
-synthèse sourcée, une parabole et une histoire. Nécessite
-l'adresse d'un serveur SPU (écran « Serveur complet »).
+NOUVEAUTÉ v1.2 : MODE NOMADE 🌤️
+L'écran « Poser une question » fonctionne DÈS L'INSTALLATION,
+sans aucun serveur (IA publique gratuite, réponse directe).
+Avec un serveur SPU : réponse narrée complète (synthèse sourcée,
+parabole, histoire). Sécurité détresse intégrée sur les deux modes.
 La bibliothèque hors ligne (65 textes) reste inchangée.
 EOF
 

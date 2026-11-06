@@ -278,8 +278,16 @@ $('#btn-maj').addEventListener('click', async () => {
   }
 });
 
-/* ── Poser une question (v1.1 — nécessite un serveur SPU) ── */
-const VERSION_APP = '1.1.0';
+/* ── Poser une question (v1.2 — mode serveur OU mode nomade sans serveur) ── */
+const VERSION_APP = '1.2.0';
+
+// Sécurité de base côté téléphone (complète le serveur, jamais remplacée) :
+const DETRESSE_MIN = /suicid|mettre fin (à|a) mes jours|je veux mourir|plus envie de vivre|sans envie de vivre|me faire du mal|automutila|me tuer|tuer moi/i;
+const RESSOURCES_LOCALES = [
+  { region: 'France', lignes: ['3114 — Prévention du suicide (24h/24, 7j/7)', 'SOS Amitié — 09 72 39 40 50'] },
+  { region: 'Europe', lignes: ['112 — Urgences européennes'] },
+  { region: 'International', lignes: ['findahelpline.com — lignes d\'écoute par pays'] },
+];
 
 function serveurActif() {
   let url = $('#url-serveur').value.trim().replace(/\/+$/, '');
@@ -289,6 +297,9 @@ function serveurActif() {
 }
 function majIntroDemander() {
   const a = !!serveurActif();
+  $('#dem-mode').textContent = a
+    ? '🟢 Serveur SPU configuré — réponses complètes : synthèse sourcée, parabole et histoire.'
+    : '🌤️ Mode nomade — réponse directe et simple, sans aucun serveur. Ajoute un serveur SPU pour la réponse narrée complète.';
   $('#dem-sans-serveur').hidden = a;
 }
 
@@ -340,59 +351,109 @@ async function poserQuestion() {
     zone.innerHTML = '<span class="titre">Écris d’abord ta question 🙂</span>';
     return;
   }
-  const base = serveurActif();
   majIntroDemander();
-  if (!base) {
+
+  // Sécurité de détresse : priorité absolue, avant tout appel réseau.
+  if (DETRESSE_MIN.test(question)) {
     zone.hidden = false;
-    zone.innerHTML = '<span class="titre">⚙️ Aucun serveur configuré</span>' +
-      "Pose d'abord l'adresse d'un serveur SPU dans l'écran « Serveur complet », puis reviens ici. " +
-      'La bibliothèque hors ligne reste toujours disponible.';
+    zone.innerHTML = '<span class="titre">💙 Tu n’es pas seul·e</span>' +
+      'Ce que tu traverses semble lourd, et cela mérite de vraies oreilles humaines. ' +
+      'Parle-en dès maintenant à une ligne d’écoute (gratuite et confidentielle) :' + ressourcesHtml(RESSOURCES_LOCALES);
     $('#btn-dem-ecouter').hidden = true;
     return;
   }
+
   arreterVoix();
   btn.disabled = true;
-  btn.textContent = '⏳ Le SPU consulte ses sources…';
   zone.hidden = false;
-  zone.innerHTML = '<span class="titre">🔎 Recherche des paraboles et des sources…</span>' +
-    'Cela peut prendre 20 à 60 secondes : le serveur interroge le web, une encyclopédie et sa réflexion, puis raconte.';
-  const ctl = new AbortController();
-  const fin = setTimeout(() => ctl.abort(), 120000);
-  try {
-    const r = await fetch(base + '/api/repondre', {
-      method: 'POST',
-      signal: ctl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    });
-    clearTimeout(fin);
-    const d = await r.json();
-    if (!r.ok) { afficherErreurDem(zone, d.error || 'Le serveur n’a pas pu répondre.'); return; }
-    if (d.detresse) {
-      zone.innerHTML = '<span class="titre">💙 Tu n’es pas seul·e</span>' + echapper(d.message || '') + ressourcesHtml(d.ressources);
-      $('#btn-dem-ecouter').hidden = true;
-      return;
+  const base = serveurActif();
+
+  if (base) {
+    // ── MODE SERVEUR : réponse narrée complète ──
+    btn.textContent = '⏳ Le SPU consulte ses sources…';
+    zone.innerHTML = '<span class="titre">🔎 Recherche des paraboles et des sources…</span>' +
+      'Cela peut prendre 20 à 60 secondes : le serveur interroge le web, une encyclopédie et sa réflexion, puis raconte.';
+    const ctl = new AbortController();
+    const fin = setTimeout(() => ctl.abort(), 120000);
+    try {
+      const r = await fetch(base + '/api/repondre', {
+        method: 'POST',
+        signal: ctl.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      });
+      clearTimeout(fin);
+      const d = await r.json();
+      if (!r.ok) { afficherErreurDem(zone, d.error || 'Le serveur n’a pas pu répondre.'); return; }
+      if (d.detresse) {
+        zone.innerHTML = '<span class="titre">💙 Tu n’es pas seul·e</span>' + echapper(d.message || '') + ressourcesHtml(d.ressources);
+        $('#btn-dem-ecouter').hidden = true;
+        return;
+      }
+      if (d.bloque) {
+        zone.innerHTML = '<span class="titre">🌱 Mode enfant protégé</span>' + echapper(d.message || '');
+        $('#btn-dem-ecouter').hidden = true;
+        return;
+      }
+      derniereReponse = [
+        d.reponse || '',
+        d.parabole ? ('Parabole ' + (d.parabole.code || '') + ' — ' + d.parabole.texte + ' Interprétation : ' + (d.parabole.interpretation || '')) : '',
+        d.histoire ? ('Histoire. ' + d.histoire) : '',
+      ].filter(Boolean).join(' ');
+      zone.innerHTML = renduReponse(d);
+      $('#btn-dem-ecouter').hidden = !derniereReponse;
+    } catch (e) {
+      clearTimeout(fin);
+      afficherErreurDem(zone, navigator.onLine === false
+        ? "Pas de connexion internet. La bibliothèque hors ligne reste disponible."
+        : "Serveur injoignable. Vérifie l'adresse (écran « Serveur complet ») — ou repasse en mode nomade en vidant le champ serveur.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✨ Demander';
     }
-    if (d.bloque) {
-      zone.innerHTML = '<span class="titre">🌱 Mode enfant protégé</span>' + echapper(d.message || '');
-      $('#btn-dem-ecouter').hidden = true;
-      return;
+  } else {
+    // ── MODE NOMADE : réponse directe sans serveur (IA publique gratuite) ──
+    btn.textContent = '🌤️ Réflexion en cours…';
+    zone.innerHTML = '<span class="titre">🌤️ Mode nomade</span>Réponse directe demandée — quelques secondes…';
+    const ctl = new AbortController();
+    const fin = setTimeout(() => ctl.abort(), 60000);
+    try {
+      const r = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        signal: ctl.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'openai',
+          messages: [
+            {
+              role: 'system',
+              content: "Tu es le SPU Pocket, un conteur bienveillant inspiré des paraboles du monde entier. " +
+                "Réponds en français, en 100 mots maximum, avec douceur et sagesse universelle. " +
+                "Si tu connais une parabole ou une fable courte qui éclaire la situation, raconte-la en une ou deux phrases. " +
+                "Ne donne jamais de conseil médical, juridique ou financier personnalisé. " +
+                "Termine par une phrase qui rend la parole à la personne (sans question pressante). Réponds avec le texte seul.",
+            },
+            { role: 'user', content: question.slice(0, 1500) },
+          ],
+        }),
+      });
+      clearTimeout(fin);
+      const d = await r.json();
+      const texte = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+      if (!r.ok || !texte) { afficherErreurDem(zone, 'La réponse directe n’est pas disponible cette seconde (service public très demandé). Réessaie dans quelques secondes.'); return; }
+      derniereReponse = texte.trim();
+      zone.innerHTML = '<div class="dem-part"><h3>🌤️ Réponse nomade</h3><p>' + echapper(derniereReponse) + '</p></div>' +
+        '<p class="note">Réponse simple et directe. Pour la réponse narrée complète (synthèse sourcée, parabole, histoire), configure un serveur SPU.</p>';
+      $('#btn-dem-ecouter').hidden = false;
+    } catch (e) {
+      clearTimeout(fin);
+      afficherErreurDem(zone, navigator.onLine === false
+        ? "Pas de connexion internet. La bibliothèque hors ligne reste disponible."
+        : "Le service de réponse directe est injoignable. Réessaie dans un instant — la bibliothèque hors ligne reste disponible.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✨ Demander';
     }
-    derniereReponse = [
-      d.reponse || '',
-      d.parabole ? ('Parabole ' + (d.parabole.code || '') + ' — ' + d.parabole.texte + ' Interprétation : ' + (d.parabole.interpretation || '')) : '',
-      d.histoire ? ('Histoire. ' + d.histoire) : '',
-    ].filter(Boolean).join(' ');
-    zone.innerHTML = renduReponse(d);
-    $('#btn-dem-ecouter').hidden = !derniereReponse;
-  } catch (e) {
-    clearTimeout(fin);
-    afficherErreurDem(zone, navigator.onLine === false
-      ? "Pas de connexion internet. La bibliothèque hors ligne reste disponible."
-      : "Serveur injoignable. Vérifie l'adresse (écran « Serveur complet ») et que le SPU tourne bien sur cette machine.");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '✨ Demander';
   }
 }
 
