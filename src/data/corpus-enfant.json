@@ -1,0 +1,478 @@
+[
+  {
+    "code": "E001",
+    "texte": "Un corbeau tenait un fromage dans son bec. Un renard flatteur lui demanda de chanter. Dès que le corbeau ouvrit le bec pour chanter, le fromage tomba, et le renard le ramassa.",
+    "culture": "Méditerranée",
+    "famille": "F8",
+    "interpretations": [
+      "Les compliments ne sont pas toujours sincères : il faut regarder les intentions.",
+      "Garder ce qui est précieux vaut mieux que vouloir plaire à tout le monde.",
+      "Écouter son cœur avant sa vanité évite bien des surprises."
+    ],
+    "sources": [
+      "Jean de La Fontaine, Le Corbeau et le Renard (Fables, livre I)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "corbeau",
+      "renard",
+      "fromage",
+      "flatterie",
+      "vanité",
+      "compliment",
+      "chant",
+      "méfiance",
+      "gourmand",
+      "attraper",
+      "piège",
+      "perdre ce qu'on a",
+      "désir de briller"
+    ]
+  },
+  {
+    "code": "E002",
+    "texte": "Un lièvre très rapide se moquait d'une tortue lente. Ils firent une course. Le lièvre, sûr de lui, s'endormit en chemin. La tortue marcha sans s'arrêter, et elle arriva la première.",
+    "culture": "Méditerranée",
+    "famille": "F1",
+    "interpretations": [
+      "Aller doucement mais sans s'arrêter mène plus loin que courir puis abandonner.",
+      "Chacun a son rythme, et chaque rythme a sa force.",
+      "Croire qu'on a déjà gagné fait parfois tout perdre."
+    ],
+    "sources": [
+      "Ésope, Le Lièvre et la Tortue ; reprise par La Fontaine (livre VI)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "lièvre",
+      "tortue",
+      "course",
+      "lenteur",
+      "vitesse",
+      "persévérance",
+      "moquerie",
+      "endormir",
+      "gagner",
+      "régularité",
+      "constance",
+      "peur de se tromper",
+      "école",
+      "lire à voix haute",
+      "être moqué",
+      "trop lent",
+      "apprendre à son rythme"
+    ]
+  },
+  {
+    "code": "E003",
+    "texte": "La fourmi travaillait tout l'été pour remplir son grenier. La cigale, elle, chantait. Quand l'hiver arriva, la fourmi avait de la nourriture, et la cigale comprit qu'il fallait aussi penser à demain.",
+    "culture": "Méditerranée",
+    "famille": "F9",
+    "interpretations": [
+      "Faire les choses au bon moment aide à être tranquille plus tard.",
+      "Chanson et travail peuvent vivre ensemble s'ils partagent le temps.",
+      "Aider les autres commence par être prêt soi-même."
+    ],
+    "sources": [
+      "Ésope, La Fourmi et la Cigale ; reprise par La Fontaine (livre I)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "cigale",
+      "fourmi",
+      "été",
+      "hiver",
+      "travail",
+      "chanter",
+      "préparer",
+      "nourriture",
+      "demain",
+      "conséquence",
+      "réussite",
+      "préparer demain",
+      "jouer",
+      "conséquences",
+      "effort"
+    ]
+  },
+  {
+    "code": "E004",
+    "texte": "Un lion endormi fut réveillé par une petite souris qui dansait sur lui. Il la laissa partir. Plus tard, le lion fut pris dans un filet. La souris rongea les cordes et le sauva.",
+    "culture": "Méditerranée",
+    "famille": "F10",
+    "interpretations": [
+      "Personne n'est trop petit pour rendre un grand service.",
+      "Un moment de gentillesse peut revenir un jour comme un cadeau.",
+      "Chaque ami compte, même le plus minuscule."
+    ],
+    "sources": [
+      "Ésope, Le Lion et la Souris ; reprise par La Fontaine",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "lion",
+      "souris",
+      "filet",
+      "grâce",
+      "petit",
+      "grand",
+      "aider",
+      "gentillesse",
+      "sauver",
+      "amitié",
+      "dents",
+      "corde",
+      "petit ami",
+      "aider les grands",
+      "gentillesse rendue",
+      "sauvetage",
+      "se sentir petit",
+      "utile",
+      "important"
+    ]
+  },
+  {
+    "code": "E005",
+    "texte": "Le grand chêne se moquait du roseau qui pliait au moindre vent. Un jour, une terrible tempête abattit le chêne. Le roseau, lui, s'était penché… et se releva intact.",
+    "culture": "Méditerranée",
+    "famille": "F2",
+    "interpretations": [
+      "Savoir se pencher sans se casser est une vraie force.",
+      "On peut être doux et courageux à la fois.",
+      "Il n'y a pas une seule façon d'être fort."
+    ],
+    "sources": [
+      "Jean de La Fontaine, Le Chêne et le Roseau (Fables, livre I)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "chêne",
+      "roseau",
+      "vent",
+      "tempête",
+      "plier",
+      "casser",
+      "fort",
+      "doux",
+      "flexible",
+      "survivre",
+      "orgueil",
+      "souple",
+      "résister",
+      "douce force",
+      "peur",
+      "se sentir faible",
+      "intimidation",
+      "résister sans casser"
+    ]
+  },
+  {
+    "code": "E006",
+    "texte": "Le vent du nord et le soleil se disputaient pour faire enlever son manteau à un voyageur. Le vent souffla très fort : le voyageur s'accrocha. Le soleil brilla doucement : le voyageur eut chaud et retira son manteau.",
+    "culture": "Méditerranée",
+    "famille": "F7",
+    "interpretations": [
+      "La douceur réussit souvent mieux que la force.",
+      "Persuader avec le cœur vaut mieux qu'obliger avec la colère.",
+      "Être chaleureux ouvre les portes que la dureté ferme."
+    ],
+    "sources": [
+      "Ésope, Le Vent du Nord et le Soleil",
+      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+    ],
+    "motsCles": [
+      "vent",
+      "soleil",
+      "manteau",
+      "voyageur",
+      "douceur",
+      "force",
+      "convaincre",
+      "chaud",
+      "doucement",
+      "gagner",
+      "colère",
+      "gentillesse gagnante"
+    ]
+  },
+  {
+    "code": "E007",
+    "texte": "Un petit berger s'amusait à crier « Au loup ! » pour voir courir les gens du village. Deux fois, les gens accoururent pour rien. Le jour où le vrai loup vint, personne ne vint l'aider.",
+    "culture": "Méditerranée",
+    "famille": "F8",
+    "interpretations": [
+      "Dire la vérité fait de nous des personnes en qui on peut avoir confiance.",
+      "La confiance se construit petit à petit et se perd très vite.",
+      "Les mots sont des promesses qu'on fait aux autres."
+    ],
+    "sources": [
+      "Ésope, Le Berger menteur (Le Pastour et le Loup)",
+      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+    ],
+    "motsCles": [
+      "berger",
+      "loup",
+      "menteur",
+      "vérité",
+      "confiance",
+      "crier",
+      "village",
+      "aider",
+      "mensonge",
+      "conséquence",
+      "promesse",
+      "confiance perdue",
+      "mentir",
+      "peur du regard des autres",
+      "avouer"
+    ]
+  },
+  {
+    "code": "E008",
+    "texte": "Un vieil homme donna un fagot à chacun de ses fils et leur demanda de casser le paquet : personne ne réussit. Puis il délia les bâtons, et chacun se cassa très facilement. « Restez unis », dit-il.",
+    "culture": "Méditerranée",
+    "famille": "F10",
+    "interpretations": [
+      "Ensemble, on est beaucoup plus solides que tout seul.",
+      "Les frères, les sœurs et les amis sont des bâtons liés.",
+      "La dispute affaiblit, l'union protège."
+    ],
+    "sources": [
+      "Ésope, Le Vieillard et ses Fils ; reprise par La Fontaine (livre IV)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "vieillard",
+      "fils",
+      "fagot",
+      "union",
+      "force",
+      "ensemble",
+      "casser",
+      "solide",
+      "frères",
+      "unité",
+      "famille",
+      "dispute",
+      "solidarité"
+    ]
+  },
+  {
+    "code": "E009",
+    "texte": "Une laitière portait un pot de lait sur sa tête. En marchant, elle rêvait : avec le lait, elle achèterait des œufs, les œufs deviendraient des poules… Elle rêvait tellement qu'elle renversa son pot, et tout le lait tomba.",
+    "culture": "Méditerranée",
+    "famille": "F6",
+    "interpretations": [
+      "Rêver est beau, mais il faut garder les yeux sur le chemin.",
+      "Une chose à la fois, avec attention, fait avancer plus sûrement.",
+      "Compter avant d'avoir est un jeu amusant, pas un plan."
+    ],
+    "sources": [
+      "Jean de La Fontaine, La Laitière et le Pot au lait (Fables, livre VII)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "laitière",
+      "pot",
+      "lait",
+      "rêve",
+      "renverser",
+      "attention",
+      "compter",
+      "projets",
+      "chimère",
+      "chemin",
+      "prudence",
+      "rêverie",
+      "maintenant"
+    ]
+  },
+  {
+    "code": "E010",
+    "texte": "Deux frères partis à l'aventure rencontrèrent une fourmi, un canard et une reine des abeilles en difficulté. Ils les aidèrent gentiment. Grâce à ces amis invisibles, ils réussirent toutes leurs épreuves.",
+    "culture": "Nordique / Celtique",
+    "famille": "F10",
+    "interpretations": [
+      "La gentillesse sème des amis partout où elle passe.",
+      "Aider les plus petits, c'est se faire de grands alliés.",
+      "Aucune gentillesse n'est jamais perdue."
+    ],
+    "sources": [
+      "Jacob et Wilhelm Grimm, La Reine des abeilles (contes, domaine public)",
+      "https://fr.wikipedia.org/wiki/Contes_de_l%27enfance_et_du_foyer"
+    ],
+    "motsCles": [
+      "reine",
+      "abeilles",
+      "grimm",
+      "fourmi",
+      "canard",
+      "gentillesse",
+      "aider",
+      "épreuve",
+      "amis",
+      "réussite",
+      "bonté",
+      "aider petits",
+      "amis inattendus",
+      "épreuves réussies"
+    ]
+  },
+  {
+    "code": "E011",
+    "texte": "Une tortue s'accrochait à une branche tenue par deux grues pour voler vers un nouveau lac. « Garde la bouche fermée », lui conseillèrent-elles. En chemin, les gens crièrent leur étonnement, et la tortue, voulant répondre… lâcha prise.",
+    "culture": "Asie",
+    "famille": "F6",
+    "interpretations": [
+      "Il y a un bon moment pour parler et un bon moment pour écouter.",
+      "Répondre à tout le monde fait parfois lâcher ce qui compte.",
+      "Garder son calme est un super-pouvoir silencieux."
+    ],
+    "sources": [
+      "Panchatantra (tradition indienne, domaine public)",
+      "https://fr.wikipedia.org/wiki/Panchatantra"
+    ],
+    "motsCles": [
+      "grues",
+      "tortue",
+      "branche",
+      "voler",
+      "parler",
+      "fermer",
+      "bouche",
+      "calme",
+      "écouter",
+      "lâcher",
+      " silence",
+      "discrétion",
+      "savoir se taire"
+    ]
+  },
+  {
+    "code": "E012",
+    "texte": "Anansi, l'araignée, réunissait toute la sagesse du monde dans un pot. Il voulait le cacher en haut d'un grand arbre, seul. Mais à chaque essai, le pot l'empêchait de grimper. Son propre fils lui montra alors qu'il fallait attacher le pot dans le dos. Anansi comprit : la sagesse se partage.",
+    "culture": "Afrique de l'Ouest",
+    "famille": "F10",
+    "interpretations": [
+      "Même le plus sage a besoin des autres.",
+      "Garder la sagesse pour soi la rend inutile.",
+      "Écouter même les plus petits, c'est être vraiment sage."
+    ],
+    "sources": [
+      "Conte ashanti d'Anansi (tradition orale, Ghana)",
+      "https://fr.wikipedia.org/wiki/Anansi"
+    ],
+    "motsCles": [
+      "anansi",
+      "araignée",
+      "sagesse",
+      "pot",
+      "arbre",
+      "partager",
+      "fils",
+      "conseil",
+      "seul",
+      "cacher",
+      "écouter",
+      "écouter les petits"
+    ]
+  },
+  {
+    "code": "E013",
+    "texte": "Un corbeau très assoiffé trouva une cruche avec un peu d'eau au fond. Il ne pouvait pas atteindre l'eau. Alors, pierre après pierre, il fit monter le niveau de l'eau, jusqu'à pouvoir boire.",
+    "culture": "Méditerranée",
+    "famille": "F1",
+    "interpretations": [
+      "Un problème grand se résout par de petits gestes.",
+      "L'intelligence ouvre des portes où la force n'entre pas.",
+      "Ne jamais abandonner : une pierre à la fois, la solution arrive."
+    ],
+    "sources": [
+      "Ésope, Le Corbeau et la Cruche",
+      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+    ],
+    "motsCles": [
+      "corbeau",
+      "cruche",
+      "eau",
+      "soif",
+      "pierre",
+      "intelligent",
+      "monter",
+      "niveau",
+      "ingéniosité",
+      "persévérance",
+      "solution",
+      "intelligente",
+      "petits gestes",
+      "probleme",
+      "boire",
+      "essayer encore",
+      "échouer",
+      "petit à petit",
+      "perseverer",
+      "réussir"
+    ]
+  },
+  {
+    "code": "E014",
+    "texte": "Un singe vivait dans un arbre au bord d'une rivière. Un crocodile l'invita à venir dîner chez lui, mais en chemin révéla son vrai plan : offrir le cœur du singe à sa famille. Le singe, très calme, dit qu'il avait laissé son cœur accroché à l'arbre. Le crocodile le ramena… et le singe bondit sur sa branche.",
+    "culture": "Asie",
+    "famille": "F3",
+    "interpretations": [
+      "Rester calme dans une situation difficile permet de trouver une idée.",
+      "Faire confiance à son instinct quand quelque chose sent étrange.",
+      "La maison, c'est parfois le meilleur refuge : savoir y revenir."
+    ],
+    "sources": [
+      "Panchatantra, Le Singe et le Crocodile (tradition indienne, domaine public)",
+      "https://fr.wikipedia.org/wiki/Panchatantra"
+    ],
+    "motsCles": [
+      "singe",
+      "crocodile",
+      "cœur",
+      "rivière",
+      "calme",
+      "idée",
+      "ruse",
+      "retour",
+      "maison",
+      "méfiance",
+      "ingénieux",
+      "danger",
+      "retour maison",
+      "ingéniosité"
+    ]
+  },
+  {
+    "code": "E015",
+    "texte": "Une souris de la campagne invita sa cousine de la ville. La ville offrait des mets délicieux, mais à chaque bouchée, un danger surgissait : le chat, les serviteurs, le bruit. La souris des champs retourna chez elle, avec son simple grain, mais en paix.",
+    "culture": "Méditerranée",
+    "famille": "F6",
+    "interpretations": [
+      "Un petit bonheur tranquille vaut parfois mieux qu'un grand bonheur agité.",
+      "Chacun trouve sa place là où son cœur respire.",
+      "Comparer sa vie à celle des autres fait oublier sa propre richesse."
+    ],
+    "sources": [
+      "Ésope, La Souris de ville et la Souris des champs ; reprise par La Fontaine (livre VIII)",
+      "https://fr.wikisource.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "souris",
+      "ville",
+      "campagne",
+      "chat",
+      "danger",
+      "tranquille",
+      "simple",
+      "paix",
+      "comparer",
+      "richesse",
+      "contentement",
+      "simplicité",
+      "maison"
+    ]
+  }
+]

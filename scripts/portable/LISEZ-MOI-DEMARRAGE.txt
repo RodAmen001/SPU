@@ -1,0 +1,68 @@
+════════════════════════════════════════════════════════════════
+  SPU v4.1 — SYSTÈME PARABOLIQUE UNIVERSEL
+  Paquet portable — tout est dedans, aucune clé API nécessaire
+════════════════════════════════════════════════════════════════
+
+▶ COMMENT DÉMARRER
+
+  Windows : double-clique  DEMARRER-WINDOWS.bat
+  Mac/Linux : dans un terminal, lance  ./demarrer-mac-linux.sh
+
+  Le premier démarrage télécharge les dépendances (quelques minutes).
+  Les démarrages suivants sont rapides.
+
+▶ QUAND LE SERVEUR TOURNE
+
+  Ouvre ton navigateur :  http://localhost:3000
+
+▶ PRÉREQUIS
+
+  • Node.js 20 ou plus (https://nodejs.org) — c'est tout.
+  • Facultatif : Bun (https://bun.sh) rend le démarrage plus rapide.
+
+▶ CE QU'IL Y A DANS CE PAQUET
+
+  • Le code complet de l'application (src/, prisma/, public/…)
+  • Le corpus de 65 paraboles sourcées, déjà en base (db/custom.db)
+  • 5 musiques libres (SoundHelix, T. Schürger) — 1 par mode + 1 jingle
+  • 10 voix locales pour le théâtre sonore (voix du navigateur, aucune connexion requise)
+
+▶ VOIX MASCULINES ET FÉMININES RÉELLES (facultatif, recommandé)
+
+  Par défaut, le théâtre sonore utilise la voix du navigateur (unique, souvent
+  féminine). Pour obtenir de vraies voix masculines (Tom, Pierre) et féminines
+  (Siwis, Jessica) en qualité neuronale, lance une fois :
+
+    Windows : double-clique  TELECHARGER-VOIX-WINDOWS.bat
+    Mac/Linux : ./telecharger-voix.sh
+
+  Téléchargement unique (~210 Mo), ensuite 100 % local et hors ligne.
+  Dans le panneau « Théâtre sonore », chaque voix affichera « neuronale ».
+
+▶ NOUVEAUTÉS v4.1
+
+  • Fil de discussion type messagerie, messages horodatés (chat + journal)
+  • Indicateur d'attente animé pendant la réflexion (plus de blanc)
+  • Musique de fond réelle par mode (Oracle / Mentor / Deep / Enfant) + jingle de réponse
+  • 10 voix locales réglables : narrateur + personnages (enfant, adulte, vieillard, femme, homme)
+    + voix neuronales masculines réelles en option (script TELECHARGER-VOIX)
+  • Compte SPU : crée un compte pour conserver tes sessions et les retrouver
+    depuis n'importe quel appareil (bouton « Compte SPU » en haut à droite)
+  • Histoires ancrées sur ta préoccupation réelle (plus de réponses génériques)
+  • Mode dégradé : même sans réseau, le corpus local continue de fonctionner
+
+▶ CONFIDENTIALITÉ
+
+  • Tout tourne en local sur ta machine. Aucune clé API, aucun compte externe.
+  • Session anonyme par défaut ; le compte SPU est optionnel.
+  • Journal exportable en .txt / .json / .md et effaçable à tout moment (RGPD).
+
+▶ EN CAS DE PROBLÈME
+
+  • Port 3000 occupé ? Ferme l'autre application, ou change le port dans
+    package.json (script "dev": "next dev -p 3000").
+  • « Cannot find module @prisma/client » ? Relance le script de démarrage :
+    il régénère le client automatiquement.
+  • Base de données neuve : supprime db/custom.db puis relance — le seed
+    se fait via `npx prisma db push` puis `bunx tsx scripts/seed.ts` (ou npm).
+════════════════════════════════════════════════════════════════

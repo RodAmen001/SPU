@@ -1,0 +1,132 @@
+════════════════════════════════════════════════════════════════
+ SPU v4.3 — TRANSFORMER L'APP EN VRAIE APPLICATION
+ ANDROID  ·  WINDOWS
+════════════════════════════════════════════════════════════════
+
+Le SPU est une application web complète (Next.js). Voici les 4
+routes possibles, de la plus simple à la plus « native ».
+Toutes fonctionnent 100 % local : paraboles, histoires, comptes,
+voix, musique — sans clé API.
+
+────────────────────────────────────────────────────────────────
+ ANDROID — Route A (la plus simple) : APK toute faite (SPU Pocket)
+────────────────────────────────────────────────────────────────
+Une vraie application Android, signée, prête à installer :
+  spu-pocket-v1.0.0.apk  (58 Ko !)
+• Transfère le fichier sur le téléphone (Bluetooth, câble, WhatsApp,
+  Drive…) → touche-le → autorise « sources inconnues » → installer.
+• Une icône « SPU Pocket » apparaît, l'app s'ouvre en plein écran.
+• Ce qui est DANS l'app, hors ligne, sans rien configurer :
+  la bibliothèque des 65 textes (50 paraboles + 15 fables enfant)
+  avec leurs interprétations, la recherche, les favoris, la lecture
+  à voix haute par la voix du téléphone (vitesse et hauteur réglables).
+• Bouton « Serveur complet » : entre l'adresse d'un serveur SPU
+  (ex. http://IP-du-PC:3000 sur le même Wi-Fi) → histoires
+  interactives, théâtre sonore, journal… tout le SPU.
+• Bouton « Vérifier les mises à jour » : l'app interroge le serveur
+  et t'annonce les nouveautés (nouvelles versions, nouvelles fonctions).
+
+Pour DISTRIBUER l'APK à tout le monde (cloud, Play Store) :
+voir le fichier DISTRIBUTION-APK.txt (dans le projet et dans le paquet).
+
+────────────────────────────────────────────────────────────────
+ ANDROID — Route B : « application » via Chrome (Termux)
+────────────────────────────────────────────────────────────────
+Durée : 10 min une fois. 100 % local sur le téléphone.
+1. Installe Termux depuis F-Droid (https://f-droid.org → Termux).
+2. Dans Termux :  pkg install unzip
+3. Copie spu-v4.3-portable.zip dans le téléphone, puis :
+     cd ~
+     unzip spu-v4.3-portable.zip
+     bash spu-v4.3/android/1-INSTALLER-SUR-ANDROID.sh
+   (installe Ubuntu intégré + Node.js + dépendances — 10 à 20 min)
+4. Chaque jour :  bash spu-v4.3/android/2-DEMARRER-SPU.sh
+5. Dans Chrome : http://localhost:3000
+   → menu ⋮ → « Ajouter à l'écran d'accueil »
+   → le SPU a son icône, s'ouvre en plein écran, comme une app.
+
+Bonus : à l'étape 3, le script télécharge la voix masculine
+neuronale Tom (65 Mo, une fois) → les hommes parlent d'une vraie
+voix d'homme, même sur le téléphone.
+
+────────────────────────────────────────────────────────────────
+ ANDROID — Route C : APK depuis PWABuilder (si SPU hébergé)
+────────────────────────────────────────────────────────────────
+Quand le SPU est hébergé quelque part (ton PC allumé, un petit
+serveur, ou l'adresse de prévisualisation fournie dans la
+conversation) :
+1. Ouvre https://www.pwabuilder.com dans Chrome (PC).
+2. Colle l'adresse du SPU → Start → « Package for stores »
+   → Android → Download.
+3. Tu obtiens un APK : transfère-le sur le téléphone, installe-le
+   (autoriser « sources inconnues »). Le SPU devient une icône
+   standard, installable/désinstallable comme n'importe quelle app.
+Note : l'APK se connecte au serveur hébergé — le téléphone n'a
+pas besoin de Termux. Hors ligne, il garde la dernière page vue.
+
+────────────────────────────────────────────────────────────────
+ WINDOWS — Route A (recommandée) : le paquet portable
+────────────────────────────────────────────────────────────────
+1. Dézippe spu-v4.3-portable.zip (par ex. dans Documents\SPU).
+2. Double-clique  DEMARRER-WINDOWS.bat
+   (première fois : installe les dépendances, 5 à 15 min).
+3. Le navigateur s'ouvre sur http://localhost:3000.
+Astuce « app » : dans Chrome/Edge, clique l'icône d'installation
+(⊕ dans la barre d'adresse) → le SPU s'ouvre dans sa propre
+fenêtre, avec icône dans le menu Démarrer — sans rien compiler.
+
+────────────────────────────────────────────────────────────────
+ WINDOWS — Route B : vrai installateur SPU.exe (Electron)
+────────────────────────────────────────────────────────────────
+Fabrique un installateur Windows classique (raccourci bureau,
+menu Démarrer, fenêtre dédiée, désinstallation propre).
+Prérequis : Node.js LTS (https://nodejs.org) + internet.
+1. Dézippe spu-v4.3-portable.zip.
+2. Double-clique  CREER-EXE-WINDOWS.bat
+   (10 à 25 min la première fois : il compile puis empaquette).
+3. Résultat :  dist-exe\SPU Setup 1.0.0.exe
+   → installe-le → le SPU est une application Windows complète.
+Le .exe est à reconstruire après chaque mise à jour du SPU.
+
+────────────────────────────────────────────────────────────────
+ QUE CHOISIR ?
+────────────────────────────────────────────────────────────────
+• Tu veux utiliser tout de suite              → Android A / Windows A
+• Tu veux une icône « vraie app »             → Écran d'accueil (A)
+   ou installation PWA depuis le navigateur (Windows A, astuce)
+• Tu veux distribuer le SPU à quelqu'un
+   qui ne touchera à rien                     → APK (Android B)
+   ou SPU.exe (Windows B)
+
+────────────────────────────────────────────────────────────────
+ CE QUE CONTIENT LE PAQUET spu-v4.3-portable.zip
+────────────────────────────────────────────────────────────────
+spu-v4.3/
+  DEMARRER-WINDOWS.bat .......... lancement Windows (navigateur)
+  demarrer-mac-linux.sh ......... lancement Mac/Linux/Termux
+  CREER-EXE-WINDOWS.bat ......... fabrique l'installateur SPU.exe
+  android/
+    1-INSTALLER-SUR-ANDROID.sh .. installation téléphone (1 fois)
+    2-DEMARRER-SPU.sh ........... démarrage quotidien téléphone
+  electron/ ..................... lanceur fenêtre native (EXE)
+  LISEZ-MOI-DEMARRAGE.txt ....... guide de démarrage détaillé
+  src/ prisma/ db/ public/ ...... le SPU complet (v4.3)
+
+Paquet optionnel  spu-voix-neurales.zip :
+  les 3 modèles Piper français (Tom, Pierre, Siwis) pour les voix
+  neuronales serveur — à copier dans le dossier de l'app (voir
+  INSTALLER.txt dedans). Sans lui : voix du navigateur.
+
+────────────────────────────────────────────────────────────────
+ PROBLÈMES FRÉQUENTS
+────────────────────────────────────────────────────────────────
+« Port 3000 déjà utilisé » → un SPU tourne déjà ; ouvre simplement
+  http://localhost:3000, ou ferme l'autre fenêtre/terminal.
+« prisma / engines » sur Android → les scripts passent par Ubuntu
+  intégré (proot) : ne lance jamais npm install directement dans
+  Termux, utilise 1-INSTALLER-SUR-ANDROID.sh.
+Voix masculines ? Vérifie le panneau 🎭 « Théâtre sonore » :
+  badges « neuronale · Tom / Pierre » = vraies voix d'hommes.
+  Sinon l'app utilise les voix du navigateur (repli automatique).
+La base (comptes, journal) vit dans  db/custom.db  — sauvegarde ce
+  fichier pour conserver l'historique lors d'une mise à jour.
