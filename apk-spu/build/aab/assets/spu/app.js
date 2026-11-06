@@ -94,7 +94,7 @@ function trouveParCode(code) {
 /* ── Navigation ── */
 function ecranDeHash() {
   const h = location.hash.replace(/^#\/?/, '');
-  return ['bibliotheque', 'lecteur', 'connexion', 'apropos'].includes(h) ? h : 'accueil';
+  return ['bibliotheque', 'lecteur', 'connexion', 'apropos', 'demander'].includes(h) ? h : 'accueil';
 }
 function montrer(ecran) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('active'));
@@ -103,6 +103,7 @@ function montrer(ecran) {
   if (ecran !== 'lecteur' && etat.enLecture) arreterVoix();
   if (ecran === 'bibliotheque') renduListe();
   if (ecran === 'lecteur') renduLecteur();
+  if (ecran === 'demander') majIntroDemander();
 }
 function naviguer(ecran) { location.hash = ecran === 'accueil' ? '' : '/' + ecran; }
 window.addEventListener('hashchange', () => montrer(ecranDeHash()));
@@ -264,7 +265,7 @@ $('#btn-maj').addEventListener('click', async () => {
     const r = await fetch(base + '/api/version', { signal: ctl.signal });
     clearTimeout(fin);
     const v = await r.json();
-    const meme = v.apk && v.apk.version === '1.0.0';
+    const meme = v.apk && v.apk.version === VERSION_APP;
     zone.innerHTML =
       '<span class="titre">✅ Serveur SPU v' + echapper(String(v.serveur ? v.serveur.version : '?')) + ' — SPU Pocket ' +
       (meme ? 'à jour' : 'v' + echapper(String(v.apk ? v.apk.version : '?'))) + '</span>' +
@@ -276,6 +277,124 @@ $('#btn-maj').addEventListener('click', async () => {
       'Vérifie l\'adresse et que le SPU tourne bien sur cette machine. La bibliothèque de ton téléphone reste disponible hors ligne.';
   }
 });
+
+/* ── Poser une question (v1.1 — nécessite un serveur SPU) ── */
+const VERSION_APP = '1.1.0';
+
+function serveurActif() {
+  let url = $('#url-serveur').value.trim().replace(/\/+$/, '');
+  if (!url) url = serveurs()[0] || '';
+  if (url && !/^https?:\/\//i.test(url)) url = 'http://' + url;
+  return url;
+}
+function majIntroDemander() {
+  const a = !!serveurActif();
+  $('#dem-sans-serveur').hidden = a;
+}
+
+$('#dem-question').addEventListener('input', (e) => {
+  $('#dem-compteur').textContent = e.target.value.length + ' / 2000';
+});
+$('#btn-demander').addEventListener('click', poserQuestion);
+$('#btn-dem-ecouter').addEventListener('click', () => { if (derniereReponse) lire(derniereReponse); });
+
+let derniereReponse = '';
+
+function ressourcesHtml(r) {
+  if (!Array.isArray(r) || !r.length) return '';
+  return '<ul>' + r.map((x) => {
+    if (typeof x === 'string') return '<li>' + echapper(x) + '</li>';
+    const region = x.region ? echapper(x.region) + ' : ' : '';
+    const lignes = Array.isArray(x.lignes) ? x.lignes.map(echapper).join(' · ') : echapper(JSON.stringify(x));
+    return '<li>' + region + lignes + '</li>';
+  }).join('') + '</ul>';
+}
+function afficherErreurDem(zone, m) {
+  zone.innerHTML = '<span class="titre">⚠️</span>' + echapper(m);
+  $('#btn-dem-ecouter').hidden = true;
+}
+function renduReponse(d) {
+  let h = '';
+  if (d.reponse) h += '<div class="dem-part"><h3>🧭 Réponse</h3><p>' + echapper(d.reponse) + '</p></div>';
+  if (d.parabole) {
+    h += '<div class="dem-part"><h3>📜 Parabole ' + echapper(d.parabole.code || '') +
+      (d.parabole.culture ? ' <span class="dem-culture">— ' + echapper(d.parabole.culture) + '</span>' : '') + '</h3>' +
+      '<blockquote>' + echapper(d.parabole.texte || '') + '</blockquote>' +
+      (d.parabole.interpretation ? '<p class="note"><b>Interprétation :</b> ' + echapper(d.parabole.interpretation) + '</p>' : '') + '</div>';
+  }
+  if (d.histoire) h += '<div class="dem-part"><h3>📖 Histoire</h3><p>' + echapper(d.histoire) + '</p></div>';
+  const nb = Array.isArray(d.sourcesUtilisees) ? d.sourcesUtilisees.length : 0;
+  const conf = typeof d.confiance === 'number' ? Math.round(d.confiance * 100) : null;
+  const infos = [nb ? nb + ' source(s) consultée(s)' : '', conf !== null ? 'cohérence des sources ' + conf + ' %' : '']
+    .filter(Boolean).join(' — ');
+  if (infos) h += '<p class="note">🔎 ' + infos + '</p>';
+  return h;
+}
+
+async function poserQuestion() {
+  const zone = $('#dem-resultat');
+  const btn = $('#btn-demander');
+  const question = $('#dem-question').value.trim();
+  if (!question) {
+    zone.hidden = false;
+    zone.innerHTML = '<span class="titre">Écris d’abord ta question 🙂</span>';
+    return;
+  }
+  const base = serveurActif();
+  majIntroDemander();
+  if (!base) {
+    zone.hidden = false;
+    zone.innerHTML = '<span class="titre">⚙️ Aucun serveur configuré</span>' +
+      "Pose d'abord l'adresse d'un serveur SPU dans l'écran « Serveur complet », puis reviens ici. " +
+      'La bibliothèque hors ligne reste toujours disponible.';
+    $('#btn-dem-ecouter').hidden = true;
+    return;
+  }
+  arreterVoix();
+  btn.disabled = true;
+  btn.textContent = '⏳ Le SPU consulte ses sources…';
+  zone.hidden = false;
+  zone.innerHTML = '<span class="titre">🔎 Recherche des paraboles et des sources…</span>' +
+    'Cela peut prendre 20 à 60 secondes : le serveur interroge le web, une encyclopédie et sa réflexion, puis raconte.';
+  const ctl = new AbortController();
+  const fin = setTimeout(() => ctl.abort(), 120000);
+  try {
+    const r = await fetch(base + '/api/repondre', {
+      method: 'POST',
+      signal: ctl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    clearTimeout(fin);
+    const d = await r.json();
+    if (!r.ok) { afficherErreurDem(zone, d.error || 'Le serveur n’a pas pu répondre.'); return; }
+    if (d.detresse) {
+      zone.innerHTML = '<span class="titre">💙 Tu n’es pas seul·e</span>' + echapper(d.message || '') + ressourcesHtml(d.ressources);
+      $('#btn-dem-ecouter').hidden = true;
+      return;
+    }
+    if (d.bloque) {
+      zone.innerHTML = '<span class="titre">🌱 Mode enfant protégé</span>' + echapper(d.message || '');
+      $('#btn-dem-ecouter').hidden = true;
+      return;
+    }
+    derniereReponse = [
+      d.reponse || '',
+      d.parabole ? ('Parabole ' + (d.parabole.code || '') + ' — ' + d.parabole.texte + ' Interprétation : ' + (d.parabole.interpretation || '')) : '',
+      d.histoire ? ('Histoire. ' + d.histoire) : '',
+    ].filter(Boolean).join(' ');
+    zone.innerHTML = renduReponse(d);
+    $('#btn-dem-ecouter').hidden = !derniereReponse;
+  } catch (e) {
+    clearTimeout(fin);
+    afficherErreurDem(zone, navigator.onLine === false
+      ? "Pas de connexion internet. La bibliothèque hors ligne reste disponible."
+      : "Serveur injoignable. Vérifie l'adresse (écran « Serveur complet ») et que le SPU tourne bien sur cette machine.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Demander';
+  }
+}
 
 /* ── Divers ── */
 function echapper(s) {

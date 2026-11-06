@@ -170,3 +170,17 @@ body {
 .maj-resultat ul { padding-left: 18px; margin-top: 6px; color: var(--texte-2); }
 
 @media (min-width: 460px) { .cartes { grid-template-columns: 1fr 1fr; } .carte:last-child { grid-column: 1 / -1; } }
+
+/* ── Poser une question (v1.1) ── */
+.badge-nouveau { display: inline-block; vertical-align: middle; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--or); color: #1a1a10; font-size: 10.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
+#dem-question { width: 100%; resize: vertical; min-height: 96px; padding: 12px; border-radius: 12px; border: 1px solid var(--bordure); background: var(--fond-2); color: var(--texte); font: inherit; line-height: 1.5; }
+#dem-question:focus { outline: 2px solid var(--or); outline-offset: -1px; }
+.dem-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.dem-resultat { margin: 4px 0 16px; padding: 14px; border-radius: 14px; background: var(--fond-2); border: 1px solid var(--bordure); }
+.dem-resultat .titre { color: var(--or-vif); font-weight: 700; display: block; margin-bottom: 6px; }
+.dem-part { padding: 10px 0; border-top: 1px dashed var(--bordure); }
+.dem-part:first-child { border-top: none; padding-top: 0; }
+.dem-part h3 { color: var(--or); font-size: 14.5px; margin-bottom: 6px; }
+.dem-part blockquote { border-left: 3px solid var(--or); padding-left: 12px; color: var(--texte); font-style: italic; }
+.dem-culture { color: var(--texte-2); font-weight: 400; font-size: 12.5px; }
+.dem-resultat ul { padding-left: 18px; margin-top: 6px; color: var(--texte-2); font-size: 13.5px; }
