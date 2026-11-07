@@ -1,106 +1,196 @@
-# SPU v4.0 — Système Parabolique Universel
+# SPU — Système Parabolique Universel
 
-Orchestrateur narratif multi-IA : toute question existentielle devient une synthèse sourcée de plusieurs intelligences, mise en correspondance avec une **parabole réelle et sourcée** d'un corpus clos, puis une **histoire personnalisée** générée à la demande.
+> Un mentor, pas un maître 🌿 — il aide à penser ; il ne pense pas à la place.
 
-> Un mentor, pas un maître. Il aide à penser ; il ne pense pas à la place.
+SPU est un orchestrateur narratif multi-IA : toute question de vie devient une
+synthèse sourcée de plusieurs intelligences, mise en correspondance avec une
+**parabole réelle et sourcée** issue d'un corpus clos de 65 textes, puis une
+**histoire personnalisée** générée à la demande. Aucune parabole inventée par
+l'IA : chaque texte est réel, attribué honnêtement et vérifié.
+
+- **Serveur SPU v4.4** : application web complète (Next.js 16) — modes Oracle,
+  Mentor, Deep et Enfant, comptes utilisateurs, journal, sauvegardes.
+- **SPU Pocket v1.2.0** : application Android compagnon (APK 62 Ko, Android 7+),
+  avec un **mode nomade qui fonctionne dès l'installation, sans serveur**.
 
 ---
 
-## 1. Ce qui est livré (v4.0 — périmètre acté)
+## ⬇️ Téléchargements (SPU Pocket v1.2.0)
 
-| Pilier du cahier | Implémentation |
+| Fichier | Lien direct |
 |---|---|
-| **Phase 0 — Détresse** (3.1) | 3 couches : lexicale (regex FR/EN) + classifieur LLM (score 0-1) + heuristique de tonalité. Réponse humaine immédiate, **aucune source externe appelée**, logs anonymisés (hash + horodatage), jamais de parabole. |
-| **Orchestration multi-IA** (3.2) | 4 sources en parallèle (`Promise.allSettled`, timeout 8 s) : Recherche Web, Intelligence réflexive (LLM), Encyclopédie (Wikipédia via lecteur), DuckDuckGo Instant Answers. Cache 24 h par hash SHA-256, rate limiting 20 req/min/IP. |
-| **Synthèse** (3.3) | Prompt imposé du cahier, ≤ 3 phrases, ≤ 120 mots, citations [1][2], signale les contradictions, score de confiance. |
-| **Matching vectoriel** (3.4) | Index TF-IDF pondéré (mots-clés éditoriaux ×2) + similarité cosinus en mémoire + **arbitrage sémantique LLM** sur le top-5. Seuil 0,65 ; sous le seuil → mention honnête « parabole la plus proche ». |
-| **Génération d'histoire** (3.6) | Prompts imposés (adulte 150-300 mots / enfant 100-200 mots), tonalité détectée, **filtre post-génération** (violence/sexuel/haine) avec régénération puis template sûr. |
-| **Modes** (Partie 4) | **Oracle** (réponse unique), **Mentor** (3 étapes : ouverture → approfondissement → synthèse + question ouverte), **Deep** (3 niveaux : contemplation → méditation → perspective), **Enfant** (espace séparé, corpus dédié, TTS, gros boutons, filtres stricts). |
-| **Immersion sonore** (Partie 5) | Web Audio API procédurale : 3 paliers (introspectif / narratif / conclusif), fondus 1,5 s, progressions imposées (Lam-Rem-Mim-Lam / DoM-FaM-SolM-DoM), volume 30 % par défaut. TTS natif (Web Speech API). |
-| **Journal & export** (Partie 6) | Journal complet, export .txt / .json / .md, effacement RGPD immédiat, purge automatique 90 jours. |
-| **Sécurité / RGPD** (7.3, 7.6) | HTTPS (preview), rate limiting, validation des entrées, sessions anonymes, aucune clé côté client, aucune donnée de détresse vers des tiers. |
-| **PWA** (7.5) | `manifest.webmanifest` + Service Worker : installable sur mobile, **corpus consultable hors-ligne**. |
-| **Quarantaine** (3.5) | Table + API `/api/admin/validate` prêtes (interface admin en lot 4). |
+| **Application Android (APK)** | [spu-pocket-v1.2.0.apk](https://github.com/Rodamen001/SPU/raw/main/telechargements/spu-pocket-v1.2.0.apk) |
+| Format Google Play (AAB) | [spu-pocket-v1.2.0.aab](https://github.com/Rodamen001/SPU/raw/main/telechargements/spu-pocket-v1.2.0.aab) |
+| Kit complet (APK + AAB + keystore + guides) | [kit-spu-pocket-v1.2.zip](https://github.com/Rodamen001/SPU/raw/main/telechargements/kit-spu-pocket-v1.2.zip) |
+| **Livre blanc** (le concept en détail) | [LIVRE-BLANC-SPU-v4.4.txt](docs/LIVRE-BLANC-SPU-v4.4-2026-11-07.txt) |
+| Guide d'installation pas à pas | [INSTALLER-SPU-POCKET.txt](docs/INSTALLER-SPU-POCKET.txt) |
 
-## 2. Le corpus
+Les mêmes fichiers sont attachés à la
+[**page des versions**](https://github.com/Rodamen001/SPU/releases) (releases),
+et une page de téléchargement conviviale est servie par GitHub Pages :
+**https://rodamen001.github.io/SPU/**
 
-- **50 paraboles adultes** (10 par aire : Afrique de l'Ouest, Asie, Méditerranée, Nordique/Celtique, Universaliste) — réelles, attribuées honnêtement (« attribué à », « tradition orale » quand c'est le cas), 3+ interprétations chacune, familles F1-F10.
-- **15 contes enfants** (La Fontaine, Ésope, Grimm, Panchatantra, tradition ashanti — domaine public).
-- **35 URLs de sources vérifiées une à une** (Wikiquote, Wikisource, Wikipédia). Règle absolue respectée : **aucune parabole inventée par IA**.
-- Mots-clés de pré-indexation éditoriaux par entrée (`corpus-*-*.json`).
+> ⚠️ L'APK n'est pas sur le Play Store : Android affichera un avertissement
+> « application inconnue » — c'est normal, la procédure d'installation est
+> décrite dans le [guide](docs/INSTALLER-SPU-POCKET.txt).
 
-Extension vers 300 : ajouter les entrées dans `src/data/corpus-adulte.json` (avec mots-clés), puis `bun run scripts/seed.ts`. L'index se reconstruit seul (TTL 5 min).
+---
 
-## 3. Architecture
+## 🧭 Comment fonctionne le SPU
 
 ```
-Next.js 16 (App Router, single route)
-├── src/app/page.tsx                → application complète (accueil, modes, journal, corpus…)
-├── src/app/api/
-│   ├── ask/        POST → SSE (Phase 0 → sources → synthèse → matching → histoire)
-│   ├── mentor/     POST → SSE (dialogue 3 étapes)
-│   ├── deep/       POST → SSE (parcours 3 niveaux)
-│   ├── perspective/ POST (mise en perspective d'un échange)
-│   ├── export/     POST (.txt / .json / .md)
-│   ├── journal/    GET  (journal de la session)
-│   ├── session/    DELETE (droit à l'effacement RGPD)
-│   ├── corpus/     GET  (public, mis en cache SW pour l'hors-ligne)
-│   ├── health/     GET  (état des sources)
-│   └── admin/validate/ POST (token ADMIN_TOKEN)
-├── src/lib/spu/
-│   ├── constants.ts    messages & prompts imposés du cahier
-│   ├── distress.ts     Phase 0 (3 couches)
-│   ├── sources.ts      orchestrateur + cache + rate limit + synthèse
-│   ├── vector-index.ts TF-IDF + cosinus (migrable pgvector)
-│   ├── matching.ts     top-5 + arbitrage LLM + tonalité
-│   ├── story.ts        génération + filtre post-génération + template sûr
-│   ├── flux.ts         pipeline SSE partagé
-│   ├── llm.ts          wrapper SDK (timeout, retry 429)
-│   ├── audio-engine.ts moteur audio procédural (3 paliers)
-│   └── tts.ts          Web Speech API
-├── src/data/corpus-*.json   le corpus (cloud dédié = base du projet, exportable)
-├── prisma/schema.prisma     Partie 14 du cahier (SQLite → pgvector sans changer l'API)
-└── public/sw.js             Service Worker (hors-ligne corpus)
+ Question de vie
+        │
+        ▼
+ ┌── Phase 0 : sécurité (3 couches) ────────────────────────┐
+ │  A. 14 regex de détresse      B. classifieur IA (seuils)  │
+ │  C. heuristique de tonalité (51 mots négatifs + 18 rupture)│
+ │  → si détresse : réponse humaine immédiate, rien d'autre   │
+ └──────────────────────────────────────────────────────────┘
+        │
+        ▼
+ Orchestration multi-IA (4 sources en parallèle, 8 s max)
+   Recherche Web · Intelligence réflexive · Encyclopédie · DuckDuckGo
+   cache 24 h · limite 20 requêtes/min/IP · synthèse ≤ 120 mots, citée
+        │
+        ▼
+ Matching TF-IDF sur le corpus (8 candidats, seuil 0,65)
+   + arbitrage sémantique IA → la parabole juste (top-1 : 90 %)
+        │
+        ▼
+ Histoire personnalisée (adulte 150-300 mots / enfant 100-200 mots)
+   + filtre post-génération (violence / sexuel / haine)
+        │
+        ▼
+ Rendu immersif : narration, voix, musique d'ambiance, journal
 ```
 
-### Migrabilité PostgreSQL + pgvector
-Le schéma Prisma suit la Partie 14. Passage à PostgreSQL : changer `datasource db`, remplacer le champ `vec`/index en mémoire par `embedding VECTOR(1024)` + requête `<=>` — les routes et l'API restent identiques.
+### Les 4 modes
+- **Oracle** — une réponse unique et complète.
+- **Mentor** — un dialogue en 3 étapes : ouverture, approfondissement, synthèse
+  avec une question ouverte.
+- **Deep** — un parcours de contemplation en 3 niveaux.
+- **Enfant** — espace protégé séparé : corpus dédié (15 contes du domaine
+  public), gros boutons, lecture à voix haute, filtres stricts.
 
-## 4. Tests (critères du cahier 17.1)
+---
+
+## 📖 Le corpus
+
+- **50 paraboles adultes** — 10 par aire culturelle (Afrique de l'Ouest, Asie,
+  Méditerranée, Nordique/Celtique, Universaliste), réelles et sourcées, avec 3+
+  interprétations chacune, classées en 10 familles (F1-F10).
+- **15 contes enfants** — La Fontaine, Ésope, Grimm, Panchatantra, tradition
+  ashanti (domaine public).
+- **35 URLs de sources vérifiées une à une** (Wikiquote, Wikipédia, Wikisource).
+- Règle absolue : **aucune parabole inventée par IA**.
+
+Le corpus est consultable dans l'application et téléchargeable en JSON
+(`src/data/corpus-adulte.json`, `src/data/corpus-enfant.json`).
+
+---
+
+## 📱 SPU Pocket v1.2.0
+
+Application Android native (62 Ko) développée sans framework :
+
+- **Mode nomade** : l'écran « Poser une question » fonctionne **dès
+  l'installation, sans aucun serveur** (IA publique gratuite, réponse directe,
+  sécurité détresse intégrée).
+- **Bibliothèque hors-ligne** : les 65 textes du corpus sont intégrés dans
+  l'application (`data.js`), consultables en avion, en brousse, partout.
+- **Mode connecté** : en renseignant l'adresse d'un serveur SPU, la réponse
+  devient narrée complète (synthèse sourcée, parabole, histoire, voix).
+
+---
+
+## 🔐 Comptes, journal et confidentialité
+
+- Comptes minimalistes : pseudonyme + mot de passe, mots de passe **jamais
+  transmis en clair** (dérivation scrypt, sel 16 octets), jetons de session
+  aléatoires 64 hex valables 7 jours, sessions persistantes 90 jours.
+- **Journal** complet de vos échanges, exports `.txt` / `.json` / `.md`,
+  **sauvegardes** instantanées restaurables, effacement RGPD immédiat,
+  purge automatique à 90 jours.
+- Les logs de détresse sont **anonymisés** (hash + horodatage) et ne quittent
+  jamais le serveur.
+
+---
+
+## 🚀 Faire tourner le SPU soi-même
+
+Prérequis : Node.js 20+ ou Bun, une machine avec 1 Go de RAM suffit.
 
 ```bash
-bun run scripts/test-phase0.ts          # 30 cas : 30/30 ✓ (100 % des évidentes, critère clé)
-bun run scripts/test-phase0.ts --live   # + couche B LLM en direct : 3/3 ✓
-bun run scripts/test-matching.ts        # top-1 : 90 % ✓ (≥80) — top-3 : 100 % ✓ (≥95)
-node scripts/test-e2e.mjs "question" [mode]   # parcours Oracle/Enfant complet via SSE
-node scripts/test-modes.mjs             # Mentor 3 étapes + Deep 3 niveaux + Enfant + perspective
-bash scripts/verify-urls.sh             # vérification des URLs de sources
+# 1. Dépendances
+bun install                     # ou npm install
+
+# 2. Base de données (SQLite)
+echo 'DATABASE_URL="file:./db/custom.db"' > .env
+bunx prisma db push
+bun run scripts/seed.ts         # 65 paraboles
+
+# 3. Développement
+bun run dev                     # http://localhost:3000
+
+# 4. Production
+bash scripts/build-standalone.js
+bun .next/standalone/server.js  # http://localhost:3000
 ```
 
-Résultats vérifiés en conditions réelles : détresse → 0,1 s sans appel externe ; Oracle complet → ~9 s (streaming dès 0,8 s) ; Mentor 3 étapes ✓ ; Deep 3 niveaux ✓ ; enfant ✓ ; export .md ✓ ; journal ✓ ; PWA 200 ✓ ; 0 erreur console.
+Variable optionnelle : `ADMIN_TOKEN` (jeton de l'API d'administration
+`/api/admin/validate`). Aucune clé API n'est nécessaire : les sources
+externes sont sans clés, le SDK d'IA est fourni par l'environnement.
 
-## 5. Utilisation
+Pour reconstruire l'APK : `bash scripts/installer-sdk.sh` (SDK minimal,
+une fois) puis `bash scripts/build-apk.sh` → `download/spu-pocket-v1.2.0.apk`.
 
-Ouvrir la preview → choisir un mode → poser sa question.
-- **Journal** : tous les échanges, exports, effacement total.
-- **Corpus** : consultation + recherche + filtres par famille (fonctionne hors-ligne après première visite).
-- **Audio** : interrupteur dans l'en-tête (3 paliers automatiques, volume réglable).
+---
 
-## 6. Variables d'environnement
+## 🧪 Tests
+
+```bash
+bun run scripts/test-phase0.ts            # sécurité détresse : 30/30 ✓
+bun run scripts/test-matching.ts          # matching : top-1 90 %, top-3 100 % ✓
+node scripts/test-modes.mjs               # Mentor, Deep, Enfant, perspective ✓
+bash scripts/verify-urls.sh               # les 35 URLs de sources ✓
+node scripts/test-e2e.mjs "question"      # parcours complet SSE ✓
+```
+
+---
+
+## 📁 Structure du dépôt
 
 ```
-DATABASE_URL=file:/home/z/my-project/db/custom.db   # → PostgreSQL en production
-ADMIN_TOKEN=<jeton>                                  # API admin (optionnel)
+├── src/app/          routes API (23) + application React
+├── src/lib/spu/      le moteur (détresse, sources, matching, histoire…)
+├── src/data/         le corpus JSON (65 entrées)
+├── prisma/           schéma de base (8 tables, SQLite)
+├── apk-spu/          SPU Pocket (sources Android + interface)
+├── android/          scripts d'installation sur Android (proot)
+├── electron/         habillage bureau (Windows / Mac / Linux)
+├── scripts/          builds, tests, seed, gardien de serveur
+├── telechargements/  APK, AAB et kit officiels (dans le dépôt)
+└── docs/             livre blanc, guide d'installation, page web
 ```
 
-Aucune clé API n'est nécessaire en v1 (sources sans clés). Le SDK z-ai est configuré par l'environnement.
+## 🗺️ Feuille de route
 
-## 7. Limites connues & suite (feuille de route)
+- Extension du corpus vers 300 paraboles (structure déjà prête).
+- Interface d'administration de la quarantaine.
+- Multilingue (v4.1 du cahier des charges).
+- Publication sur le Play Store (AAB déjà prêt).
 
-- L'accès direct à l'API Wikimedia est limité depuis l'environnement de prévisualisation (429) : la source Encyclopédie passe par le lecteur du SDK, équivalent fonctionnel.
-- En cas de quota temporaire de la plateforme IA, le système **dégrade honnêtement** (synthèse brute sourcée, template narratif sûr) au lieu d'inventer.
-- Lot 4 (après validation) : corpus 300 paraboles, interface d'administration de la quarantaine, enrichissements PWA, multilingue (v4.1 du cahier).
+## ⚖️ Éthique — rappel non négociable
 
-## 8. Éthique — rappel non négociable
+Ne jamais : inventer de parabole, cacher qu'une réponse est une synthèse,
+faire transiter la détresse vers des tiers, stocker des données personnelles
+sans consentement, mettre des clés API côté client. Les pages **Transparence**
+et **Confidentialité** sont intégrées à l'application.
 
-Ne jamais : inventer de parabole, cacher qu'une réponse est une synthèse, faire transiter la détresse vers des tiers, stocker des données personnelles sans consentement, mettre des clés API côté frontend. Voir page **Transparence** et **Confidentialité** intégrées à l'application.
+## 📄 Licence & contact
+
+© 2026 Rodamen001 — tous droits réservés. Le corpus s'appuie sur des sources
+libres (Wikiquote, Wikipédia, Wikisource, CC BY-SA) citées entrée par entrée.
+
+Contact : **ramenyido@gmail.com**

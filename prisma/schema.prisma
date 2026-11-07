@@ -1,4 +1,4 @@
-// SPU v4.0 — Schéma logique (Partie 14 du cahier des charges)
+// SPU v4.4 — Schéma logique (Partie 14 du cahier des charges)
 // SQLite en prévisualisation ; migrable vers PostgreSQL + pgvector sans changer l'API.
 
 generator client {
@@ -55,6 +55,19 @@ model User {
   createdAt      DateTime  @default(now())
   dernierAcces   DateTime  @default(now())
   sessions       Session[]
+  sauvegardes    Sauvegarde[]
+}
+
+// Sauvegardes instantanées du journal — export/import restaurable par l'utilisateur.
+model Sauvegarde {
+  id         String   @id @default(uuid())
+  compteId   String
+  compte     User     @relation(fields: [compteId], references: [id], onDelete: Cascade)
+  titre      String
+  mode       String   @default("oracle")
+  nbEchanges Int      @default(0)
+  payload    String // JSON: journal complet {exporte, mode, echanges[]}
+  createdAt  DateTime @default(now())
 }
 
 // 14.3 — Table "echanges"

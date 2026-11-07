@@ -1,0 +1,97 @@
+════════════════════════════════════════════════════════════
+ INSTALLER SPU POCKET v1.2.0 SUR VOTRE TÉLÉPHONE ANDROID
+════════════════════════════════════════════════════════════
+
+L'application n'est pas sur le Play Store : elle est distribuée
+en direct par son auteur. L'installation prend 2 minutes.
+
+
+── 1. TÉLÉCHARGER ──────────────────────────────────────────
+
+Ouvrez cette page dans n'importe quel navigateur du téléphone :
+
+  https://rodamen001.github.io/SPU/
+
+puis touchez le gros bouton vert « Télécharger l'application ».
+
+Lien direct du fichier :
+
+  https://github.com/Rodamen001/SPU/raw/main/telechargements/spu-pocket-v1.2.0.apk
+
+
+── 2. AUTORISER L'INSTALLATION (une seule fois) ────────────
+
+En touchant le fichier téléchargé (dans les notifications ou
+dans le dossier « Téléchargements »), Android affiche :
+
+  « Pour des raisons de sécurité, votre téléphone n'est pas
+    autorisé à installer des applications inconnues... »
+
+C'est NORMAL (l'app n'est pas sur un magasin d'applications).
+
+→ Touchez « Paramètres » ou « Autoriser quand même »
+→ Activez « Autoriser depuis cette source »
+→ Revenez en arrière, l'installation continue.
+
+
+── 3. INSTALLER ET OUVRIR ──────────────────────────────────
+
+→ Touchez « Installer »
+→ Touchez « Ouvrir »
+
+Rien d'autre à configurer.
+
+
+── 4. CE QUE VOUS POUVEZ FAIRE DÈS L'INSTALLATION ──────────
+
+• « Poser une question » (mode nomade) : fonctionne IMMÉDIATEMENT,
+  sans serveur et sans connexion. L'IA publique gratuite répond
+  directement ; la sécurité détresse est active sur ce mode aussi.
+
+• « Bibliothèque » : les 65 paraboles et contes, en lecture
+  purement hors-ligne (aucune donnée n'en sort).
+
+• (Facultatif) Si vous hébergez un serveur SPU, renseignez son
+  adresse dans les réglages : la réponse devient narrée complète
+  (synthèse sourcée, parabole, histoire personnalisée).
+
+
+── LES 3 FICHIERS OFFICIELS ────────────────────────────────
+
+spu-pocket-v1.2.0.apk  → l'application à installer (62 Ko)
+spu-pocket-v1.2.0.aab  → le format Google Play (si publication
+                          future sur le store)
+kit-spu-pocket-v1.2.zip → tout-en-un : APK + AAB + clé de
+                          signature + guides + sources + livre blanc
+
+Tous ici :
+  https://github.com/Rodamen001/SPU/tree/main/telechargements
+
+
+── SÉCURITÉ ────────────────────────────────────────────────
+
+• L'application est signée par la clé officielle SPU
+  (empreinte visible : META-INF/SPU.RSA).
+• Elle ne demande aucune permission sensible (ni contacts,
+  ni localisation, ni micro).
+• Le mode nomade fonctionne entièrement hors-ligne : les 65
+  textes sont intégrés dans l'application, rien n'est envoyé
+  ni collecté.
+
+
+── MISES À JOUR ────────────────────────────────────────────
+
+Une nouvelle version (v1.3, etc.) sera publiée sur la page des
+versions du projet :
+
+  https://github.com/Rodamen001/SPU/releases
+
+Il suffira de télécharger la nouvelle APK et de l'installer
+par-dessus l'ancienne (sans désinstaller, si la clé de
+signature est la même — c'est le cas entre versions signées
+par la clé officielle).
+
+────────────────────────────────────────────────────────────
+ Contact : ramenyido@gmail.com
+ Un mentor, pas un maître 🌿
+────────────────────────────────────────────────────────────

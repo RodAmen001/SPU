@@ -74,3 +74,12 @@ tests/
 # assets vocaux/musicaux lourds (restent sur disque, hors git)
 public/voix-neurales/
 public/musique/
+
+# ── SPU Pocket : artefacts de build intermédiaires (régénérables) ──
+apk-spu/build/
+
+# ── SPU : téléchargements officiels PUBLIÉS dans le dépôt ──
+# (exceptions aux règles *.apk / *.aab / *.zip ci-dessus)
+!/telechargements/
+!/telechargements/**
+

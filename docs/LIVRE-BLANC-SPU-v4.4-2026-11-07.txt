@@ -1,0 +1,855 @@
+════════════════════════════════════════════════════════════
+  SPU — SYSTÈME PARABOLIQUE UNIVERSEL
+  Livre blanc du concept, en son état actuel
+════════════════════════════════════════════════════════════
+
+  Édition 2.0 — révisée et augmentée
+  Rédigé le 7 novembre 2026
+  Serveur : SPU v4.4  ·  Application compagnon : SPU Pocket v1.2.0
+  Auteur : Rodamen001  ·  Contact : ramenyido@gmail.com
+  Dépôt officiel : https://github.com/Rodamen001/SPU
+  Téléchargements : https://rodamen001.github.io/SPU/
+
+════════════════════════════════════════════════════════════
+ RÉSUMÉ EN DIX LIGNES
+════════════════════════════════════════════════════════════
+
+ 1. Le SPU répond aux questions de vie par des paraboles réelles,
+    jamais inventées, tirées d'un corpus clos de 65 textes sourcés.
+ 2. Chaque question traverse un pipeline en 5 étapes : sécurité
+    détresse, orchestration multi-IA, synthèse sourcée, matching
+    sémantique, histoire personnalisée.
+ 3. Une couche de sécurité à 3 niveaux détecte la détresse en moins
+    d'une seconde et court-circuite tout le reste : réponse
+    humaine, aucune parabole, aucune donnée envoyée à des tiers.
+ 4. Le corpus : 50 paraboles adultes (5 cultures, 10 familles) et
+    15 contes d'enfance du domaine public, 35 sources vérifiées
+    une à une (Wikiquote, Wikipédia, Wikisource).
+ 5. La parabole est choisie par matching TF-IDF (top-1 : 90 %,
+    top-3 : 100 %) arbitré par une IA sémantique ; sous le seuil
+    de confiance, le SPU le dit honnêtement.
+ 6. Quatre modes : Oracle (une réponse), Mentor (dialogue en 3
+    étapes), Deep (contemplation en 3 niveaux), Enfant (espace
+    protégé avec corpus dédié et filtres stricts).
+ 7. SPU Pocket, l'application Android (62 Ko), fonctionne dès
+    l'installation sans serveur : mode nomade + bibliothèque
+    hors-ligne des 65 textes.
+ 8. Les comptes sont minimalistes : mots de passe dérivés par
+    scrypt, jetons de session 7 jours, historique 90 jours,
+    effacement RGPD immédiat sur demande.
+ 9. Tout tourne sur une machine à 1 Go de RAM avec SQLite, sans
+    clé API : le serveur complet pèse moins de 10 Mo de code.
+10. Le principe éthique est non négociable : un mentor, pas un
+    maître — il aide à penser, il ne pense pas à la place.
+
+════════════════════════════════════════════════════════════
+ SOMMAIRE
+════════════════════════════════════════════════════════════
+
+  1.  La promesse : un mentor, pas un maître
+  2.  Le problème auquel répond le SPU
+  3.  Le principe : question → parabole réelle → histoire
+  4.  Un exemple complet, bout en bout, chronométré
+  5.  Le pipeline en détail
+  6.  La sécurité d'abord : la phase de détresse
+  7.  Le corpus : 65 textes réels, sourcés, clos
+  8.  Les 4 modes d'accompagnement
+  9.  L'orchestration multi-IA
+  10. SPU Pocket : le mentor dans la poche
+  11. Comptes, journal et confidentialité
+  12. IA générale ou SPU ?
+  13. Coûts et hébergement
+  14. Le cadre légal et les mineurs
+  15. Limites honnêtes
+  16. Éthique : les règles non négociables
+  17. Feuille de route
+
+  Annexe A — Faire tourner le SPU soi-même
+  Annexe B — Installer SPU Pocket sur un téléphone
+  Annexe C — Historique des éditions
+  Licence et contact
+
+════════════════════════════════════════════════════════════
+ 1. LA PROMESSE : UN MENTOR, PAS UN MAÎTRE
+════════════════════════════════════════════════════════════
+
+ Depuis que les machines savent répondre à tout, une question
+ devient urgente : à quoi faut-il croire dans une réponse
+ artificielle ? Le SPU ne prétend pas résoudre cette question par
+ des promesses ; il la contourne par une architecture : il ne
+ produit pas de conseil, il ne produit pas d'opinion. Il raconte.
+
+ Le SPU est un orchestrateur narratif multi-IA. Quand une personne
+ lui confie une situation de vie — un conflit, un choix, une peur,
+ une espérance — le système ne lui dit jamais ce qu'elle doit
+ faire. Il cherche dans un corpus clos de 65 paraboles et contes
+ réels celle qui parle à sa situation, la raconte, en propose
+ plusieurs lectures, puis invente — là seulement, et en le disant
+ clairement — une histoire qui transpose la même structure dans un
+ décor proche du monde de la personne.
+
+ Le choix du mot « mentor » est calculé. Un maître décide à votre
+ place ; un mentor vous outille pour décider. Une parabole est
+ exactement cela : un récit qui ne clôt pas, qui ouvre. Le lecteur
+ reste l'auteur de sa décision. L'IA n'ajoute qu'un service que
+ personne n'avait pu industrialiser jusqu'ici : trouver, parmi des
+ millénaires de sagesse écrite, le récit qui parle d'aujourd'hui.
+
+ Et parce qu'un mentor sait aussi écouter : si la question porte
+ une détresse — un signal de souffrance profonde — le SPU arrête
+ tout. Pas de parabole, pas d'histoire, pas d'appel vers des
+ services tiers. Une réponse humaine, courte, qui reconnaît la
+ douleur et rappelle qu'il y a des personnes réelles pour
+ l'écouter. Cette règle est implantée dans le code, pas dans une
+ charte.
+
+════════════════════════════════════════════════════════════
+ 2. LE PROBLÈME AUQUEL RÉPOND LE SPU
+════════════════════════════════════════════════════════════
+
+ Demandez à un assistant conversationnel généraliste : « raconte-
+ moi une parabole sur le pardon ». Il en racontera une, avec
+ assurance. Dans la majorité des cas, cette parabole n'existe pas.
+ L'IA l'a inventée, parfois avec un auteur plausible, parfois avec
+ une « sagesse ancienne » qui n'a jamais été écrite. C'est le
+ premier problème : l'hallucination narrative. Une parabole
+ inventée n'est pas une erreur innocente — c'est une fausse
+ attribution qui corrompt un patrimoine réel.
+
+ Le deuxième problème est l'uniformité. Un même modèle produit des
+ réponses au ton identique, quelle que soit la culture de la
+ personne qui interroge. Or une image tirée du fonduao — la sagesse
+ ouest-africaine — ne résonne pas comme une image nordique, et une
+ histoire pour un enfant de huit ans n'a pas le ton d'une
+ réflexion d'adulte. La généralisation aplatit ce qui devrait
+ précisément parler à chacun.
+
+ Le troisième problème est la sécurité. Les assistants grand
+ public traitent la détresse comme un cas particulier de
+ conversation ; certains transfèrent des signaux de détresse vers
+ des processus tiers, tous ne publient pas leurs règles. Le SPU a
+ pris le parti inverse : la détection de détresse est la première
+ étape du pipeline, elle est locale, elle est documentée dans ce
+ livre, et quand elle s'active, il ne reste rien du reste.
+
+ Le quatrième problème est la dépendance. Un accompagnement utile
+ doit fonctionner là où les connexions sont rares ou coûteuses —
+ en zone rurale, en déplacement, hors budget data. C'est l'objet
+ de SPU Pocket : embarquer le corpus et un mode de réponse qui
+ marche sans aucun serveur.
+
+════════════════════════════════════════════════════════════
+ 3. LE PRINCIPE : QUESTION → PARABOLE RÉELLE → HISTOIRE
+════════════════════════════════════════════════════════════
+
+ Le SPU repose sur trois convictions simples.
+
+ PREMIÈRE CONVICTION : la sagesse existe déjà, écrite, vérifiable.
+ De la table de La Fontaine à la tradition ashanti, du Panchatantra
+ aux paraboles méditerranéennes, les situations humaines ont été
+ racontées mille fois. Il n'y a rien à inventer — il y a à
+ retrouver. Le corpus du SPU est donc clos : on n'y ajoute un
+ texte qu'après vérification de sa source, et chaque entrée
+ porte ses références (35 URLs vérifiées une à une : Wikiquote,
+ Wikipédia, Wikisource). La règle absolue, gravée dans le code :
+ aucune parabole inventée par l'IA.
+
+ DEUXIÈME CONVICTION : le vrai travail de l'IA est le rapprochement.
+ Entre une question de 2026 et une parabole de 1840 ou d'une
+ tradition orale, il y a un pont à construire : comprendre la
+ situation, la nommer, la relier à la structure du récit. C'est
+ ce que fait le SPU en deux mouvements — un matching statistique
+ (TF-IDF) qui sélectionne huit candidats objectifs, puis un
+ arbitrage sémantique qui choisit la parabole qui parle vraiment
+ de la même chose. Sous le seuil de confiance, le SPU ne feint
+ rien : il annonce « voici la parabole la plus proche ».
+
+ TROISIÈME CONVICTION : l'histoire personnelle est un pont aussi —
+ mais elle doit être avouée. Après la parabole réelle, le SPU
+ propose une histoire neuve qui transpose la même structure dans
+ un décor familier du lecteur. Cette histoire est le seul contenu
+ inventé du système, et l'interface le désigne comme tel. La
+ frontière réel/inventé n'est jamais brouillée : la parabole est
+ sourcée, l'histoire est assumée.
+
+ Le reste de ce livre décrit comment ces trois convictions sont
+ devenues un système qui fonctionne : pipeline, corpus, modes,
+ application de poche, sécurité, coûts, cadre légal, éthique.
+════════════════════════════════════════════════════════════
+ 4. UN EXEMPLE COMPLET, BOUT EN BOUT, CHRONOMÉTRÉ
+════════════════════════════════════════════════════════════
+
+ Ce qui suit est une exécution RÉELLE du serveur en production,
+ mesurée le 7 novembre 2026 sur l'API /api/repondre (celle qu'
+ utilise SPU Pocket). Rien n'y a été retouché.
+
+ LA QUESTION POSÉE :
+
+   « Mon voisin me fait du mal sans raison, comment
+    pardonner sans abandonner ma dignité ? »
+
+ L'INSTRUCTION DES ÉTAPES (temps mesurés) :
+
+   0 s      la question arrive, la phase de détresse la
+            traverse en 0,1 s (aucun signal) ;
+   0,1-8 s  les quatre sources sont interrogées en parallèle
+            (recherche web, réflexion IA, encyclopédie,
+            instantanées) et ramènent leur matière ;
+   8-9 s    la synthèse est rédigée, la recherche TF-IDF
+            sélectionne 8 candidats, l'arbitrage sémantique
+            choisit la parabole et note la confiance ;
+   9-17 s   l'histoire personnalisée est écrite, filtrée,
+            puis la réponse complète est renvoyée en JSON.
+   TOTAL : 16,6 secondes (première question après démarrage :
+            18 s — l'index et les moteurs se réveillent).
+
+ LA SYNTHÈSE SOURCÉE (citations numérotées, contradictions
+ gardées visibles) :
+
+   « Le pardon peut être un acte intérieur de libération
+    sans nier le mal subi, tout en protégeant sa dignité
+    par des limites claires [1]. Certaines sources suggèrent
+    de dissocier l'acte de la personne pour une relation
+    apaisée, tandis que d'autres pourraient prôner une
+    distance plus stricte [1]. »
+
+ LA PARABOLE CHOISIE — P024, aire MÉDITERRANÉENNE
+ (confiance : 0,8) :
+
+   « Le fils parti loin avec son héritage revint les
+    mains vides ; son père courut à sa rencontre, car
+    celui qui était perdu est retrouvé. »
+
+   Lecture proposée : « Chaque retour est une renaissance
+   possible, même après le pire. »
+
+ L'HISTOIRE PERSONNALISÉE (extrait, 2 premières lignes) —
+ le seul contenu inventé, transposé dans un décor
+ méditerranéen :
+
+   « Le soleil de midi brûlait la pierre de la place.
+    Elias, le fils, rentra à pieds, les semelles usées,
+    le regard vide. L'argent parti en fumée, les rêves
+    brûlés comme les oliviers pendant la sécheresse. »
+
+ Ce que l'utilisateur reçoit au total : une synthèse citée,
+ une parabole réelle avec ses sources, plusieurs lectures,
+ une histoire transposée, un échange de plus dans son journal.
+ Ce qu'il ne reçoit pas : un ordre. Le choix reste le sien.
+════════════════════════════════════════════════════════════
+ 5. LE PIPELINE EN DÉTAIL
+════════════════════════════════════════════════════════════
+
+ Vue d'ensemble, avec les durées typiques mesurées en conditions
+ réelles :
+
+   Question de l'utilisateur
+     │
+     ▼  (≈ 0,1 s)
+ ┌─────────────────────────────────────────────┐
+ │ PHASE 0 — Sécurité détresse (3 couches)     │  ← si détresse :
+ │ A. regex locale → B. classifieur IA →       │     réponse humaine
+ │ C. heuristique de tonalité                  │     et rien d'autre
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (8 s maximum, en parallèle)
+ ┌─────────────────────────────────────────────┐
+ │ ORCHESTRATION MULTI-IA — 4 sources          │
+ │ recherche web · intelligence réflexive ·    │
+ │ encyclopédie · réponses instantanées        │
+ │ cache 24 h · limite 20 requêtes/min/IP      │
+ └─────────────────────────────────────────────┘
+     │
+     ▼
+ ┌─────────────────────────────────────────────┐
+ │ SYNTHÈSE SOURCÉE — ≤ 3 phrases, ≤ 120 mots, │
+ │ citations [1][2], contradictions signalées, │
+ │ score de confiance affiché                  │
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (≈ 1 s)
+ ┌─────────────────────────────────────────────┐
+ │ MATCHING TF-IDF — 8 candidats, seuil 0,65   │
+ │ + arbitrage sémantique IA                   │
+ │ → la parabole (réelle, sourcée)             │
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (≈ 6 s)
+ ┌─────────────────────────────────────────────┐
+ │ HISTOIRE PERSONNALISÉE — adulte 150-300     │
+ │ mots / enfant 100-200 mots, filtre post-    │
+ │ génération (violence, sexuel, haine) avec   │
+ │ régénération puis gabarit sûr               │
+ └─────────────────────────────────────────────┘
+     │
+     ▼
+ Rendu : narration, interprétations multiples,
+ sources affichées, journal, voix, musique
+
+ Le streaming commence dès la première seconde : la synthèse
+ apparaît pendant que la suite se prépare, ce qui donne une
+ réponse complète en environ une dizaine de secondes au lieu de
+ les faire attendre toutes à la fin.
+
+ Chaque étape est dans le code, pas seulement dans le discours :
+ la limite de débit est appliquée par adresse IP avant tout
+ traitement ; le cache évite de reposer quatre fois la même
+ question aux mêmes sources ; le filtre post-génération relit
+ l'histoire produite et la rejette si elle contient ce qu'un
+ enfant ne doit pas lire, avec un second essai puis un gabarit
+ sûr pré-écrit si le second essai échoue encore.
+
+════════════════════════════════════════════════════════════
+ 6. LA SÉCURITÉ D'ABORD : LA PHASE DE DÉTRESSE
+════════════════════════════════════════════════════════════
+
+ C'est l'investissement de sécurité le plus sérieux du projet, et
+ il mérite sa propre section. La phase 0 écoute chaque question
+ avec trois couches indépendantes.
+
+ COUCHE A — lexicale, locale, instantanée. Quatorze expressions
+ régulières (français et anglais) reconnaissent les formulations
+ directes de souffrance et de danger. Aucune IA, aucun réseau :
+ quelques millisecondes.
+
+ COUCHE B — classifieur par IA. La question est passée à un
+ classifieur qui note la détresse de 0 à 1. Le seuil direct est
+ 0,75 ; le seuil prudent combine un score de 0,5 avec une alerte
+ de tonalité à 0,7. En cas d'égalité ambiguë, le SPU choisit la
+ prudence : il répond comme si la détresse était réelle.
+
+ COUCHE C — heuristique de tonalité. Une liste de 51 mots
+ négatifs et 18 mots de rupture (« plus rien ne », « je ne vais
+ pas »…) affine le jugement quand les deux couches précédentes
+ hésitent.
+
+ LES TROIS DÉCISIONS POSSIBLES :
+   • distress  → réponse humaine immédiate (détection en 0,1 s),
+     AUCUNE parabole, AUCUNE source externe appelée.
+   • review    → même réponse prudente, mais le cas est noté pour
+     affiner les seuils.
+   • pass      → le pipeline complet se déroule normalement.
+
+ Ce qui ne se passe JAMAIS : la question marquée en détresse ne
+ part vers aucun tiers, et ce qui est stocké est un log anonymisé
+ — un hash de la question et trois scores — sans le texte. La
+ performance est mesurée : 30 cas de test, 30 réussites
+ (scripts/test-phase0.ts, rejouable par n'importe qui).
+
+════════════════════════════════════════════════════════════
+ 7. LE CORPUS : 65 TEXTES RÉELS, SOURCÉS, CLOS
+════════════════════════════════════════════════════════════
+
+ Le corpus est le cœur du système et sa colonne vertébrale
+ morale. Il se compose de 65 entrées en deux volets :
+
+ VOLET ADULTE — 50 paraboles réparties à égalité entre cinq aires
+ culturelles : Afrique de l'Ouest, Asie, Méditerranée,
+ Nordique/Celtique, Universaliste. Chaque entrée porte : le texte
+ intégral, la culture, la famille (10 familles thématiques, F1 à
+ F10 : honneur et orgueil, pardon et réconciliation, patience,
+ choix et conséquences, mort et héritage, travail et juste mesure,
+ vérité et mensonge, richesse et désir, communauté et justice,
+ sagesse et folie), au moins trois interprétations différentes,
+ et ses sources.
+
+ VOLET ENFANT — 15 contes du domaine public : La Fontaine, Ésope,
+ Grimm, le Panchatantra, la tradition ashanti. Un corpus séparé,
+ avec ses propres filtres et sa propre interface.
+
+ LA RÈGLE DES SOURCES : chaque parabole cite où elle se trouve.
+ Les 35 URLs (19 Wikiquote, 12 Wikipédia, 4 Wikisource) ont été
+ vérifiées une à une — l'outillage de vérification est livré avec
+ le projet (scripts/verify-urls.sh). Quand un texte est attribué
+ « selon la tradition orale », c'est que c'est le cas, et c'est
+ écrit. Un texte dont la source ne tient pas va en quarantaine
+ (table dédiée, API d'administration) tant qu'il n'est pas
+ validé.
+
+ POURQUOI UN CORPUS CLOS : un corpus clos peut être audité. On
+ peut lister ce qu'il contient, vérifier chaque source, garantir
+ qu'aucun texte n'a été fabriqué. Un corpus ouvert qui s'enrichit
+ automatiquement de ce que l'IA « découvre » perd cette garantie
+ en quelques semaines. L'extension manuelle reste possible et
+ encadrée : ajouter une entrée dans les fichiers JSON du corpus,
+ la sourcer, relancer l'index — c'est décrit dans l'annexe A.
+════════════════════════════════════════════════════════════
+ 8. LES 4 MODES D'ACCOMPAGNEMENT
+════════════════════════════════════════════════════════════
+
+ ORACLE — une réponse unique. La question part, la réponse
+ complète arrive : synthèse sourcée, parabole, interprétations,
+ histoire. C'est le mode par défaut, le plus direct.
+
+ MENTOR — un dialogue en trois étapes. Première étape
+ d'ouverture : le SPU reformule la situation et pose une première
+ question d'angle. Deuxième étape d'approfondissement : il creuse
+ là où la personne a répondu. Troisième étape de synthèse : il
+ rassemble, propose la parabole et l'histoire, et termine par une
+ question ouverte — jamais une conclusion fermée. Le Mentor est
+ le mode le plus fidèle à la devise : il aide à penser.
+
+ DEEP — un parcours de contemplation en trois niveaux :
+ contemplation (le récit nu, à lire lentement), méditation (les
+ questions que le récit soulève), perspective (ce que cela change
+ pour soi). Conçu comme une marche, pas comme un raccourci.
+
+ ENFANT — un espace protégé, séparé : corpus dédié (15 contes),
+ phrases courtes, gros boutons, lecture à voix haute intégrée,
+ filtres stricts avant affichage. L'enfant n'accède jamais au
+ corpus adulte ; les réponses passent par le filtre
+ post-génération le plus strict du système.
+
+ Chaque échange, quel que soit le mode, est journalisé dans la
+ session, exportable, et effaçable en un clic.
+
+════════════════════════════════════════════════════════════
+ 9. L'ORCHESTRATION MULTI-IA
+════════════════════════════════════════════════════════════
+
+ Le SPU n'utilise pas une seule intelligence mais plusieurs
+ sources en parallèle, et leur complémentarité est sa garantie.
+
+ LES QUATRE SOURCES (8 secondes maximum, en parallèle) :
+   1. Recherche web — ce que le monde écrit aujourd'hui.
+   2. Intelligence réflexive — le modèle de langage interrogé
+      pour ses arguments, non pour son opinion finale.
+   3. Encyclopédie — Wikipédia via lecteur intégré.
+   4. Réponses instantanées — DuckDuckGo, pour le concret.
+
+ CACHES ET LIMITES : chaque question est hachée (SHA-256) et les
+ réponses des sources sont conservées 24 heures (table
+ SourcesCache) : poser deux fois la même chose ne coûte pas deux
+ fois le monde. Une limite de 20 requêtes par minute et par IP
+ protège le serveur avant tout traitement.
+
+ LA SYNTHÈSE EST CONTRAIGNANTE : trois phrases maximum, 120 mots,
+ citations numérotées [1][2], contradictions explicitées (« selon
+ la source A… mais selon la source B… »), et un score de confiance
+ affiché. Le prompt impose la forme ; si les sources ne sont pas
+ d'accord, la synthèse doit le dire plutôt que trancher
+ silencieusement.
+
+ LA DÉGRADATION HONNÊTE : si une source échoue, les trois autres
+ continuent. Si tout échoue, le SPU ne fabrique pas : il renvoie
+ une synthèse brute sourcée ou un gabarit narratif sûr, et l'écran
+ indique clairement que le service est dégradé. L'honnêteté
+ systémique — dire ce qu'on ne sait pas — est ici une propriété
+ technique, pas une intention.
+
+════════════════════════════════════════════════════════════
+ 10. SPU POCKET : LE MENTOR DANS LA POCHE
+════════════════════════════════════════════════════════════
+
+ SPU Pocket v1.2.0 est l'application Android compagnon du serveur
+ SPU. Elle pèse 62 Ko — moins qu'une photo — parce qu'elle est
+ écrite en Java natif sans framework, et elle fonctionne sur
+ Android 7 et plus (minSdk 24).
+
+ LE MODE NOMADE : dès l'installation, sans aucun serveur, l'écran
+ « Poser une question » répond par une IA publique gratuite ; la
+ sécurité détresse est active sur ce mode aussi. C'est la réponse
+ au problème n° 4 : l'accompagnement ne doit pas exiger une
+ connexion.
+
+ LA BIBLIOTHÈQUE HORS-LIGNE : les 65 textes du corpus sont
+ intégrés dans l'application (fichier data.js de 48 Ko), lisibles
+ en avion, en brousse, sans un octet de données sortantes. Le
+ mode nomade ne collecte rien : les textes ne quittent pas le
+ téléphone.
+
+ LE MODE CONNECTÉ : si l'utilisateur héberge (ou connaît) un
+ serveur SPU, il saisit son adresse dans les réglages ; la réponse
+ devient narrée complète — synthèse sourcée, parabole, histoire,
+ voix — exactement comme sur le web.
+
+ DISTRIBUTION : l'APK est signée par la clé officielle du projet
+ (META-INF/SPU.RSA) et distribuée en direct — dépôt GitHub et page
+ de téléchargement — avec le format AAB prêt pour une publication
+ Play Store future. Les liens sont en tête de ce livre.
+
+════════════════════════════════════════════════════════════
+ 11. COMPTES, JOURNAL ET CONFIDENTIALITÉ
+════════════════════════════════════════════════════════════
+
+ LE COMPTE MINIMAL : un pseudonyme et un mot de passe. Rien
+ d'autre — pas d'email, pas de téléphone, pas de nom. Le mot de
+ passe n'est jamais stocké ni transmis tel quel : le serveur le
+ dérive avec scrypt (fonction de dérivation résistante aux
+ machines dédiées au craquage) et un sel aléatoire de 16 octets.
+
+ LES SESSIONS : l'authentification donne un jeton aléatoire de
+ 64 caractères hexadécimaux, valable 7 jours ; l'historique reste
+ accessible 90 jours. Les sessions anonymes (sans compte)
+ fonctionnent aussi, et peuvent être « rattachées » à un compte
+ plus tard pour ne rien perdre.
+
+ LE JOURNAL ET LES SAUVEGARDES : chaque échange est consultable,
+ exportable en .txt, .json ou .md, et le journal peut être
+ sauvegardé en instantanés restaurables (table Sauvegarde, ajout
+ v4.4). L'export est un droit RGPD ; l'effacement immédiat en est
+ un autre : une demande d'effacement supprime réellement, pas
+ « marque supprimé ».
+
+ LES LOGS DE DÉTRESSE : anonymes par conception — un hash et des
+ scores numériques, jamais le texte (voir section 6).
+
+ CE QUI N'EXISTE PAS : aucune mesure publicitaire, aucun traçage
+ tiers, aucune clé d'API côté navigateur, aucune donnée envoyée
+ depuis le mode nomade de SPU Pocket. Le code est public : ces
+ affirmations sont vérifiables ligne à ligne.
+════════════════════════════════════════════════════════════
+ 12. IA GÉNÉRALE OU SPU ?
+════════════════════════════════════════════════════════════
+
+ Le tableau ci-dessous résume ce qu'une personne trouve dans
+ chaque cas. Il ne s'agit pas de dire qu'un outil est « meilleur »
+ en absolu : les deux ont des usages différents.
+
+ ┌────────────────────────┬─────────────────────────────────┐
+ │                        │ ASSISTANT IA GÉNÉRALISTE        │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Réponse à « une        │ Un conseil rédigé, au ton       │
+ │ question de vie »      │ uniforme, qui tranche           │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Paraboles et récits    │ Souvent inventés, avec une      │
+ │ anciens                │ attribution plausible           │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Sources citées         │ Parfois, rarement vérifiables    │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Détresse               │ Traité au cas par cas selon le  │
+ │                        │ modèle ; règles non publiées    │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Données personnelles   │ Politiques variables, serveurs  │
+ │                        │ tiers par défaut                │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Hors-ligne             │ Impossible                       │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Autonomie (héberger    │ Impossible ou réservé aux       │
+ │ soi-même)              │ abonnements                     │
+ └────────────────────────┴─────────────────────────────────┘
+
+ ┌────────────────────────┬─────────────────────────────────┐
+ │                        │ SPU                             │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Réponse à « une        │ Une parabole réelle, des        │
+ │ question de vie »      │ lectures multiples, une         │
+ │                        │ histoire, une question ouverte  │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Paraboles et récits    │ 65 textes réels, corpus clos,   │
+ │ anciens                │ sources vérifiées une à une     │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Sources citées         │ Toujours, numérotées, 35 URLs   │
+ │                        │ auditables via script livré     │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Détresse               │ 3 couches locales documentées,  │
+ │                        │ réponse humaine, zéro transfert │
+ │                        │ vers des tiers                  │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Données personnelles   │ Pseudonyme seul ; journal       │
+ │                        │ exportable et effaçable ; code  │
+ │                        │ public vérifiable               │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Hors-ligne             │ SPU Pocket : bibliothèque et    │
+ │                        │ mode nomade sans serveur        │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Autonomie (héberger    │ Oui : ~10 Mo de code, SQLite,   │
+ │ soi-même)              │ procédure d'installation en     │
+ │                        │ annexe A                        │
+ └────────────────────────┴─────────────────────────────────┘
+
+ En une phrase : l'assistant généraliste est une encyclopédie qui
+ parle ; le SPU est un compagnon de sagesse qui raconte, et dont
+ on peut lire les entrailles.
+
+════════════════════════════════════════════════════════════
+ 13. COÛTS ET HÉBERGEMENT
+════════════════════════════════════════════════════════════
+
+ Le SPU est volontairement léger : ~10 Mo de code, SQLite, aucune
+ clé API payante. En conséquence, son coût d'exploitation peut
+ être nul ou proche de zéro. Voici l'état du paysage vérifié en
+ novembre 2026 (hors Afrique de l'Ouest : attention, la plupart
+ des hébergeurs « carte bancaire » refusent le Mobile Money ; une
+ Visa/Mastercard virtuelle prépayée est acceptée, Mobile Money non).
+
+ DISTRIBUTION DES FICHIERS (APK, kit, livre blanc) — RECOMMANDÉ :
+   • GitHub Releases — gratuit, sans carte, liens permanents,
+     2 Go par fichier. C'est le choix fait pour le SPU : les
+     fichiers vivent à la fois dans le dépôt et dans une release
+     versionnée.
+   • Internet Archive — dépôt de secours permanent, gratuit.
+   • Cloudflare R2 — 10 Go gratuits, zéro frais de sortie.
+
+ PAGE DE TÉLÉCHARGEMENT :
+   • GitHub Pages (utilisé ici) et Cloudflare Pages — gratuits,
+     ~100 Go de bande passante mensuelle sur les offres statiques.
+
+ SERVEUR SPU COMPLET :
+   • L'actuel : un serveur déjà en main — démon (scripts/
+     demonise.py) + gardien de relance (scripts/gardien-serveur.sh).
+     Coût : 0.
+   • Oracle Cloud Always Free — VM ARM 4 vCPU / 24 Go RAM / 200 Go
+     (offre amputée de moitié en juin 2026 : désormais 2 vCPU /
+     12 Go / 100 Go pour les nouveaux comptes). Carte bancaire
+     exigée pour vérification (sans prélèvement), + crédits 300 $
+     pendant 30 jours.
+   • Hetzner CX23 — environ 5,50-6 €/mois HT ; Contabo ~5 € ;
+     OVH/Hostinger ~3,50-4,50 €. Carte requise.
+   • Railway / Fly.io — environ 3-5 $/mois pour un petit conteneur.
+   • Render — offre gratuite mais le serveur s'endort après
+     inactivité et le disque n'est pas persistant.
+   • Vercel / Netlify — parfaits pour un site statique, mais sans
+     disque persistant : une SQLite y serait effacée à chaque
+     déploiement.
+
+ BASE DE DONNÉES SI SÉPARATION (choix n° 1 si un jour nécessaire) :
+   • Turso — 5 Go gratuits sur SQLite/libSQL : la migration depuis
+     Prisma est quasi transparente (même famille SQL).
+   • Cloudflare D1 — 5 Go gratuits.
+   • Supabase / Neon — gratuits mais limités (500 Mo / 0,5 Go).
+
+ EN RÉSUMÉ : distribution et page de téléchargement coûtent 0
+ (GitHub) ; le serveur peut rester sur une machine déjà possédée,
+ ou déménager vers un serveur de 4-6 €/mois quand le nombre
+ d'utilisateurs l'exigera ; la base peut migrer vers Turso sans
+ réécrire le code.
+════════════════════════════════════════════════════════════
+ 14. LE CADRE LÉGAL ET LES MINEURS
+════════════════════════════════════════════════════════════
+
+ CE QUE LE SPU EST : une œuvre interactive de réflexion et de
+ narration, hébergée par son auteur. Ce qu'il n'est pas : un
+ service de santé mentale, un dispositif médical, un service
+ certifié de protection de l'enfance.
+
+ SUR LES MINEURS : le mode Enfant existe et prend ses précautions
+ très au sérieux — espace séparé, corpus de contes du domaine
+ public, filtres stricts avant affichage, aucune collecte. Mais
+ une précision honnête s'impose : le SPU n'est pas un service
+ destiné et certifié aux mineurs au sens des réglementations les
+ plus exigeantes (protection des données des enfants, contrôle
+ parental, âge de consentement numérique qui varie de 13 à 15 ans
+ selon les pays). La recommandation claire : pour un enfant,
+ l'usage se fait sous la responsabilité et en présence d'un
+ adulte — parent, enseignant, tuteur. L'espace protégé est un
+ jardin clos, pas un gage de conformité universelle. Une
+ certification formelle est une piste de la feuille de route si
+ l'usage scolaire se développe.
+
+ SUR LA DÉTRESSE : le SPU ne diagnostique rien et ne remplace
+ personne. Sa phase de détresse renvoie vers des personnes réelles
+ et des services d'urgence locaux ; c'est une obligation de code,
+ pas une promesse marketing.
+
+ SUR LES DONNÉES : pseudonyme seul, journal exportable et
+ effaçable, logs anonymisés, rien de tiers. La conformité RGPD
+ repose sur cette sobriété : on ne peut pas fuiter ce qui n'est
+ pas collecté.
+
+ SUR LES SOURCES : les paraboles proviennent de plates-formes
+ libres (Wikiquote, Wikipédia, Wikisource) dont les licences
+ (CC BY-SA) sont respectées par la citation de la source, entrée
+ par entrée. Les contes du volet enfant sont du domaine public.
+
+════════════════════════════════════════════════════════════
+ 15. LIMITES HONNÊTES
+════════════════════════════════════════════════════════════
+
+ Un livre blanc qui ne liste pas ses limites est une publicité.
+ Voici celles du SPU, telles quelles.
+
+ • L'accès direct à l'API Wikimedia est limité depuis certains
+   environnements (erreur 429) : la source Encyclopédie passe par
+   le lecteur intégré de la plate-forme, équivalent fonctionnel.
+ • En cas de quota temporaire de la plate-forme IA, le système
+   dégrade honnêtement (synthèse brute sourcée, gabarit narratif
+   sûr) au lieu d'inventer — mais la richesse de la réponse s'en
+   ressent, et l'interface le signale.
+ • Le matching TF-IDF atteint 90 % en top-1 : une fois sur dix,
+   la première parabole proposée n'est pas la meilleure — d'où le
+   arbitrage sémantique IA qui vient après, et l'affichage du
+   score de confiance. Le système se corrige, mais il n'est pas
+   infaillible.
+ • Le corpus est clos : une question très spécifique (technique,
+   médicale, juridique) n'a pas sa parabole — et le SPU le dit
+   plutôt que de forcer une analogie fallacieuse.
+ • Les voix neuronales locales (Piper, 10 voix, ~210 Mo) sont un
+   option avancée : sans elles, l'application utilise les voix du
+   navigateur ou du téléphone.
+ • L'IA publique du mode nomade de SPU Pocket est celle de la
+   plate-forme : disponible sans configuration, mais sans garantie
+   de durée — d'où le mode connecté vers un serveur SPU en
+   alternative.
+
+════════════════════════════════════════════════════════════
+ 16. ÉTHIQUE : LES RÈGLES NON NÉGOCIABLES
+════════════════════════════════════════════════════════════
+
+ Ces règles sont gravées dans le code et les pages Transparence et
+ Confidentialité de l'application :
+
+ 1. Ne jamais inventer de parabole.
+ 2. Ne jamais cacher qu'une réponse est une synthèse.
+ 3. Ne jamais faire transiter la détresse vers des tiers.
+ 4. Ne jamais stocker de données personnelles sans consentement.
+ 5. Ne jamais mettre de clé d'API côté navigateur.
+ 6. Dire honnêtement quand le service est dégradé.
+ 7. Désigner clairement ce qui est inventé (l'histoire) et ce qui
+    est réel (la parabole).
+
+ Elles ne sont pas décoratives : chacune correspond à un point de
+ contrôle technique décrit dans les sections 5, 6, 7 et 11 de ce
+ livre, vérifiable dans le code public du dépôt.
+
+════════════════════════════════════════════════════════════
+ 17. FEUILLE DE ROUTE
+════════════════════════════════════════════════════════════
+
+ COURT TERME :
+   • Publication du dépôt public et de la release v1.2.0 de SPU
+     Pocket (fait à la date de cette édition).
+   • Extension du corpus vers 300 paraboles, toujours avec source
+     vérifiée — la structure technique est prête (fichiers JSON +
+     re-seed, index reconstruit automatiquement).
+ MOYEN TERME :
+   • Interface d'administration de la quarantaine (l'API existe).
+   • Publication sur le Play Store (l'AAB est prêt).
+   • Versions multilingues du moteur (le cahier des charges v4.1
+     le prévoit).
+ LONG TERME :
+   • Certification formelle du mode Enfant pour l'usage scolaire.
+   • Migration de la base vers Turso/PostgreSQL si le nombre
+     d'utilisateurs l'exige, sans changement d'API.
+   • Applications bureau (les habillages Electron et les scripts
+     Windows existent déjà dans le dépôt).
+════════════════════════════════════════════════════════════
+ ANNEXE A — FAIRE TOURNER LE SPU SOI-MÊME
+════════════════════════════════════════════════════════════
+
+ Le SPU est conçu pour être hébergé par n'importe qui sur une
+ machine modeste (1 Go de RAM suffit). Procédure complète :
+
+ PRÉREQUIS
+   Node.js 20+ ou Bun, et git.
+   Cloner :  git clone https://github.com/Rodamen001/SPU.git
+             cd SPU
+
+ ÉTAPE 1 — CONFIGURATION (fichier .env à la racine)
+
+   DATABASE_URL="file:./db/custom.db"
+
+   Et optionnellement :
+
+   ADMIN_TOKEN="un-jeton-long-aleatoire"
+
+   (le jeton protège /api/admin/validate ; en générer un avec :
+    node -e "console.log(require('crypto').randomBytes(32)
+      .toString('hex'))")
+
+ ÉTAPE 2 — INSTALLATION ET BASE DE DONNÉES
+
+   bun install                 # ou : npm install
+   bunx prisma db push         # crée les 8 tables SQLite
+   bun run scripts/seed.ts     # injecte les 65 paraboles
+
+ ÉTAPE 3 — LANCEMENT
+
+   En développement :
+     bun run dev               # http://localhost:3000
+
+   En production :
+     node scripts/build-standalone.js
+     bun .next/standalone/server.js
+     # (ou : node .next/standalone/server.js)
+
+   Le dépôt fournit aussi un démon de production éprouvé :
+     python3 scripts/demonise.py serveur   # le serveur en arrière-plan
+     python3 scripts/demonise.py gardien   # relance si plantage
+
+ ÉTAPE 4 — VÉRIFICATION
+
+   curl http://localhost:3000/api/health
+   → {"status":"ok", "sources":{"corpus":65, ...}}
+
+ ÉTAPE 5 — TESTS (recommandé avant mise en service)
+
+   bun run scripts/test-phase0.ts    # sécurité : 30/30
+   bun run scripts/test-matching.ts  # matching : top-1 90 %
+   bash scripts/verify-urls.sh       # 35 URLs de sources
+
+ RECONSTRUIRE L'APK (si vous modifiez SPU Pocket) :
+
+   bash scripts/installer-sdk.sh    # SDK Android minimal, 1 fois
+   bash scripts/build-apk.sh        # → download/spu-pocket-*.apk
+   bash scripts/build-aab.sh        # → download/spu-pocket-*.aab
+
+ FAIRE EXTENSER LE CORPUS :
+
+   Ajouter les entrées (texte, culture, famille, interprétations,
+   sources) dans src/data/corpus-adulte.json — avec leurs sources
+   — puis relancer : bun run scripts/seed.ts
+   L'index de recherche se reconstruit seul (TTL 5 minutes).
+
+════════════════════════════════════════════════════════════
+ ANNEXE B — INSTALLER SPU POCKET SUR UN TÉLÉPHONE
+════════════════════════════════════════════════════════════
+
+ Le guide détaillé, illustré pas à pas, est livré avec le projet
+ (docs/INSTALLER-SPU-POCKET.txt) et sur la page de téléchargement.
+ Version courte :
+
+   1. Ouvrir https://rodamen001.github.io/SPU/ sur le téléphone
+      et toucher le bouton « Télécharger l'application ».
+   2. Ouvrir le fichier téléchargé ; Android demande l'autorisation
+      « installer des applications inconnues » : autoriser une fois.
+   3. Installer, ouvrir. Le mode nomade fonctionne immédiatement,
+      sans serveur et sans connexion.
+
+ Les trois fichiers officiels (APK, AAB, kit complet) sont dans le
+ dossier telechargements/ du dépôt et attachés à la page des
+ releases : https://github.com/Rodamen001/SPU/releases
+
+════════════════════════════════════════════════════════════
+ ANNEXE C — HISTORIQUE DES ÉDITIONS
+════════════════════════════════════════════════════════════
+
+ ÉDITION 1.0 — 6 novembre 2026
+   Première version du livre blanc : le concept, le pipeline, le
+   corpus, les modes, SPU Pocket v1.2.0, confidentialité, éthique.
+
+ ÉDITION 2.0 — 7 novembre 2026 (la présente)
+   Révision augmentée à l'occasion de la publication du dépôt
+   public GitHub (github.com/Rodamen001/SPU). Ajouts par rapport à
+   l'édition 1.0 :
+   • un résumé en dix lignes en tête ;
+   • un exemple complet bout en bout, chronométré (section 4) ;
+   • un schéma du pipeline avec les durées mesurées (section 5) ;
+   • un tableau comparatif « IA générale ou SPU ? » (section 12) ;
+   • une section coûts et hébergement vérifiés (section 13) ;
+   • une section cadre légal et mineurs (section 14) ;
+   • l'annexe « Faire tourner le SPU soi-même » avec les variables
+     d'environnement documentées ;
+   • la politique de licence et le contact ;
+   • cette historique des éditions ;
+   • une numérotation des bordures ramenée à 60 caractères pour
+     une lecture propre sur téléphone.
+
+════════════════════════════════════════════════════════════
+ LICENCE ET CONTACT
+════════════════════════════════════════════════════════════
+
+ Le code source du SPU et de SPU Pocket est publié dans le dépôt
+ public github.com/Rodamen001/SPU.
+
+ © 2026 Rodamen001 — tous droits réservés. Les paraboles citées
+ proviennent de plates-formes libres (Wikiquote, Wikipédia,
+ Wikisource, licences CC BY-SA) et sont créditées entrée par
+ entrée ; les contes du volet enfant sont du domaine public.
+
+ Contact : ramenyido@gmail.com
+
+ « Un mentor, pas un maître. Il aide à penser ; il ne pense pas à
+ la place. »
+
+ — Un mentor, pas un maître 🌿 —

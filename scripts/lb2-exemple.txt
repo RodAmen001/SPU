@@ -1,0 +1,61 @@
+════════════════════════════════════════════════════════════════
+ 4. UN EXEMPLE COMPLET, BOUT EN BOUT, CHRONOMÉTRÉ
+════════════════════════════════════════════════════════════════
+
+ Ce qui suit est une exécution RÉELLE du serveur en production,
+ mesurée le 7 novembre 2026 sur l'API /api/repondre (celle qu'
+ utilise SPU Pocket). Rien n'y a été retouché.
+
+ LA QUESTION POSÉE :
+
+   « Mon voisin me fait du mal sans raison, comment
+    pardonner sans abandonner ma dignité ? »
+
+ L'INSTRUCTION DES ÉTAPES (temps mesurés) :
+
+   0 s      la question arrive, la phase de détresse la
+            traverse en 0,1 s (aucun signal) ;
+   0,1-8 s  les quatre sources sont interrogées en parallèle
+            (recherche web, réflexion IA, encyclopédie,
+            instantanées) et ramènent leur matière ;
+   8-9 s    la synthèse est rédigée, la recherche TF-IDF
+            sélectionne 8 candidats, l'arbitrage sémantique
+            choisit la parabole et note la confiance ;
+   9-17 s   l'histoire personnalisée est écrite, filtrée,
+            puis la réponse complète est renvoyée en JSON.
+   TOTAL : 16,6 secondes (première question après démarrage :
+            18 s — l'index et les moteurs se réveillent).
+
+ LA SYNTHÈSE SOURCÉE (citations numérotées, contradictions
+ gardées visibles) :
+
+   « Le pardon peut être un acte intérieur de libération
+    sans nier le mal subi, tout en protégeant sa dignité
+    par des limites claires [1]. Certaines sources suggèrent
+    de dissocier l'acte de la personne pour une relation
+    apaisée, tandis que d'autres pourraient prôner une
+    distance plus stricte [1]. »
+
+ LA PARABOLE CHOISIE — P024, aire MÉDITERRANÉENNE
+ (confiance : 0,8) :
+
+   « Le fils parti loin avec son héritage revint les
+    mains vides ; son père courut à sa rencontre, car
+    celui qui était perdu est retrouvé. »
+
+   Lecture proposée : « Chaque retour est une renaissance
+   possible, même après le pire. »
+
+ L'HISTOIRE PERSONNALISÉE (extrait, 2 premières lignes) —
+ le seul contenu inventé, transposé dans un décor
+ méditerranéen :
+
+   « Le soleil de midi brûlait la pierre de la place.
+    Elias, le fils, rentra à pieds, les semelles usées,
+    le regard vide. L'argent parti en fumée, les rêves
+    brûlés comme les oliviers pendant la sécheresse. »
+
+ Ce que l'utilisateur reçoit au total : une synthèse citée,
+ une parabole réelle avec ses sources, plusieurs lectures,
+ une histoire transposée, un échange de plus dans son journal.
+ Ce qu'il ne reçoit pas : un ordre. Le choix reste le sien.

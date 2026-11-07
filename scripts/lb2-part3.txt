@@ -1,0 +1,125 @@
+════════════════════════════════════════════════════════════════
+ 8. LES 4 MODES D'ACCOMPAGNEMENT
+════════════════════════════════════════════════════════════════
+
+ ORACLE — une réponse unique. La question part, la réponse
+ complète arrive : synthèse sourcée, parabole, interprétations,
+ histoire. C'est le mode par défaut, le plus direct.
+
+ MENTOR — un dialogue en trois étapes. Première étape
+ d'ouverture : le SPU reformule la situation et pose une première
+ question d'angle. Deuxième étape d'approfondissement : il creuse
+ là où la personne a répondu. Troisième étape de synthèse : il
+ rassemble, propose la parabole et l'histoire, et termine par une
+ question ouverte — jamais une conclusion fermée. Le Mentor est
+ le mode le plus fidèle à la devise : il aide à penser.
+
+ DEEP — un parcours de contemplation en trois niveaux :
+ contemplation (le récit nu, à lire lentement), méditation (les
+ questions que le récit soulève), perspective (ce que cela change
+ pour soi). Conçu comme une marche, pas comme un raccourci.
+
+ ENFANT — un espace protégé, séparé : corpus dédié (15 contes),
+ phrases courtes, gros boutons, lecture à voix haute intégrée,
+ filtres stricts avant affichage. L'enfant n'accède jamais au
+ corpus adulte ; les réponses passent par le filtre
+ post-génération le plus strict du système.
+
+ Chaque échange, quel que soit le mode, est journalisé dans la
+ session, exportable, et effaçable en un clic.
+
+════════════════════════════════════════════════════════════════
+ 9. L'ORCHESTRATION MULTI-IA
+════════════════════════════════════════════════════════════════
+
+ Le SPU n'utilise pas une seule intelligence mais plusieurs
+ sources en parallèle, et leur complémentarité est sa garantie.
+
+ LES QUATRE SOURCES (8 secondes maximum, en parallèle) :
+   1. Recherche web — ce que le monde écrit aujourd'hui.
+   2. Intelligence réflexive — le modèle de langage interrogé
+      pour ses arguments, non pour son opinion finale.
+   3. Encyclopédie — Wikipédia via lecteur intégré.
+   4. Réponses instantanées — DuckDuckGo, pour le concret.
+
+ CACHES ET LIMITES : chaque question est hachée (SHA-256) et les
+ réponses des sources sont conservées 24 heures (table
+ SourcesCache) : poser deux fois la même chose ne coûte pas deux
+ fois le monde. Une limite de 20 requêtes par minute et par IP
+ protège le serveur avant tout traitement.
+
+ LA SYNTHÈSE EST CONTRAIGNANTE : trois phrases maximum, 120 mots,
+ citations numérotées [1][2], contradictions explicitées (« selon
+ la source A… mais selon la source B… »), et un score de confiance
+ affiché. Le prompt impose la forme ; si les sources ne sont pas
+ d'accord, la synthèse doit le dire plutôt que trancher
+ silencieusement.
+
+ LA DÉGRADATION HONNÊTE : si une source échoue, les trois autres
+ continuent. Si tout échoue, le SPU ne fabrique pas : il renvoie
+ une synthèse brute sourcée ou un gabarit narratif sûr, et l'écran
+ indique clairement que le service est dégradé. L'honnêteté
+ systémique — dire ce qu'on ne sait pas — est ici une propriété
+ technique, pas une intention.
+
+════════════════════════════════════════════════════════════════
+ 10. SPU POCKET : LE MENTOR DANS LA POCHE
+════════════════════════════════════════════════════════════════
+
+ SPU Pocket v1.2.0 est l'application Android compagnon du serveur
+ SPU. Elle pèse 62 Ko — moins qu'une photo — parce qu'elle est
+ écrite en Java natif sans framework, et elle fonctionne sur
+ Android 7 et plus (minSdk 24).
+
+ LE MODE NOMADE : dès l'installation, sans aucun serveur, l'écran
+ « Poser une question » répond par une IA publique gratuite ; la
+ sécurité détresse est active sur ce mode aussi. C'est la réponse
+ au problème n° 4 : l'accompagnement ne doit pas exiger une
+ connexion.
+
+ LA BIBLIOTHÈQUE HORS-LIGNE : les 65 textes du corpus sont
+ intégrés dans l'application (fichier data.js de 48 Ko), lisibles
+ en avion, en brousse, sans un octet de données sortantes. Le
+ mode nomade ne collecte rien : les textes ne quittent pas le
+ téléphone.
+
+ LE MODE CONNECTÉ : si l'utilisateur héberge (ou connaît) un
+ serveur SPU, il saisit son adresse dans les réglages ; la réponse
+ devient narrée complète — synthèse sourcée, parabole, histoire,
+ voix — exactement comme sur le web.
+
+ DISTRIBUTION : l'APK est signée par la clé officielle du projet
+ (META-INF/SPU.RSA) et distribuée en direct — dépôt GitHub et page
+ de téléchargement — avec le format AAB prêt pour une publication
+ Play Store future. Les liens sont en tête de ce livre.
+
+════════════════════════════════════════════════════════════════
+ 11. COMPTES, JOURNAL ET CONFIDENTIALITÉ
+════════════════════════════════════════════════════════════════
+
+ LE COMPTE MINIMAL : un pseudonyme et un mot de passe. Rien
+ d'autre — pas d'email, pas de téléphone, pas de nom. Le mot de
+ passe n'est jamais stocké ni transmis tel quel : le serveur le
+ dérive avec scrypt (fonction de dérivation résistante aux
+ machines dédiées au craquage) et un sel aléatoire de 16 octets.
+
+ LES SESSIONS : l'authentification donne un jeton aléatoire de
+ 64 caractères hexadécimaux, valable 7 jours ; l'historique reste
+ accessible 90 jours. Les sessions anonymes (sans compte)
+ fonctionnent aussi, et peuvent être « rattachées » à un compte
+ plus tard pour ne rien perdre.
+
+ LE JOURNAL ET LES SAUVEGARDES : chaque échange est consultable,
+ exportable en .txt, .json ou .md, et le journal peut être
+ sauvegardé en instantanés restaurables (table Sauvegarde, ajout
+ v4.4). L'export est un droit RGPD ; l'effacement immédiat en est
+ un autre : une demande d'effacement supprime réellement, pas
+ « marque supprimé ».
+
+ LES LOGS DE DÉTRESSE : anonymes par conception — un hash et des
+ scores numériques, jamais le texte (voir section 6).
+
+ CE QUI N'EXISTE PAS : aucune mesure publicitaire, aucun traçage
+ tiers, aucune clé d'API côté navigateur, aucune donnée envoyée
+ depuis le mode nomade de SPU Pocket. Le code est public : ces
+ affirmations sont vérifiables ligne à ligne.

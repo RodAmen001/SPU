@@ -1,0 +1,109 @@
+════════════════════════════════════════════════════════════════
+ 14. LE CADRE LÉGAL ET LES MINEURS
+════════════════════════════════════════════════════════════════
+
+ CE QUE LE SPU EST : une œuvre interactive de réflexion et de
+ narration, hébergée par son auteur. Ce qu'il n'est pas : un
+ service de santé mentale, un dispositif médical, un service
+ certifié de protection de l'enfance.
+
+ SUR LES MINEURS : le mode Enfant existe et prend ses précautions
+ très au sérieux — espace séparé, corpus de contes du domaine
+ public, filtres stricts avant affichage, aucune collecte. Mais
+ une précision honnête s'impose : le SPU n'est pas un service
+ destiné et certifié aux mineurs au sens des réglementations les
+ plus exigeantes (protection des données des enfants, contrôle
+ parental, âge de consentement numérique qui varie de 13 à 15 ans
+ selon les pays). La recommandation claire : pour un enfant,
+ l'usage se fait sous la responsabilité et en présence d'un
+ adulte — parent, enseignant, tuteur. L'espace protégé est un
+ jardin clos, pas un gage de conformité universelle. Une
+ certification formelle est une piste de la feuille de route si
+ l'usage scolaire se développe.
+
+ SUR LA DÉTRESSE : le SPU ne diagnostique rien et ne remplace
+ personne. Sa phase de détresse renvoie vers des personnes réelles
+ et des services d'urgence locaux ; c'est une obligation de code,
+ pas une promesse marketing.
+
+ SUR LES DONNÉES : pseudonyme seul, journal exportable et
+ effaçable, logs anonymisés, rien de tiers. La conformité RGPD
+ repose sur cette sobriété : on ne peut pas fuiter ce qui n'est
+ pas collecté.
+
+ SUR LES SOURCES : les paraboles proviennent de plates-formes
+ libres (Wikiquote, Wikipédia, Wikisource) dont les licences
+ (CC BY-SA) sont respectées par la citation de la source, entrée
+ par entrée. Les contes du volet enfant sont du domaine public.
+
+════════════════════════════════════════════════════════════════
+ 15. LIMITES HONNÊTES
+════════════════════════════════════════════════════════════════
+
+ Un livre blanc qui ne liste pas ses limites est une publicité.
+ Voici celles du SPU, telles quelles.
+
+ • L'accès direct à l'API Wikimedia est limité depuis certains
+   environnements (erreur 429) : la source Encyclopédie passe par
+   le lecteur intégré de la plate-forme, équivalent fonctionnel.
+ • En cas de quota temporaire de la plate-forme IA, le système
+   dégrade honnêtement (synthèse brute sourcée, gabarit narratif
+   sûr) au lieu d'inventer — mais la richesse de la réponse s'en
+   ressent, et l'interface le signale.
+ • Le matching TF-IDF atteint 90 % en top-1 : une fois sur dix,
+   la première parabole proposée n'est pas la meilleure — d'où le
+   arbitrage sémantique IA qui vient après, et l'affichage du
+   score de confiance. Le système se corrige, mais il n'est pas
+   infaillible.
+ • Le corpus est clos : une question très spécifique (technique,
+   médicale, juridique) n'a pas sa parabole — et le SPU le dit
+   plutôt que de forcer une analogie fallacieuse.
+ • Les voix neuronales locales (Piper, 10 voix, ~210 Mo) sont un
+   option avancée : sans elles, l'application utilise les voix du
+   navigateur ou du téléphone.
+ • L'IA publique du mode nomade de SPU Pocket est celle de la
+   plate-forme : disponible sans configuration, mais sans garantie
+   de durée — d'où le mode connecté vers un serveur SPU en
+   alternative.
+
+════════════════════════════════════════════════════════════════
+ 16. ÉTHIQUE : LES RÈGLES NON NÉGOCIABLES
+════════════════════════════════════════════════════════════════
+
+ Ces règles sont gravées dans le code et les pages Transparence et
+ Confidentialité de l'application :
+
+ 1. Ne jamais inventer de parabole.
+ 2. Ne jamais cacher qu'une réponse est une synthèse.
+ 3. Ne jamais faire transiter la détresse vers des tiers.
+ 4. Ne jamais stocker de données personnelles sans consentement.
+ 5. Ne jamais mettre de clé d'API côté navigateur.
+ 6. Dire honnêtement quand le service est dégradé.
+ 7. Désigner clairement ce qui est inventé (l'histoire) et ce qui
+    est réel (la parabole).
+
+ Elles ne sont pas décoratives : chacune correspond à un point de
+ contrôle technique décrit dans les sections 5, 6, 7 et 11 de ce
+ livre, vérifiable dans le code public du dépôt.
+
+════════════════════════════════════════════════════════════════
+ 17. FEUILLE DE ROUTE
+════════════════════════════════════════════════════════════════
+
+ COURT TERME :
+   • Publication du dépôt public et de la release v1.2.0 de SPU
+     Pocket (fait à la date de cette édition).
+   • Extension du corpus vers 300 paraboles, toujours avec source
+     vérifiée — la structure technique est prête (fichiers JSON +
+     re-seed, index reconstruit automatiquement).
+ MOYEN TERME :
+   • Interface d'administration de la quarantaine (l'API existe).
+   • Publication sur le Play Store (l'AAB est prêt).
+   • Versions multilingues du moteur (le cahier des charges v4.1
+     le prévoit).
+ LONG TERME :
+   • Certification formelle du mode Enfant pour l'usage scolaire.
+   • Migration de la base vers Turso/PostgreSQL si le nombre
+     d'utilisateurs l'exige, sans changement d'API.
+   • Applications bureau (les habillages Electron et les scripts
+     Windows existent déjà dans le dépôt).

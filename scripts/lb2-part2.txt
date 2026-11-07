@@ -1,0 +1,137 @@
+════════════════════════════════════════════════════════════════
+ 5. LE PIPELINE EN DÉTAIL
+════════════════════════════════════════════════════════════════
+
+ Vue d'ensemble, avec les durées typiques mesurées en conditions
+ réelles :
+
+   Question de l'utilisateur
+     │
+     ▼  (≈ 0,1 s)
+ ┌─────────────────────────────────────────────┐
+ │ PHASE 0 — Sécurité détresse (3 couches)     │  ← si détresse :
+ │ A. regex locale → B. classifieur IA →       │     réponse humaine
+ │ C. heuristique de tonalité                  │     et rien d'autre
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (8 s maximum, en parallèle)
+ ┌─────────────────────────────────────────────┐
+ │ ORCHESTRATION MULTI-IA — 4 sources          │
+ │ recherche web · intelligence réflexive ·    │
+ │ encyclopédie · réponses instantanées        │
+ │ cache 24 h · limite 20 requêtes/min/IP      │
+ └─────────────────────────────────────────────┘
+     │
+     ▼
+ ┌─────────────────────────────────────────────┐
+ │ SYNTHÈSE SOURCÉE — ≤ 3 phrases, ≤ 120 mots, │
+ │ citations [1][2], contradictions signalées, │
+ │ score de confiance affiché                  │
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (≈ 1 s)
+ ┌─────────────────────────────────────────────┐
+ │ MATCHING TF-IDF — 8 candidats, seuil 0,65   │
+ │ + arbitrage sémantique IA                   │
+ │ → la parabole (réelle, sourcée)             │
+ └─────────────────────────────────────────────┘
+     │
+     ▼  (≈ 6 s)
+ ┌─────────────────────────────────────────────┐
+ │ HISTOIRE PERSONNALISÉE — adulte 150-300     │
+ │ mots / enfant 100-200 mots, filtre post-    │
+ │ génération (violence, sexuel, haine) avec   │
+ │ régénération puis gabarit sûr               │
+ └─────────────────────────────────────────────┘
+     │
+     ▼
+ Rendu : narration, interprétations multiples,
+ sources affichées, journal, voix, musique
+
+ Le streaming commence dès la première seconde : la synthèse
+ apparaît pendant que la suite se prépare, ce qui donne une
+ réponse complète en environ une dizaine de secondes au lieu de
+ les faire attendre toutes à la fin.
+
+ Chaque étape est dans le code, pas seulement dans le discours :
+ la limite de débit est appliquée par adresse IP avant tout
+ traitement ; le cache évite de reposer quatre fois la même
+ question aux mêmes sources ; le filtre post-génération relit
+ l'histoire produite et la rejette si elle contient ce qu'un
+ enfant ne doit pas lire, avec un second essai puis un gabarit
+ sûr pré-écrit si le second essai échoue encore.
+
+════════════════════════════════════════════════════════════════
+ 6. LA SÉCURITÉ D'ABORD : LA PHASE DE DÉTRESSE
+════════════════════════════════════════════════════════════════
+
+ C'est l'investissement de sécurité le plus sérieux du projet, et
+ il mérite sa propre section. La phase 0 écoute chaque question
+ avec trois couches indépendantes.
+
+ COUCHE A — lexicale, locale, instantanée. Quatorze expressions
+ régulières (français et anglais) reconnaissent les formulations
+ directes de souffrance et de danger. Aucune IA, aucun réseau :
+ quelques millisecondes.
+
+ COUCHE B — classifieur par IA. La question est passée à un
+ classifieur qui note la détresse de 0 à 1. Le seuil direct est
+ 0,75 ; le seuil prudent combine un score de 0,5 avec une alerte
+ de tonalité à 0,7. En cas d'égalité ambiguë, le SPU choisit la
+ prudence : il répond comme si la détresse était réelle.
+
+ COUCHE C — heuristique de tonalité. Une liste de 51 mots
+ négatifs et 18 mots de rupture (« plus rien ne », « je ne vais
+ pas »…) affine le jugement quand les deux couches précédentes
+ hésitent.
+
+ LES TROIS DÉCISIONS POSSIBLES :
+   • distress  → réponse humaine immédiate (détection en 0,1 s),
+     AUCUNE parabole, AUCUNE source externe appelée.
+   • review    → même réponse prudente, mais le cas est noté pour
+     affiner les seuils.
+   • pass      → le pipeline complet se déroule normalement.
+
+ Ce qui ne se passe JAMAIS : la question marquée en détresse ne
+ part vers aucun tiers, et ce qui est stocké est un log anonymisé
+ — un hash de la question et trois scores — sans le texte. La
+ performance est mesurée : 30 cas de test, 30 réussites
+ (scripts/test-phase0.ts, rejouable par n'importe qui).
+
+════════════════════════════════════════════════════════════════
+ 7. LE CORPUS : 65 TEXTES RÉELS, SOURCÉS, CLOS
+════════════════════════════════════════════════════════════════
+
+ Le corpus est le cœur du système et sa colonne vertébrale
+ morale. Il se compose de 65 entrées en deux volets :
+
+ VOLET ADULTE — 50 paraboles réparties à égalité entre cinq aires
+ culturelles : Afrique de l'Ouest, Asie, Méditerranée,
+ Nordique/Celtique, Universaliste. Chaque entrée porte : le texte
+ intégral, la culture, la famille (10 familles thématiques, F1 à
+ F10 : honneur et orgueil, pardon et réconciliation, patience,
+ choix et conséquences, mort et héritage, travail et juste mesure,
+ vérité et mensonge, richesse et désir, communauté et justice,
+ sagesse et folie), au moins trois interprétations différentes,
+ et ses sources.
+
+ VOLET ENFANT — 15 contes du domaine public : La Fontaine, Ésope,
+ Grimm, le Panchatantra, la tradition ashanti. Un corpus séparé,
+ avec ses propres filtres et sa propre interface.
+
+ LA RÈGLE DES SOURCES : chaque parabole cite où elle se trouve.
+ Les 35 URLs (19 Wikiquote, 12 Wikipédia, 4 Wikisource) ont été
+ vérifiées une à une — l'outillage de vérification est livré avec
+ le projet (scripts/verify-urls.sh). Quand un texte est attribué
+ « selon la tradition orale », c'est que c'est le cas, et c'est
+ écrit. Un texte dont la source ne tient pas va en quarantaine
+ (table dédiée, API d'administration) tant qu'il n'est pas
+ validé.
+
+ POURQUOI UN CORPUS CLOS : un corpus clos peut être audité. On
+ peut lister ce qu'il contient, vérifier chaque source, garantir
+ qu'aucun texte n'a été fabriqué. Un corpus ouvert qui s'enrichit
+ automatiquement de ce que l'IA « découvre » perd cette garantie
+ en quelques semaines. L'extension manuelle reste possible et
+ encadrée : ajouter une entrée dans les fichiers JSON du corpus,
+ la sourcer, relancer l'index — c'est décrit dans l'annexe A.

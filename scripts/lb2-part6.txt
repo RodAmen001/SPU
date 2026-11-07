@@ -1,0 +1,130 @@
+════════════════════════════════════════════════════════════════
+ ANNEXE A — FAIRE TOURNER LE SPU SOI-MÊME
+════════════════════════════════════════════════════════════════
+
+ Le SPU est conçu pour être hébergé par n'importe qui sur une
+ machine modeste (1 Go de RAM suffit). Procédure complète :
+
+ PRÉREQUIS
+   Node.js 20+ ou Bun, et git.
+   Cloner :  git clone https://github.com/Rodamen001/SPU.git
+             cd SPU
+
+ ÉTAPE 1 — CONFIGURATION (fichier .env à la racine)
+
+   DATABASE_URL="file:./db/custom.db"
+
+   Et optionnellement :
+
+   ADMIN_TOKEN="un-jeton-long-aleatoire"
+
+   (le jeton protège /api/admin/validate ; en générer un avec :
+    node -e "console.log(require('crypto').randomBytes(32)
+      .toString('hex'))")
+
+ ÉTAPE 2 — INSTALLATION ET BASE DE DONNÉES
+
+   bun install                 # ou : npm install
+   bunx prisma db push         # crée les 8 tables SQLite
+   bun run scripts/seed.ts     # injecte les 65 paraboles
+
+ ÉTAPE 3 — LANCEMENT
+
+   En développement :
+     bun run dev               # http://localhost:3000
+
+   En production :
+     node scripts/build-standalone.js
+     bun .next/standalone/server.js
+     # (ou : node .next/standalone/server.js)
+
+   Le dépôt fournit aussi un démon de production éprouvé :
+     python3 scripts/demonise.py serveur   # le serveur en arrière-plan
+     python3 scripts/demonise.py gardien   # relance si plantage
+
+ ÉTAPE 4 — VÉRIFICATION
+
+   curl http://localhost:3000/api/health
+   → {"status":"ok", "sources":{"corpus":65, ...}}
+
+ ÉTAPE 5 — TESTS (recommandé avant mise en service)
+
+   bun run scripts/test-phase0.ts    # sécurité : 30/30
+   bun run scripts/test-matching.ts  # matching : top-1 90 %
+   bash scripts/verify-urls.sh       # 35 URLs de sources
+
+ RECONSTRUIRE L'APK (si vous modifiez SPU Pocket) :
+
+   bash scripts/installer-sdk.sh    # SDK Android minimal, 1 fois
+   bash scripts/build-apk.sh        # → download/spu-pocket-*.apk
+   bash scripts/build-aab.sh        # → download/spu-pocket-*.aab
+
+ FAIRE EXTENSER LE CORPUS :
+
+   Ajouter les entrées (texte, culture, famille, interprétations,
+   sources) dans src/data/corpus-adulte.json — avec leurs sources
+   — puis relancer : bun run scripts/seed.ts
+   L'index de recherche se reconstruit seul (TTL 5 minutes).
+
+════════════════════════════════════════════════════════════════
+ ANNEXE B — INSTALLER SPU POCKET SUR UN TÉLÉPHONE
+════════════════════════════════════════════════════════════════
+
+ Le guide détaillé, illustré pas à pas, est livré avec le projet
+ (docs/INSTALLER-SPU-POCKET.txt) et sur la page de téléchargement.
+ Version courte :
+
+   1. Ouvrir https://rodamen001.github.io/SPU/ sur le téléphone
+      et toucher le bouton « Télécharger l'application ».
+   2. Ouvrir le fichier téléchargé ; Android demande l'autorisation
+      « installer des applications inconnues » : autoriser une fois.
+   3. Installer, ouvrir. Le mode nomade fonctionne immédiatement,
+      sans serveur et sans connexion.
+
+ Les trois fichiers officiels (APK, AAB, kit complet) sont dans le
+ dossier telechargements/ du dépôt et attachés à la page des
+ releases : https://github.com/Rodamen001/SPU/releases
+
+════════════════════════════════════════════════════════════════
+ ANNEXE C — HISTORIQUE DES ÉDITIONS
+════════════════════════════════════════════════════════════════
+
+ ÉDITION 1.0 — 6 novembre 2026
+   Première version du livre blanc : le concept, le pipeline, le
+   corpus, les modes, SPU Pocket v1.2.0, confidentialité, éthique.
+
+ ÉDITION 2.0 — 7 novembre 2026 (la présente)
+   Révision augmentée à l'occasion de la publication du dépôt
+   public GitHub (github.com/Rodamen001/SPU). Ajouts par rapport à
+   l'édition 1.0 :
+   • un résumé en dix lignes en tête ;
+   • un exemple complet bout en bout, chronométré (section 4) ;
+   • un schéma du pipeline avec les durées mesurées (section 5) ;
+   • un tableau comparatif « IA générale ou SPU ? » (section 12) ;
+   • une section coûts et hébergement vérifiés (section 13) ;
+   • une section cadre légal et mineurs (section 14) ;
+   • l'annexe « Faire tourner le SPU soi-même » avec les variables
+     d'environnement documentées ;
+   • la politique de licence et le contact ;
+   • cette historique des éditions ;
+   • une numérotation des bordures ramenée à 60 caractères pour
+     une lecture propre sur téléphone.
+
+════════════════════════════════════════════════════════════════
+ LICENCE ET CONTACT
+════════════════════════════════════════════════════════════════
+
+ Le code source du SPU et de SPU Pocket est publié dans le dépôt
+ public github.com/Rodamen001/SPU.
+
+ © 2026 Rodamen001 — tous droits réservés. Les paraboles citées
+ proviennent de plates-formes libres (Wikiquote, Wikipédia,
+ Wikisource, licences CC BY-SA) et sont créditées entrée par
+ entrée ; les contes du volet enfant sont du domaine public.
+
+ Contact : ramenyido@gmail.com
+
+ « Un mentor, pas un maître. Il aide à penser ; il ne pense pas à
+ la place. »
+
+ — Un mentor, pas un maître 🌿 —

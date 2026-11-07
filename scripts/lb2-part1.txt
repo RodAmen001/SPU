@@ -1,0 +1,177 @@
+════════════════════════════════════════════════════════════════
+  SPU — SYSTÈME PARABOLIQUE UNIVERSEL
+  Livre blanc du concept, en son état actuel
+════════════════════════════════════════════════════════════════
+
+  Édition 2.0 — révisée et augmentée
+  Rédigé le 7 novembre 2026
+  Serveur : SPU v4.4  ·  Application compagnon : SPU Pocket v1.2.0
+  Auteur : Rodamen001  ·  Contact : ramenyido@gmail.com
+  Dépôt officiel : https://github.com/Rodamen001/SPU
+  Téléchargements : https://rodamen001.github.io/SPU/
+
+════════════════════════════════════════════════════════════════
+ RÉSUMÉ EN DIX LIGNES
+════════════════════════════════════════════════════════════════
+
+ 1. Le SPU répond aux questions de vie par des paraboles réelles,
+    jamais inventées, tirées d'un corpus clos de 65 textes sourcés.
+ 2. Chaque question traverse un pipeline en 5 étapes : sécurité
+    détresse, orchestration multi-IA, synthèse sourcée, matching
+    sémantique, histoire personnalisée.
+ 3. Une couche de sécurité à 3 niveaux détecte la détresse en moins
+    d'une seconde et court-circuite tout le reste : réponse
+    humaine, aucune parabole, aucune donnée envoyée à des tiers.
+ 4. Le corpus : 50 paraboles adultes (5 cultures, 10 familles) et
+    15 contes d'enfance du domaine public, 35 sources vérifiées
+    une à une (Wikiquote, Wikipédia, Wikisource).
+ 5. La parabole est choisie par matching TF-IDF (top-1 : 90 %,
+    top-3 : 100 %) arbitré par une IA sémantique ; sous le seuil
+    de confiance, le SPU le dit honnêtement.
+ 6. Quatre modes : Oracle (une réponse), Mentor (dialogue en 3
+    étapes), Deep (contemplation en 3 niveaux), Enfant (espace
+    protégé avec corpus dédié et filtres stricts).
+ 7. SPU Pocket, l'application Android (62 Ko), fonctionne dès
+    l'installation sans serveur : mode nomade + bibliothèque
+    hors-ligne des 65 textes.
+ 8. Les comptes sont minimalistes : mots de passe dérivés par
+    scrypt, jetons de session 7 jours, historique 90 jours,
+    effacement RGPD immédiat sur demande.
+ 9. Tout tourne sur une machine à 1 Go de RAM avec SQLite, sans
+    clé API : le serveur complet pèse moins de 10 Mo de code.
+10. Le principe éthique est non négociable : un mentor, pas un
+    maître — il aide à penser, il ne pense pas à la place.
+
+════════════════════════════════════════════════════════════════
+ SOMMAIRE
+════════════════════════════════════════════════════════════════
+
+  1.  La promesse : un mentor, pas un maître
+  2.  Le problème auquel répond le SPU
+  3.  Le principe : question → parabole réelle → histoire
+  4.  Un exemple complet, bout en bout, chronométré
+  5.  Le pipeline en détail
+  6.  La sécurité d'abord : la phase de détresse
+  7.  Le corpus : 65 textes réels, sourcés, clos
+  8.  Les 4 modes d'accompagnement
+  9.  L'orchestration multi-IA
+  10. SPU Pocket : le mentor dans la poche
+  11. Comptes, journal et confidentialité
+  12. IA générale ou SPU ?
+  13. Coûts et hébergement
+  14. Le cadre légal et les mineurs
+  15. Limites honnêtes
+  16. Éthique : les règles non négociables
+  17. Feuille de route
+
+  Annexe A — Faire tourner le SPU soi-même
+  Annexe B — Installer SPU Pocket sur un téléphone
+  Annexe C — Historique des éditions
+  Licence et contact
+
+════════════════════════════════════════════════════════════════
+ 1. LA PROMESSE : UN MENTOR, PAS UN MAÎTRE
+════════════════════════════════════════════════════════════════
+
+ Depuis que les machines savent répondre à tout, une question
+ devient urgente : à quoi faut-il croire dans une réponse
+ artificielle ? Le SPU ne prétend pas résoudre cette question par
+ des promesses ; il la contourne par une architecture : il ne
+ produit pas de conseil, il ne produit pas d'opinion. Il raconte.
+
+ Le SPU est un orchestrateur narratif multi-IA. Quand une personne
+ lui confie une situation de vie — un conflit, un choix, une peur,
+ une espérance — le système ne lui dit jamais ce qu'elle doit
+ faire. Il cherche dans un corpus clos de 65 paraboles et contes
+ réels celle qui parle à sa situation, la raconte, en propose
+ plusieurs lectures, puis invente — là seulement, et en le disant
+ clairement — une histoire qui transpose la même structure dans un
+ décor proche du monde de la personne.
+
+ Le choix du mot « mentor » est calculé. Un maître décide à votre
+ place ; un mentor vous outille pour décider. Une parabole est
+ exactement cela : un récit qui ne clôt pas, qui ouvre. Le lecteur
+ reste l'auteur de sa décision. L'IA n'ajoute qu'un service que
+ personne n'avait pu industrialiser jusqu'ici : trouver, parmi des
+ millénaires de sagesse écrite, le récit qui parle d'aujourd'hui.
+
+ Et parce qu'un mentor sait aussi écouter : si la question porte
+ une détresse — un signal de souffrance profonde — le SPU arrête
+ tout. Pas de parabole, pas d'histoire, pas d'appel vers des
+ services tiers. Une réponse humaine, courte, qui reconnaît la
+ douleur et rappelle qu'il y a des personnes réelles pour
+ l'écouter. Cette règle est implantée dans le code, pas dans une
+ charte.
+
+════════════════════════════════════════════════════════════════
+ 2. LE PROBLÈME AUQUEL RÉPOND LE SPU
+════════════════════════════════════════════════════════════════
+
+ Demandez à un assistant conversationnel généraliste : « raconte-
+ moi une parabole sur le pardon ». Il en racontera une, avec
+ assurance. Dans la majorité des cas, cette parabole n'existe pas.
+ L'IA l'a inventée, parfois avec un auteur plausible, parfois avec
+ une « sagesse ancienne » qui n'a jamais été écrite. C'est le
+ premier problème : l'hallucination narrative. Une parabole
+ inventée n'est pas une erreur innocente — c'est une fausse
+ attribution qui corrompt un patrimoine réel.
+
+ Le deuxième problème est l'uniformité. Un même modèle produit des
+ réponses au ton identique, quelle que soit la culture de la
+ personne qui interroge. Or une image tirée du fonduao — la sagesse
+ ouest-africaine — ne résonne pas comme une image nordique, et une
+ histoire pour un enfant de huit ans n'a pas le ton d'une
+ réflexion d'adulte. La généralisation aplatit ce qui devrait
+ précisément parler à chacun.
+
+ Le troisième problème est la sécurité. Les assistants grand
+ public traitent la détresse comme un cas particulier de
+ conversation ; certains transfèrent des signaux de détresse vers
+ des processus tiers, tous ne publient pas leurs règles. Le SPU a
+ pris le parti inverse : la détection de détresse est la première
+ étape du pipeline, elle est locale, elle est documentée dans ce
+ livre, et quand elle s'active, il ne reste rien du reste.
+
+ Le quatrième problème est la dépendance. Un accompagnement utile
+ doit fonctionner là où les connexions sont rares ou coûteuses —
+ en zone rurale, en déplacement, hors budget data. C'est l'objet
+ de SPU Pocket : embarquer le corpus et un mode de réponse qui
+ marche sans aucun serveur.
+
+════════════════════════════════════════════════════════════════
+ 3. LE PRINCIPE : QUESTION → PARABOLE RÉELLE → HISTOIRE
+════════════════════════════════════════════════════════════════
+
+ Le SPU repose sur trois convictions simples.
+
+ PREMIÈRE CONVICTION : la sagesse existe déjà, écrite, vérifiable.
+ De la table de La Fontaine à la tradition ashanti, du Panchatantra
+ aux paraboles méditerranéennes, les situations humaines ont été
+ racontées mille fois. Il n'y a rien à inventer — il y a à
+ retrouver. Le corpus du SPU est donc clos : on n'y ajoute un
+ texte qu'après vérification de sa source, et chaque entrée
+ porte ses références (35 URLs vérifiées une à une : Wikiquote,
+ Wikipédia, Wikisource). La règle absolue, gravée dans le code :
+ aucune parabole inventée par l'IA.
+
+ DEUXIÈME CONVICTION : le vrai travail de l'IA est le rapprochement.
+ Entre une question de 2026 et une parabole de 1840 ou d'une
+ tradition orale, il y a un pont à construire : comprendre la
+ situation, la nommer, la relier à la structure du récit. C'est
+ ce que fait le SPU en deux mouvements — un matching statistique
+ (TF-IDF) qui sélectionne huit candidats objectifs, puis un
+ arbitrage sémantique qui choisit la parabole qui parle vraiment
+ de la même chose. Sous le seuil de confiance, le SPU ne feint
+ rien : il annonce « voici la parabole la plus proche ».
+
+ TROISIÈME CONVICTION : l'histoire personnelle est un pont aussi —
+ mais elle doit être avouée. Après la parabole réelle, le SPU
+ propose une histoire neuve qui transpose la même structure dans
+ un décor familier du lecteur. Cette histoire est le seul contenu
+ inventé du système, et l'interface le désigne comme tel. La
+ frontière réel/inventé n'est jamais brouillée : la parabole est
+ sourcée, l'histoire est assumée.
+
+ Le reste de ce livre décrit comment ces trois convictions sont
+ devenues un système qui fonctionne : pipeline, corpus, modes,
+ application de poche, sécurité, coûts, cadre légal, éthique.

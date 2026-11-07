@@ -1,0 +1,116 @@
+════════════════════════════════════════════════════════════════
+ 12. IA GÉNÉRALE OU SPU ?
+════════════════════════════════════════════════════════════════
+
+ Le tableau ci-dessous résume ce qu'une personne trouve dans
+ chaque cas. Il ne s'agit pas de dire qu'un outil est « meilleur »
+ en absolu : les deux ont des usages différents.
+
+ ┌────────────────────────┬─────────────────────────────────┐
+ │                        │ ASSISTANT IA GÉNÉRALISTE        │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Réponse à « une        │ Un conseil rédigé, au ton       │
+ │ question de vie »      │ uniforme, qui tranche           │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Paraboles et récits    │ Souvent inventés, avec une      │
+ │ anciens                │ attribution plausible           │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Sources citées         │ Parfois, rarement vérifiables    │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Détresse               │ Traité au cas par cas selon le  │
+ │                        │ modèle ; règles non publiées    │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Données personnelles   │ Politiques variables, serveurs  │
+ │                        │ tiers par défaut                │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Hors-ligne             │ Impossible                       │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Autonomie (héberger    │ Impossible ou réservé aux       │
+ │ soi-même)              │ abonnements                     │
+ └────────────────────────┴─────────────────────────────────┘
+
+ ┌────────────────────────┬─────────────────────────────────┐
+ │                        │ SPU                             │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Réponse à « une        │ Une parabole réelle, des        │
+ │ question de vie »      │ lectures multiples, une         │
+ │                        │ histoire, une question ouverte  │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Paraboles et récits    │ 65 textes réels, corpus clos,   │
+ │ anciens                │ sources vérifiées une à une     │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Sources citées         │ Toujours, numérotées, 35 URLs   │
+ │                        │ auditables via script livré     │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Détresse               │ 3 couches locales documentées,  │
+ │                        │ réponse humaine, zéro transfert │
+ │                        │ vers des tiers                  │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Données personnelles   │ Pseudonyme seul ; journal       │
+ │                        │ exportable et effaçable ; code  │
+ │                        │ public vérifiable               │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Hors-ligne             │ SPU Pocket : bibliothèque et    │
+ │                        │ mode nomade sans serveur        │
+ ├────────────────────────┼─────────────────────────────────┤
+ │ Autonomie (héberger    │ Oui : ~10 Mo de code, SQLite,   │
+ │ soi-même)              │ procédure d'installation en     │
+ │                        │ annexe A                        │
+ └────────────────────────┴─────────────────────────────────┘
+
+ En une phrase : l'assistant généraliste est une encyclopédie qui
+ parle ; le SPU est un compagnon de sagesse qui raconte, et dont
+ on peut lire les entrailles.
+
+════════════════════════════════════════════════════════════════
+ 13. COÛTS ET HÉBERGEMENT
+════════════════════════════════════════════════════════════════
+
+ Le SPU est volontairement léger : ~10 Mo de code, SQLite, aucune
+ clé API payante. En conséquence, son coût d'exploitation peut
+ être nul ou proche de zéro. Voici l'état du paysage vérifié en
+ novembre 2026 (hors Afrique de l'Ouest : attention, la plupart
+ des hébergeurs « carte bancaire » refusent le Mobile Money ; une
+ Visa/Mastercard virtuelle prépayée est acceptée, Mobile Money non).
+
+ DISTRIBUTION DES FICHIERS (APK, kit, livre blanc) — RECOMMANDÉ :
+   • GitHub Releases — gratuit, sans carte, liens permanents,
+     2 Go par fichier. C'est le choix fait pour le SPU : les
+     fichiers vivent à la fois dans le dépôt et dans une release
+     versionnée.
+   • Internet Archive — dépôt de secours permanent, gratuit.
+   • Cloudflare R2 — 10 Go gratuits, zéro frais de sortie.
+
+ PAGE DE TÉLÉCHARGEMENT :
+   • GitHub Pages (utilisé ici) et Cloudflare Pages — gratuits,
+     ~100 Go de bande passante mensuelle sur les offres statiques.
+
+ SERVEUR SPU COMPLET :
+   • L'actuel : un serveur déjà en main — démon (scripts/
+     demonise.py) + gardien de relance (scripts/gardien-serveur.sh).
+     Coût : 0.
+   • Oracle Cloud Always Free — VM ARM 4 vCPU / 24 Go RAM / 200 Go
+     (offre amputée de moitié en juin 2026 : désormais 2 vCPU /
+     12 Go / 100 Go pour les nouveaux comptes). Carte bancaire
+     exigée pour vérification (sans prélèvement), + crédits 300 $
+     pendant 30 jours.
+   • Hetzner CX23 — environ 5,50-6 €/mois HT ; Contabo ~5 € ;
+     OVH/Hostinger ~3,50-4,50 €. Carte requise.
+   • Railway / Fly.io — environ 3-5 $/mois pour un petit conteneur.
+   • Render — offre gratuite mais le serveur s'endort après
+     inactivité et le disque n'est pas persistant.
+   • Vercel / Netlify — parfaits pour un site statique, mais sans
+     disque persistant : une SQLite y serait effacée à chaque
+     déploiement.
+
+ BASE DE DONNÉES SI SÉPARATION (choix n° 1 si un jour nécessaire) :
+   • Turso — 5 Go gratuits sur SQLite/libSQL : la migration depuis
+     Prisma est quasi transparente (même famille SQL).
+   • Cloudflare D1 — 5 Go gratuits.
+   • Supabase / Neon — gratuits mais limités (500 Mo / 0,5 Go).
+
+ EN RÉSUMÉ : distribution et page de téléchargement coûtent 0
+ (GitHub) ; le serveur peut rester sur une machine déjà possédée,
+ ou déménager vers un serveur de 4-6 €/mois quand le nombre
+ d'utilisateurs l'exigera ; la base peut migrer vers Turso sans
+ réécrire le code.
