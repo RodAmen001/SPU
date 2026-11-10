@@ -53,9 +53,9 @@ UPLOADER() {  # UPLOADER fichier nom
   if [ "$c" = "201" ]; then echo "   asset publié : $n"
   else echo "   asset $n : HTTP $c (422 = déjà présent, ce n'est pas grave)"; fi
 }
-UPLOADER /home/z/my-project/download/spu-pocket-v1.2.0.apk spu-pocket-v1.2.0.apk
-UPLOADER /home/z/my-project/download/spu-pocket-v1.2.0.aab spu-pocket-v1.2.0.aab
-UPLOADER /home/z/my-project/download/kit-spu-pocket-v1.2.zip kit-spu-pocket-v1.2.zip
+UPLOADER /home/z/my-project/telechargements/spu-pocket-v1.2.0.apk spu-pocket-v1.2.0.apk
+UPLOADER /home/z/my-project/telechargements/spu-pocket-v1.2.0.aab spu-pocket-v1.2.0.aab
+UPLOADER /home/z/my-project/telechargements/kit-spu-pocket-v1.2.zip kit-spu-pocket-v1.2.zip
 
 echo "── 4/4 GitHub Pages (page de téléchargement)"
 PAGES_CODE=$(curl -s -o /tmp/gh-pages.json -w "%{http_code}" -X POST -H "$AUTH" \
