@@ -1,0 +1,8 @@
+KEYSTORE DE SIGNATURE — À CONSERVER PRÉCIEUSEMENT
+═══════════════════════════════════════════════════
+spu-release.keystore .... clé de signature de toutes les APK SPU Pocket
+mot de passe ............ spu-2026-pocket (alias : spu)
+
+NE JAMAIS PUBLIER CE FICHIER SUR GITHUB.
+Sans lui : aucune mise à jour installable par-dessus lAPK déjà distribuée.
+Copiez-le sur au moins deux supports différents.

@@ -24,4 +24,11 @@ if __name__ == '__main__':
         os.chdir('/home/z/my-project')
         env = dict(os.environ, NODE_ENV='production')
         os.execvpe('bun', ['bun', '.next/standalone/server.js'], env)
+    elif quoi == 'dev':
+        # Développement : next dev sur le port 3000, journal dans dev.log
+        os.chdir('/home/z/my-project')
+        fd_log = os.open('/home/z/my-project/dev.log', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        os.dup2(fd_log, 1)
+        os.dup2(fd_log, 2)
+        os.execvpe('bun', ['bun', 'run', 'dev'], dict(os.environ))
     time.sleep(1)

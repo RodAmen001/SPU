@@ -54,27 +54,35 @@ export async function POST(req: NextRequest) {
       const status = (step: string) => send('status', { step });
 
       let echangeId = '';
+      let sessionId = corps.sessionId || '';
       try {
         // ── Session (anonyme par défaut, purge 90 jours) ──
         // Utilisateur connecté au compte SPU : la session est rattachée à son compte
         // (conservation longue durée, récupérable depuis n'importe quel appareil).
+        // Résilience : si la base est momentanément indisponible (lecture-seule,
+        // quota…), le SPU continue de répondre — seul le journal est perdu.
         const compte = await utilisateurDeReq(req).catch(() => null);
-        let session = corps.sessionId ? await db.session.findUnique({ where: { id: corps.sessionId } }) : null;
-        if (!session) {
-          session = await db.session.create({
-            data: {
-              mode,
-              anonymized: !compte,
-              userConsent: !!compte,
-              expiresAt: new Date(Date.now() + PURGE_SESSIONS_JOURS * 24 * 3600 * 1000),
-              ...(compte ? { userId: compte.id } : {}),
-            },
-          });
-        } else if (compte && !session.userId) {
-          session = await db.session.update({ where: { id: session.id }, data: { userId: compte.id, anonymized: false, userConsent: true } });
+        try {
+          let session = corps.sessionId ? await db.session.findUnique({ where: { id: corps.sessionId } }) : null;
+          if (!session) {
+            session = await db.session.create({
+              data: {
+                mode,
+                anonymized: !compte,
+                userConsent: !!compte,
+                expiresAt: new Date(Date.now() + PURGE_SESSIONS_JOURS * 24 * 3600 * 1000),
+                ...(compte ? { userId: compte.id } : {}),
+              },
+            });
+          } else if (compte && !session.userId) {
+            session = await db.session.update({ where: { id: session.id }, data: { userId: compte.id, anonymized: false, userConsent: true } });
+          }
+          sessionId = session.id;
+          // purge opportuniste RGPD des sessions expirées
+          db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
+        } catch (errBd) {
+          console.error('[api/ask] session (BD indisponible, on continue sans journal):', errBd);
         }
-        // purge opportuniste RGPD des sessions expirées
-        db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
 
         // ── PHASE 0 : détresse (avant tout appel externe) ──
         status('détresse');
@@ -92,33 +100,38 @@ export async function POST(req: NextRequest) {
           .catch(() => {});
 
         const enregistrer = async (flagged: boolean, extra: Record<string, unknown> = {}) => {
-          const echange = await db.echange.create({
-            data: {
-              sessionId: session.id,
-              question,
-              mode,
-              audioActive: corps.audioActive || false,
-              distressFlagged: flagged,
-              etape: 1,
-              payload: JSON.stringify(extra),
-            },
-          });
-          echangeId = echange.id;
-          return echange;
+          try {
+            const echange = await db.echange.create({
+              data: {
+                sessionId,
+                question,
+                mode,
+                audioActive: corps.audioActive || false,
+                distressFlagged: flagged,
+                etape: 1,
+                payload: JSON.stringify(extra),
+              },
+            });
+            echangeId = echange.id;
+            return echange;
+          } catch (errBd) {
+            console.error('[api/ask] échange (BD indisponible):', errBd);
+            return null;
+          }
         };
 
         if (p0.decision === 'distress') {
           // Règles absolues : aucun appel externe, aucune parabole, log anonymisé.
           const echange = await enregistrer(true);
           send('distress', { message: MESSAGE_DEDETRESSE, resources: RESSOURCES_DEDETRESSE });
-          send('final', { echangeId: echange.id, sessionId: session.id, perspectiveDisponible: false });
+          send('final', { echangeId: echange?.id || '', sessionId, perspectiveDisponible: false });
           return;
         }
 
         if (p0.decision === 'review' && !corps.bypassReview) {
           const echange = await enregistrer(true);
           send('distress', { message: MESSAGE_PRUDENT, resources: RESSOURCES_DEDETRESSE, prudent: true });
-          send('final', { echangeId: echange.id, sessionId: session.id, perspectiveDisponible: false });
+          send('final', { echangeId: echange?.id || '', sessionId, perspectiveDisponible: false });
           return;
         }
 
@@ -131,7 +144,7 @@ export async function POST(req: NextRequest) {
               message:
                 "Hmm, cette question n'est pas pour le mode Enfant. Les grands peuvent utiliser les autres modes. 🌱 Ici, on raconte des histoires douces — pose-moi une question sur ta journée, tes rêves ou tes animaux préférés !",
             });
-            send('final', { echangeId: echange.id, sessionId: session.id, perspectiveDisponible: false });
+            send('final', { echangeId: echange?.id || '', sessionId, perspectiveDisponible: false });
             return;
           }
         }
@@ -160,33 +173,37 @@ export async function POST(req: NextRequest) {
           send(e.type, e);
         }
 
-        const echange = await db.echange.create({
-          data: {
-            sessionId: session.id,
-            question,
-            synthese: resultat.synthese?.texte || null,
-            sourcesReponse: JSON.stringify(resultat.synthese?.sources || []),
-            paraboleId: resultat.parabole?.id || null,
-            interpretation: resultat.parabole?.interpretationChoisie || null,
-            histoire: resultat.histoire?.texte || null,
-            perspective: resultat.perspective || null,
-            audioActive: corps.audioActive || false,
-            distressFlagged: false,
-            mode,
-            etape: 1,
-            payload: JSON.stringify({
-              confiance: resultat.synthese?.confiance ?? null,
-              score: resultat.parabole?.score ?? null,
-              sousSeuil: resultat.parabole?.sousSeuil ?? false,
-              regeneration: resultat.histoire?.regeneration ?? 0,
-            }),
-          },
-        });
-        echangeId = echange.id;
+        try {
+          const echange = await db.echange.create({
+            data: {
+              sessionId,
+              question,
+              synthese: resultat.synthese?.texte || null,
+              sourcesReponse: JSON.stringify(resultat.synthese?.sources || []),
+              paraboleId: resultat.parabole?.id || null,
+              interpretation: resultat.parabole?.interpretationChoisie || null,
+              histoire: resultat.histoire?.texte || null,
+              perspective: resultat.perspective || null,
+              audioActive: corps.audioActive || false,
+              distressFlagged: false,
+              mode,
+              etape: 1,
+              payload: JSON.stringify({
+                confiance: resultat.synthese?.confiance ?? null,
+                score: resultat.parabole?.score ?? null,
+                sousSeuil: resultat.parabole?.sousSeuil ?? false,
+                regeneration: resultat.histoire?.regeneration ?? 0,
+              }),
+            },
+          });
+          echangeId = echange.id;
+        } catch (errBd) {
+          console.error('[api/ask] journalisation (BD indisponible):', errBd);
+        }
 
         send('final', {
           echangeId,
-          sessionId: session.id,
+          sessionId,
           perspectiveDisponible: mode === 'oracle' && !!resultat.parabole,
         });
       } catch (err) {

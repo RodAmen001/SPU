@@ -1,0 +1,321 @@
+════════════════════════════════════════════════════════════════════════
+5. LE PIPELINE COMPLET, ÉTAPE PAR ÉTAPE
+════════════════════════════════════════════════════════════════════════
+
+VUE D'ENSEMBLE (le dessin de la question, de l'entrée à la sortie) :
+
+  La question entre (1–2000 caractères)
+              │
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ PHASE 0 · filtre de détresse                  │
+  │   couche A : 14 expressions régulières        │
+  │   couche B : classifieur IA (score 0–1)       │
+  │   couche C : 51 mots négatifs + 18 rupture    │
+  │   → crise/vigilance : ressources + STOP       │
+  └───────────────────────────────────────────────┘
+              │ pass
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ SÉCURITÉ ENFANT (mode enfant uniquement)      │
+  │   couche A + 4 thèmes interdits               │
+  │   → interception : message doux + STOP        │
+  └───────────────────────────────────────────────┘
+              │ continu
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ 4 SOURCES EN PARALLÈLE (8 s max)              │
+  │   web · LLM réflexif · Wikipédia · DuckDuckGo │
+  │   cache 24 h · 20 req/min/IP                  │
+  │   toutes échouées → MODE DÉGRADÉ annoncé      │
+  └───────────────────────────────────────────────┘
+              │ extraits
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ SYNTHÈSE sourcée (≤ 3 phrases, ≤ 120 mots,    │
+  │ citations [1][2], score de confiance)         │
+  └───────────────────────────────────────────────┘
+              │
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ PARABOLE — TF-IDF (top 8) puis arbitrage IA   │
+  │ seuil 0,65 · 3 interprétations au choix       │
+  └───────────────────────────────────────────────┘
+              │
+              ▼
+  ┌───────────────────────────────────────────────┐
+  │ HISTOIRE sur mesure (ancre = la question)     │
+  │ filtre 19 patterns · stream 3 mots/35 ms      │
+  └───────────────────────────────────────────────┘
+              │
+              ▼
+  Journalisation (session + échange) · final ·
+  la parole est rendue.
+
+Ce chapitre détaille chaque bloc. Durée cible : environ 9 secondes, le
+streaming démarrant dès 0,8 seconde.
+
+5.1 PHASE 0 — LE FILTRE DE DÉTRESSE (3 couches, avant tout appel externe)
+
+C'est le rituel d'entrée du SPU. Trois couches indépendantes évaluent la
+question :
+
+  COUCHE A — lexicale, déterministe : 14 expressions régulières
+  explicites (français et anglais) visant les formulations les plus
+  graves (« mettre fin à mes jours », « mourir », « me suicider »,
+  « I want to kill myself »…). Une seule correspondance suffit : score 1.
+
+  COUCHE B — un classifieur IA (prompt figé, température 0,1) qui rend
+  un score de 0 à 1 et un niveau (aucune / vigilance / crise), avec un
+  délai d'attente de 12 secondes et un échec sans danger (échec = score
+  0). Optimisation : si la couche A a déjà détecté (score 1), la couche B
+  est forcée à 1 sans aucun appel IA.
+
+  COUCHE C — heuristique lexicale large : 51 mots négatifs (« triste »,
+  « hopeless », « alone »…) et 18 mots de rupture (« mourir », « tout
+  lâcher », « quitter »…) combinés dans une formule pondérée.
+
+  DÉCISION :
+    couche A = 1                        → distress (crise)
+    couche B ≥ 0,75                     → distress (crise)
+    couche B ≥ 0,5 ET couche C ≥ 0,7    → review  (vigilance)
+    sinon                               → pass    (continu normal)
+
+  CONSÉQUENCE (distress ou review) : la question NE PART PAS vers les
+  sources externes. L'utilisateur reçoit immédiatement un message de
+  dédétresse (crise) ou un message prudent (vigilance), accompagné des
+  ressources réelles : France 3114, SOS Amitié 09 72 39 40 50, Europe
+  112, USA 988/911, findahelpline.com pour le reste du monde. Aucune
+  parabole, aucune histoire : ce n'est pas le moment de raconter.
+
+  TRAÇABILITÉ ANONYME : la décision est journalisée dans la table
+  LogsDetresse sous forme de hash SHA-256 de la question + 3 scores +
+  décision. AUCUNE donnée textuelle n'est stockée — c'est vérifiable
+  directement dans le schéma de base de données.
+
+  QUALIFICATION : la batterie de tests officielle couvre 30 cas (10
+  évidents, 10 ambigus, 10 normaux) — 30/30 passés.
+
+5.2 LA SÉCURITÉ ENFANT
+
+En mode « enfant » (6–12 ans), deux gardes s'ajoutent avant tout
+traitement :
+  • la couche A de détresse (les mêmes 14 regex) ;
+  • un filtre thématique direct (sexualité, pornographie, nudité,
+  violence).
+Toute question interceptée reçoit un message doux, sans contenu, et
+l'échange est marqué « contenu_inapproprie_enfant » dans le journal.
+La question est par ailleurs limitée à 500 caractères dans l'interface
+enfant (contre 2000 en mode adulte).
+
+5.3 L'ORCHESTRATION DES 4 SOURCES (8 SECONDES MAXIMUM)
+
+Quatre moteurs sont interrogés EN PARALLÈLE (Promise.allSettled), chacun
+plafonné à 8 secondes :
+
+  1. RECHERCHE WEB (Z.AI web_search) — les 4 meilleurs résultats, chaque
+     extrait borné (nom 90 caractères, extrait 350 caractères).
+  2. INTELLIGENCE RÉFLEXIVE (LLM interne) — un éclairage court de 80
+     mots maximum, délai 12 secondes.
+  3. ENCYCLOPÉDIE (Wikipédia) — recherche d'une page Wikipédia puis
+     lecture via le lecteur de pages du SDK (l'accès direct Wikimedia
+     étant limité dans certains environnements), contenu nettoyé à
+     1200 caractères.
+  4. DUCKDUCKGO (Instant Answer API) — résumé abstrait + 2 sujets
+     liés maximum, sortie bornée à 900 caractères.
+
+  RÈGLES D'ORCHESTRATION :
+  • une source n'est retenue que si son texte dépasse 20 caractères ;
+  • le résultat de chaque source est mis en cache 24 heures en base
+    (table SourcesCache, clé = hash de la question + nom de source) —
+    même question posée 10 fois = 1 seul appel réel par source ;
+  • un garde-fou anti-abus limite le service à 20 requêtes par minute
+    et par adresse IP ;
+  • si TOUTES les sources échouent : « mode dégradé » — le flux saute
+    la synthèse et va directement à la parabole locale, en le disant.
+
+5.4 LA SYNTHÈSE SOURCÉE
+
+Les extraits retenus (900 caractères maximum par source) sont confiés à
+un prompt figé qui impose : 3 phrases maximum, 120 mots maximum,
+citations numérotées [1] [2], mention explicite des contradictions entre
+sources. La sortie contient la synthèse, la liste des sources utilisées
+et un score de confiance. Repli si l'IA est indisponible : affichage des
+extraits bruts avec une confiance honnêtement abaissée (0,35 à 0,4).
+
+5.5 LE CHOIX DE LA PARABOLE (TF-IDF + ARBITRAGE)
+
+Un système à deux étages :
+
+  ÉTAGE 1 — INDEX TF-IDF en mémoire (recalculé toutes les 5 minutes,
+  index séparés adulte/enfant). Chaque parabole est un « document »
+  composé de son texte + ses 3 interprétations + sa culture + le nom de
+  sa famille + ses mots-clés éditoriaux (comptés double). La
+  tokenisation normalise les accents, applique ~120 mots vides et un
+  stemming français (suffixes puis troncature à 6 caractères). La
+  recherche rend les 8 meilleurs candidats par similarité cosinus.
+
+  ÉTAGE 2 — ARBITRAGE IA : un modèle (température 0,2, délai 12
+  secondes) reçoit les candidats et doit identifier « le cœur
+  émotionnel » de la question, rendant l'index du candidat choisi,
+  un score de pertinence et quelle interprétation (parmi les 3) servir.
+  Sans arbitre disponible : le meilleur score cosinus est recalibré
+  (×1,35, plafonné à 0,9) — la machine continue sans se taire.
+
+  SEUIL DE QUALITÉ : 0,65. En dessous, la parabole est quand même
+  proposée mais marquée « sous seuil » — honnêteté affichée : c'est la
+  plus proche du corpus, pas la réponse parfaite.
+
+  MESURE OFFICIELLE : top-1 à 90 %, top-3 à 100 % sur la batterie de
+  tests (objectifs du cahier des charges : 80 % / 95 % — dépassés).
+
+5.6 L'HISTOIRE PERSONNALISÉE ET SON FILTRE
+
+  • Ancrage obligatoire : la préoccupation = la question réelle de
+    l'utilisateur. Interdiction de l'histoire générique décontextualisée.
+  • Longueurs imposées : 150–300 mots (adulte), 100–200 mots (enfant).
+  • Tonalité passée (positive / négative / neutre) détectée au vol par
+    l'IA — sauf en mode enfant, où elle reste neutre.
+  • FILTRE POST-GÉNÉRATION : 19 patterns interdits (violence, sexualité,
+    haine, peur extrême). En cas de rejet : 1 régénération avec
+    contraintes renforcées ; en dernier recours, un texte de repli
+    intégré (scène « rivière », version enfant = première phrase
+    seulement). Maximum 2 essais IA, chaque essai tracé (0/1/2).
+  • DIFFUSION : l'histoire est streamée par fragments de 3 mots, pause
+    de 35 ms entre fragments — un débit pensé pour la lecture à voix
+    haute.
+
+════════════════════════════════════════════════════════════════════════
+6. LES QUATRE MODES D'ÉCOUTE (PLUS LA PERSPECTIVE)
+════════════════════════════════════════════════════════════════════════
+
+  ORACLE — la réponse unique. Une question, une réponse complète en
+  trois couches (synthèse, parabole, histoire), puis un bouton
+  « perspective » optionnel qui ajoute 80 à 120 mots de mise en
+  recul (délai 60 secondes max). C'est le mode par défaut.
+
+  MENTOR — le dialogue en 3 étapes.
+    Étape 1 OUVERTURE : réponse complète + 2 « questions d'angle »
+    proposées.
+    Étape 2 APPROFONDISSEMENT : rebond de 120 mots maximum sur le choix
+    de l'utilisateur + 2 nouveaux angles. La phase 0 (détresse) est
+    rejouée sur CHAQUE réponse de l'utilisateur, pas seulement la
+    première.
+    Étape 3 SYNTHÈSE : synthèse de 90 mots maximum, confiance figée à
+    0,75, parabole finale (sans répéter la première interprétation),
+    histoire, et une question ouverte pour terminer. L'état du dialogue
+    est conservé dans la session (mentorState).
+
+  DEEP — le parcours contemplatif en 3 niveaux.
+    Niveau 1 OUVERTURE : réponse complète, débit d'affichage ralenti
+    (pause 70 ms).
+    Niveau 2 INTROSPECTION : méditation guidée de 80 à 120 mots +
+    une DEUXIÈME interprétation de la MÊME parabole (confiance 0,9).
+    Niveau 3 PERSPECTIVE : 60 à 100 mots + question ouverte finale.
+    L'état du parcours est conservé dans la session (deepState).
+
+  ENFANT — « Le Jardin des Contes » (6–12 ans).
+    6 suggestions illustrées avec emoji, champ limité à 500 caractères,
+    gros boutons, interrupteur voix dédié, lecture « théâtre »
+    automatique, corpus dédié de 15 contes, sécurité renforcée (5.2).
+
+  Chaque mode dispose de sa propre musique de fond (pistes MP3
+  sélectionnées pour leur tempo et leur énergie), avec fondu de sortie
+  de 1,5 seconde.
+
+════════════════════════════════════════════════════════════════════════
+7. LA VOIX ET LE SON : UN THÉÂTRE À 10 VOIX
+════════════════════════════════════════════════════════════════════════
+
+7.1 Le moteur serveur — Piper TTS (voix neuronales)
+
+  • 3 modèles français de référence : Tom (fr_FR-tom-medium),
+    Jessica / Pierre (fr_FR-upmc-medium, 2 locuteurs), Siwis
+    (fr_FR-siwis-medium).
+  • 10 profils de personnages dérivés : narrateur, conteur, sage,
+    homme jeune / mûr, femme jeune / mûre, vieille femme, petite fille
+    (hauteur ×1,38), petit garçon (×1,45) — corrections de hauteur via
+    ffmpeg (asetrate/atempo), débits entre 0,92 et 1,12.
+  • Génération à la demande par la route /api/tts (retour audio/wav,
+    cache navigateur 1 heure), disponibilité re-vérifiée toutes les
+    30 secondes, cache serveur LRU de 48 fichiers WAV (clé =
+    hash profil|débit|texte, texte ≤ 1200 caractères).
+  • Les modèles (~210 Mo au total) se téléchargent par un script dédié,
+    répétable et reprisable ; sans eux, l'application bascule
+    AUTOMATIQUEMENT sur la voix du navigateur (Web Speech API) — aucune
+    fonctionnalité ne disparaît, seule la qualité vocale change.
+
+7.2 Le client — le théâtre sonore
+
+  • Découpage du texte en segments d'environ 220 caractères.
+  • Rotation des voix : les dialogues (lignes entre guillemets) passent
+    en rotation parmi 3 voix « personnages », avec une respiration de
+    220 ms entre segments.
+  • Ducking : la musique de fond descend à 35 % pendant la parole.
+  • Contrôles : pause / reprise / stop, débit 0,6 à 1,4, réglages
+    persistés (narrateur + 2 à 4 personnages choisis par l'utilisateur).
+
+════════════════════════════════════════════════════════════════════════
+8. MÉMOIRE, CONFIDENTIALITÉ ET RGPD
+════════════════════════════════════════════════════════════════════════
+
+8.1 Ce qui est stocké, et où
+
+  La base SQLite (8 tables : Parabole, Session, User, Echange,
+  SourcesCache, Quarantaine, LogsDetresse, Sauvegarde) conserve :
+  • les sessions et leurs échanges (question, synthèse, sources, code
+    de parabole, interprétation, histoire) ;
+  • l'état des dialogues Mentor/Deep ;
+  • le cache des sources (24 h) ;
+  • les logs de détresse ANONYMES (hash + 3 scores + décision — jamais
+    de texte) ;
+  • les comptes (pseudo + hash de mot de passe uniquement).
+
+8.2 Les durées
+
+  • Purge opportuniste des sessions expirées à chaque /api/ask.
+  • Durée de vie des sessions anonymes : 90 jours (rallongée à 90 jours
+    à chaque rattachement à un compte).
+  • Logs techniques : 30 jours.
+
+8.3 Les droits (implémentés, pas déclaratifs)
+
+  • EFFACEMENT IMMÉDIAT : DELETE /api/session supprime la session et
+    tous ses échanges en cascade — effectif sur le champ.
+  • PORTABILITÉ : export du journal en .txt, .json ou .md (téléchargement
+    direct, en-têtes Content-Disposition) — le même moteur sert les
+    instantanés de compte.
+  • CONSENTEMENT : chaque session porte un drapeau userConsent et un
+    drapeau anonymized.
+  • LA RÈGLE D'OR affichée dans l'application : « seule la question part
+    vers l'extérieur » — les 4 sources ne reçoivent que le texte de la
+    question (tronqué), jamais d'identifiant, jamais d'historique.
+
+8.4 La transparence comme écran
+
+L'application comporte un écran « Transparence » (sources réelles listées,
+délais, cache, seuil de matching, limites du corpus) et un écran
+« Confidentialité & RGPD » — la politique n'est pas un PDF caché, elle est
+une page de l'application elle-même.
+
+8.5 LE CADRE LÉGAL DES MINEURS
+
+Le mode enfant est un ESPACE PROTÉGÉ, pas un service dédié certifié.
+Les faits, sans embellissement :
+
+  • ce que le code garantit : filtre de contenus AVANT traitement
+    (détresse + 4 thèmes), corpus dédié de 15 contes, tonalité toujours
+    neutre, histories filtrées par 19 patterns, question limitée à
+    500 caractères, aucune donnée identifiante demandée (pas d'e-mail,
+    pas d'âge, pas de nom réel) ;
+  • ce que le code ne garantit PAS : une qualification légale de
+    « service pour mineurs » au sens des réglementations spécialisées
+    (par exemple GDPR-K / COPPA). Le SPU ne fait pas de vérification
+    d'âge et ne peut pas empêcher un enfant de sortir du mode enfant ;
+  • la règle d'usage : l'accompagnement d'un adulte reste nécessaire.
+    Le mode enfant est conçu POUR être utilisé avec un adulte, comme un
+    livre de contes ;
+  • les limites de responsabilité : les réponses du SPU ne remplacent
+    jamais un avis médical, juridique ou financier ; ce principe est
+    imposé dans les prompts de l'application Android (mode nomade) et
+    de l'histoire, et il s'applique a fortiori aux mineurs.

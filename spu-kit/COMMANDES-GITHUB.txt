@@ -1,0 +1,119 @@
+════════════════════════════════════════════════════════════
+MIGRATION VERS GITHUB — COMMANDES PAS À PAS (SPU v4.4)
+════════════════════════════════════════════════════════════
+
+Le dépôt est PRÊT et DÉJÀ COMMITTÉ (branche « main »).
+Il n'y a plus qu'à créer votre compte, créer le dépôt en
+ligne, pousser, puis publier la Release avec l'APK.
+
+ÉTAPE 1 — CRÉER LE COMPTE (5 minutes, sans carte bancaire)
+────────────────────────────────────────────────────────────
+1. Ouvrez https://github.com/signup
+2. Entrez un e-mail, un mot de passe, choisissez un nom de
+   compte (par exemple : monsieur-spu).
+   → Notez ce nom : c'est votre COMPTE, il apparaîtra dans
+     toutes les URLs.
+3. Validez l'e-mail de confirmation.
+
+ÉTAPE 2 — CRÉER LE DÉPÔT VIDE (2 minutes)
+────────────────────────────────────────────────────────────
+1. Connecté sur github.com, cliquez le « + » en haut à
+   droite → « New repository ».
+2. Repository name : spu
+3. Description : Orchestrateur narratif — synthèse de
+   sources, parabole réelle, histoire personnalisée.
+4. Choisissez « Public » (nécessaire pour le téléchargement
+   libre de l'APK et la page de téléchargement).
+5. NE cochez AUCUNE case « Add a README », « Add
+   .gitignore » ni « Add a license » (le dépôt contient déjà
+   tout — sinon il y aurait un conflit).
+6. Cliquez « Create repository ».
+7. GitHub affiche une page de commandes : ignorez-la, vous
+   avez déjà tout ci-dessous.
+
+ÉTAPE 3 — POUSSER LE DÉPÔT (3 minutes)
+────────────────────────────────────────────────────────────
+Dézippez d'abord ce kit (s'il n'est pas déjà fait), puis
+ouvrez un terminal DANS le dossier spu-github/ et lancez :
+
+  git remote add origin https://github.com/VOTRE-COMPTE/spu.git
+  git push -u origin main
+
+(VOTRE-COMPTE = le nom choisi à l'étape 1. GitHub demandera
+votre identifiant et votre mot de passe : acceptez la
+fenêtre de connexion web qui s'ouvre — c'est le plus simple.)
+
+Vérification : rechargez https://github.com/VOTRE-COMPTE/spu
+→ vous devez voir le README avec les badges, le dossier
+src/, le livre blanc dans docs/.
+
+ÉTAPE 4 — PUBLIER LA RELEASE v1.2.0 AVEC L'APK (5 minutes)
+────────────────────────────────────────────────────────────
+C'est ICI que l'APK devient facile à trouver, pour tout le
+monde, pour toujours :
+
+1. Sur la page du dépôt, cliquez « Releases » (colonne de
+   droite) → « Create a new release ».
+2. Dans « Choose a tag », tapez : v1.2.0 puis cliquez
+   « Create new tag on publish ».
+3. Titre : « SPU Pocket v1.2.0 — mode nomade ».
+4. Description (copiez-collez) :
+
+   Première publication sur GitHub.
+   - spu-pocket-v1.2.0.apk : application Android signée
+     (62 Ko, Android 7+), mode nomade : les 65 paraboles
+     embarquées, fonctionne hors ligne.
+   - spu-pocket-v1.2.0.aab : bundle pour Google Play.
+   - Livre blanc SPU v4.4, Édition 2.0 (txt + md) dans docs/.
+
+5. Dans « Attach binaries », glissez ces 2 fichiers du
+   dossier _release-assets/ de ce kit :
+     • spu-pocket-v1.2.0.apk
+     • spu-pocket-v1.2.0.aab
+6. Cliquez « Publish release ».
+
+RÉSULTAT : votre APK a maintenant une adresse fixe :
+  https://github.com/VOTRE-COMPTE/spu/releases/latest
+Ce lien télécharge TOUJOURS la dernière version publiée.
+Partagez-le partout — il ne changera plus jamais.
+
+ÉTAPE 5 — ACTIVER LA PAGE DE TÉLÉCHARGEMENT (2 minutes)
+────────────────────────────────────────────────────────────
+Le dépôt contient une page web prête (index.html) qui
+présente le SPU et boutonne le téléchargement de l'APK :
+
+1. Sur la page du dépôt : Settings → Pages (menu de gauche).
+2. « Source » : Deploy from a branch.
+3. « Branch » : main — dossier : / (root) → Save.
+4. Attendez 1 à 2 minutes, rechargez la page : GitHub affiche
+   l'adresse de votre site :
+   https://VOTRE-COMPTE.github.io/spu/
+   La page détecte toute seule le nom du dépôt et pointe les
+   boutons vers vos Releases. Aucun code à modifier.
+
+ÉTAPE 6 — PROTÉGER LE KEYSTORE (1 minute, important)
+────────────────────────────────────────────────────────────
+Le fichier spu-release.keystore (dans _release-assets/) est
+la clé de signature de l'APK : SANS lui, impossible de publier
+une mise à jour installable par-dessus l'actuelle.
+  • Ne le mettez JAMAIS sur GitHub.
+  • Copiez-le sur au moins deux supports (clé USB, cloud
+    personnel).
+  • Notez le mot de passe : spu-2026-pocket (ou le vôtre si
+    vous construisez avec KS_PASS=...).
+
+PUBLIER UNE VERSION SUIVANTE (v1.3, v4.5…)
+────────────────────────────────────────────────────────────
+1. Commitez vos changements : git add -A && git commit -m
+   "v1.3 : ..." && git push
+2. Releases → Draft a new release → tag v1.3.0 → joignez les
+   nouveaux fichiers → Publish.
+Le lien « releases/latest » pointe automatiquement vers la
+nouvelle version.
+
+RÉSUMÉ DES ADRESSES FINALES
+────────────────────────────────────────────────────────────
+  Dépôt ............ https://github.com/VOTRE-COMPTE/spu
+  APK (toujours) ... https://github.com/VOTRE-COMPTE/spu/releases/latest
+  Page web ......... https://VOTRE-COMPTE.github.io/spu/
+  Livre blanc ...... .../spu/blob/main/docs/LIVRE-BLANC-SPU-v4.4-2026-11-07.txt

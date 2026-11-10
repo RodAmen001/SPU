@@ -1,0 +1,383 @@
+════════════════════════════════════════════════════════════════════════
+13. ARCHITECTURE TECHNIQUE ET CHIFFRES CLÉS
+════════════════════════════════════════════════════════════════════════
+
+13.1 La pile
+
+  Next.js 16 (App Router, build standalone) · React 19 · TypeScript ·
+  Tailwind 4 · shadcn/ui (45 composants) · Prisma 6 + SQLite ·
+  SDK z-ai-web-dev-sdk (LLM, recherche web, lecteur de pages) ·
+  Zustand (état persisté) · Piper TTS côté serveur · ffmpeg (hauteurs
+  de voix).
+
+13.2 Les chiffres
+
+  Code source (src/)              113 fichiers, dont 108 TS/TSX
+  Lignes TypeScript               13 091 au total,
+                                  dont 7 694 hors composants shadcn
+  Bibliothèque SPU (lib/spu/)     19 fichiers, 2 941 lignes
+  Composants SPU                  13 fichiers, 2 913 lignes
+  Routes API                      23 routes
+  Corpus (JSON)                   2 349 lignes (50 adulte + 15 enfant
+                                  + 2 dictionnaires de mots-clés)
+  Base de données                 8 tables
+  Scripts d'exploitation          ~50 scripts (tests, builds, voix,
+                                  captures, gardien, démon)
+
+13.3 Le tableau des 23 routes API
+
+  /api/ask                     Pipeline narratif SSE (Oracle/Enfant)
+  /api/repondre                Version JSON sans SSE, pour l'APK (CORS)
+  /api/mentor                  Dialogue Mentor SSE en 3 étapes
+  /api/deep                    Parcours contemplatif SSE en 3 niveaux
+  /api/perspective             Mise en perspective d'un échange
+  /api/journal                 Journal d'une session
+  /api/session [DELETE]        Effacement immédiat (RGPD)
+  /api/export                  Export txt/json/md du journal
+  /api/corpus                  Corpus public + familles (cache SW)
+  /api/health                  Ping léger (cache 5 min)
+  /api/version                 Versions serveur/APK + nouveautés (CORS)
+  /api/tts [GET/POST]          Capacités vocales / WAV Piper
+  /api/admin/validate          Validation quarantaine (jeton admin)
+  /api/compte/inscrire         Création de compte
+  /api/compte/connexion        Connexion
+  /api/compte/moi              Profil + 50 dernières sessions
+  /api/compte/deconnexion      Révocation du jeton
+  /api/compte/rattacher        Rattachement de sessions au compte
+  /api/compte/sessions         Lecture protégée d'une session
+  /api/compte/sauvegarder      Instantané du journal vers le compte
+  /api/compte/sauvegardes      Liste des instantanés
+  /api/compte/sauvegardes/[id] Téléchargement / suppression d'un
+                               instantané
+  /api                         Point d'entrée de test
+
+13.4 Les performances mesurées
+
+  Question Oracle complète      ~9 secondes (streaming dès 0,8 s)
+  Phase 0                       30/30 cas de test
+  Matching parabole             top-1 : 90 % · top-3 : 100 %
+  Cache sources                 24 h — une question répétée ne
+                                re-interroge aucune source
+  Voix                          cache LRU 48 WAV, génération à la
+                                demande
+
+13.5 LE PROFIL DE COÛT D'UNE QUESTION
+
+Un livre blanc doit parler d'argent. Ce que « coûte » réellement une
+question Oracle, en termes d'appels (le coût monétaire dépend du plan
+du SDK Z.AI sous-jacent — le design, lui, est fixe) :
+
+  APPELS MAXIMAUX PAR QUESTION (hors cache)
+  • 4 appels d'IA générative :
+      1 éclairage réflexif (≤ 220 tokens)
+      1 synthèse (≤ 500 tokens)
+      1 arbitrage de matching (≤ 150 tokens)
+      1 histoire (≤ 700 tokens)
+  • 3 accès externes :
+      1 recherche web (5 résultats)
+      1 lecture de page encyclopédique
+      1 requête DuckDuckGo
+
+  CE QUE LE CACHE 24 h ÉCONOMISE
+  La clé de cache est le hash de la question : une question posée 10
+  fois dans la journée ne déclenche les 3 accès externes QU'UNE FOIS.
+  Seule l'histoire (personnalisée par session) reste régénérée.
+
+  CE QUI EST GRATUIT PAR CONCEPTION
+  • la parabole : jamais générée, jamais payée — choisie dans le corpus ;
+  • le mode dégradé : si les sources externes sont indisponibles, le
+    système répond quand même depuis le corpus local, en le disant ;
+  • la voix du navigateur : repli gratuit si Piper n'est pas installé.
+
+  PLAFONDS DE PROTECTION
+  20 requêtes/minute/IP (anti-abus), troncatures systématiques des
+  prompts, échecs sans danger (chaque appel a un délai d'attente et un
+  repli) : le système ne peut pas « déraper » en cascade d'appels.
+
+════════════════════════════════════════════════════════════════════════
+14. LES LIMITES ACTUELLES — UNE ÉVALUATION HONNÊTE
+════════════════════════════════════════════════════════════════════════
+
+Un livre blanc qui ne dit pas ses limites est une brochure. Voici les
+nôtres, telles quelles :
+
+  1. DÉPENDANCE AU SDK Z.AI. La compréhension (LLM), la recherche web
+  et la lecture de pages Wikipédia passent par le SDK z-ai-web-dev-sdk.
+  Sans cette brique (clé indisponible, quota épuisé), le SPU reste en
+  mode dégradé : synthèse remplacée par des extraits bruts avec
+  confiance abaissée, parabole et histoire issues du corpus local.
+  Le service ne tombe pas, mais il s'appauvrit.
+
+  2. HÉBERGEMENT À CONFIRMER POUR UN ACCÈS PUBLIC PERMANENT. Le serveur
+  actuel vit dans un environnement de développement ; le lien de
+  partage fourni par la plateforme est un relais temporaire, et un
+  recyclage de l'environnement peut remettre la base à zéro (c'est
+  arrivé le jour de cette édition — voir Annexe B). Pour que des
+  utilisateurs externes l'utilisent chaque jour, il faut un hébergement
+  permanent avec base persistante (VPS, ou plateforme cloud) —
+  l'Annexe C décrit le déménagement pas à pas.
+
+  3. CORPUS DE 65 TEXTES — UNE RICHESSE VOLONTAIREMENT PETITE. La
+  bibliothèque est l'actif critique du projet. 65 textes bien sourcés
+  suffisent pour démontrer le concept ; ils ne couvrent pas toutes les
+  situations. La quarantaine (workflow complet : soumission, statut
+  pending, validation par jeton admin) est prête mais encore vide
+  d'usage réel.
+
+  4. MODULES PRÉPARÉS MAIS NON ACTIVÉS (code présent, non branchés) :
+  • deux sources externes supplémentaires, Grok (xAI) et Gemini
+    (Google), écrites et conformes aux règles 8 s / 24 h, en attente de
+    clés API ;
+  • un moteur de voix alternative embarquée (13 profils, exécution
+    navigateur via WebAssembly) ;
+  • deux composants d'interface anciens remplacés (chat-view,
+    régie-voix) qui traînent encore.
+
+  5. VOIX NEURONALES À TÉLÉCHARGER. Les 3 modèles Piper (~210 Mo) ne
+  sont pas inclus par défaut ; sans eux, la voix du navigateur prend le
+  relais automatiquement. Le script de téléchargement est reprisable.
+
+  6. JETONS EN MÉMOIRE. Les jetons d'authentification vivent en mémoire
+  serveur : un redémarrage déconnecte tout le monde (les sessions et
+  données restent, seule la reconnexion est nécessaire). C'est un choix
+  de simplicité et de sécurité, à revoir si le nombre d'utilisateurs
+  grandit.
+
+  7. UNE SEULE LANGUE. Tout est francophone (corpus, prompts, interface,
+  voix). Le multilingue est à la feuille de route, pas dans le code.
+
+  8. ÉPISTÉMOLOGIE DE LA PARABOLE. Une parabole « propose une lecture »,
+  elle ne « prouve » rien. Le SPU affiche toujours la culture d'origine
+  et l'interprétation comme une proposition, jamais comme un verdict.
+  C'est une limite assumée — d'où le bouton « perspective ».
+
+════════════════════════════════════════════════════════════════════════
+15. FEUILLE DE ROUTE
+════════════════════════════════════════════════════════════════════════
+
+  COURT TERME (déjà engagé)
+  • Serveur de production sous gardien automatique (redémarrage
+    automatique en cas de chute) — en place.
+  • Instantanés de compte rendus fonctionnels — fait.
+  • Harmonisation des versions sur 4.4 partout — fait.
+  • Reconstruction complète après le recyclage du 6 novembre (corpus
+    re-seedé, serveur réenregistré, APK reconstruite) — fait.
+  • Livre blanc enrichi (édition 1.1) + version compagnon .md — fait.
+
+  MOYEN TERME (décidé)
+  • Croissance du corpus vers 300 paraboles via la quarantaine
+    (soumission → pending → validated), avec interface d'administration.
+  • Branchement optionnel des sources Grok et Gemini (clés API
+    requises, mêmes règles : 8 s, cache 24 h).
+  • Hébergement permanent du serveur pour l'accès public continu
+    (VPS ou plateforme cloud), avec base de données persistante —
+    procédure en Annexe C.
+  • Sauvegarde automatique de la base (anti-recyclage) à ajouter au
+    gardien.
+
+  SUIVANT (annoncé dans l'application)
+  • Paraboles mensuelles (nouvelles entrées validées livrées
+    régulièrement).
+  • Voix enrichies (extension des profils Piper).
+  • Mode communautaire (partage de paraboles et de parcours).
+
+  VISION LONGUE
+  • Multilingue (interface, corpus, voix).
+  • Migration PostgreSQL + pgvector sans changer l'API (le schéma
+    SQLite est déjà conçu pour cette évolution).
+
+════════════════════════════════════════════════════════════════════════
+16. GLOSSAIRE
+════════════════════════════════════════════════════════════════════════
+
+  PARABOLE        Court récit traditionnel porteur d'une leçon. Au SPU :
+                  un texte réel, sourcé, culturellement identifié, avec
+                  3 interprétations officielles.
+  FAMILLE (F1–F10) Thème majeur d'une parabole : Patience, Détachement,
+                  Courage, Justice, Renouveau, Ancrage, Légèreté,
+                  Intégrité, Action, Relation.
+  PHASE 0         Étape d'entrée du pipeline : détection de détresse en
+                  3 couches (lexique, IA, heuristique), AVANT tout
+                  appel externe.
+  COUCHE A / B / C Les trois évaluateurs de la phase 0 (A = 14 regex
+                  explicites ; B = classifieur IA ; C = 51 mots négatifs
+                  + 18 mots de rupture).
+  DISTRESS / REVIEW / PASS   Les 3 décisions de la phase 0 (crise →
+                  ressources immédiates ; vigilance → message prudent ;
+                  pass → pipeline normal).
+  TF-IDF          Méthode classique de recherche par mots-clés pondérés
+                  (fréquence × rareté). Le SPU l'utilise pour choisir
+                  les 8 candidats parabole.
+  ARBITRAGE       Deuxième étage du matching : une IA choisit dans les
+                  8 candidats celui qui touche le « cœur émotionnel »
+                  de la question.
+  SEUIL (0,65)    Score minimal pour servir une parabole « en confiance ».
+                  En dessous, elle est proposée avec la mention « sous
+                  seuil ».
+  MODE DÉGRADÉ    Fonctionnement sans les 4 sources externes : le corpus
+                  local prend le relais, et le fait est annoncé.
+  SSE             Server-Sent Events : la technologie qui permet de
+                  streamer la réponse morceau par morceau dans le
+                  navigateur.
+  PWA             Progressive Web App : site installable sur l'écran
+                  d'accueil, fonctionnant partiellement hors ligne via
+                  un Service Worker.
+  QUARANTAINE     Salle d'attente des textes soumis : aucun texte ne
+                  entre dans la bibliothèque sans validation explicite.
+  MODE NOMADE     Fonction de SPU Pocket : poser une question sans
+                  aucun serveur configuré.
+  INSTANTANÉ      Copie immuable du journal d'une session, conservée
+                  sur un compte et téléchargeable en txt/json/md.
+  DUCKING         Abaissement automatique de la musique pendant la
+                  parole (à 35 % ici).
+  GARDIEN         Script de surveillance qui relance le serveur de
+                  production s'il s'arrête.
+  BUILD STANDALONE Compilation autonome du serveur (un dossier
+                  transportable : serveur + dépendances), la forme sous
+                  laquelle le SPU peut déménager vers un hébergement
+                  permanent (Annexe C).
+  MODE DÉGRADÉ Voir ci-dessus. PWA, QUARANTAINE, MODE NOMADE :
+                  voir les entrées correspondantes.
+
+════════════════════════════════════════════════════════════════════════
+ANNEXE A. INVENTAIRE DES FICHIERS CLÉS
+════════════════════════════════════════════════════════════════════════
+
+  APPLICATION WEB (version normale)
+  src/components/spu/spu-app.tsx   Cœur de l'interface (9 vues)
+  src/lib/spu/flux.ts              Le générateur de flux partagé
+  src/lib/spu/sources.ts           Orchestration des 4 sources
+  src/lib/spu/distress.ts          Phase 0 (couches A/B/C)
+  src/lib/spu/matching.ts          TF-IDF + arbitrage parabole
+  src/lib/spu/story.ts             Histoire + filtre de contenu
+  src/lib/spu/voix-neurales.ts     Moteur Piper TTS
+  src/lib/spu/compte.ts            scrypt + jetons + limites
+  src/data/corpus-adulte.json      50 paraboles (P001–P050)
+  src/data/corpus-enfant.json      15 contes (E001–E015)
+  prisma/schema.prisma             8 tables documentées
+  public/sw.js                     Service Worker (v4.4)
+
+  APPLICATION ANDROID
+  apk-spu/assets/spu/index.html    6 écrans
+  apk-spu/assets/spu/app.js        Logique + mode nomade
+  apk-spu/assets/spu/data.js       Les 65 textes embarqués (48 Ko)
+  apk-spu/AndroidManifest.xml      versionCode 3, versionName 1.2.0
+
+  EXPLOITATION
+  scripts/seed.ts                  Injection du corpus en base
+  scripts/test-phase0.ts           30 cas de détection
+  scripts/test-matching.ts         Précision du choix de parabole
+  scripts/build-apk.sh             Construction APK signée
+  scripts/installer-sdk.sh         Réinstallation du SDK Android
+  scripts/kit-pocket.sh            Kit de distribution complet
+  scripts/demonise.py              Démarrage démon (survit au shell)
+  scripts/gardien-serveur.sh       Surveillance + relance automatique
+
+  DISTRIBUTION
+  download/spu-pocket-v1.2.0.apk   L'APK signée (62 Ko)
+  download/spu-pocket-v1.2.0.aab   Bundle Play Store
+  download/kit-spu-pocket-v1.2.zip Kit tout-en-un
+  download/LIVRE-BLANC-SPU-v4.4-2026-11-06.txt    Ce document (txt)
+  download/LIVRE-BLANC-SPU-v4.4-2026-11-06.md     Version compagnon
+
+════════════════════════════════════════════════════════════════════════
+ANNEXE B. HISTORIQUE DES CORRECTIONS ET RECONSTRUCTIONS
+════════════════════════════════════════════════════════════════════════
+
+  Le livre blanc se doit de décrire un état VÉRIFIÉ. Voici l'historique
+  complet des incidents et corrections, sans filtre :
+
+  ÉDITION 1.0 (6 novembre, après-midi)
+
+  1. TABLE SAUVEGARDE MANQUANTE — trois routes d'API (création, liste,
+     téléchargement d'instantanés) utilisaient un modèle inexistant
+     dans le schéma de base. Le modèle Sauvegarde a été ajouté, la
+     table créée sans perte de données, et la chaîne complète testée
+     end-to-end. STATUT : fonctionnel.
+  2. CORPUS VIDE EN BASE — le comptage en base retournait 0 parabole.
+     Le seed a été rejoué : 65/65 textes réinjectés, confirmé par
+     /api/health (corpus: 65). STATUT : opérationnel.
+  3. QUATRE NUMÉROS DE VERSION COEXISTANTS (4.1/4.2/4.3/4.4) — toutes
+     les chaînes visibles harmonisées sur 4.4. STATUT : uniforme.
+  4. SERVEUR DE DÉVELOPPEMENT PAR DÉFAUT — remplacé par le serveur de
+     production (build standalone) démarré en démon, sous gardien.
+
+  ÉDITION 1.1 (6 novembre, soir) — RECYCLAGE DE L'ENVIRONNEMENT
+
+  5. L'ENVIRONNEMENT D'EXÉCUTION A ÉTÉ RECYCLÉ entre les deux éditions :
+     le dossier de livraison (APK, AAB, kit, livre blanc, keystore),
+     la base de données et le build de production ont disparu ; les
+     sources du projet (code, corpus JSON, scripts, assets de l'APK)
+     étaient intactes. Reconstruction intégrale refaite le jour même :
+     corpus re-seedé (65/65), modèle Sauvegarde recréé, versions
+     réharmonisées sur 4.4, SDK Android réinstallé, APK et AAB
+     reconstruites et re-signées (nouvelle clé : la première édition
+     de l'APK doit être désinstallée avant d'installer la nouvelle),
+     serveur de production relancé sous gardien, livre blanc régénéré
+     et enrichi. STATUT : opérationnel.
+  6. LEÇON RETENUE (déjà en feuille de route) : ajouter une sauvegarde
+     automatique de la base au gardien, et déménager vers un
+     hébergement permanent avec base persistante (Annexe C).
+
+  Ce document décrit l'état réel du projet au 6 novembre 2026 au soir,
+  après ces reconstructions.
+
+════════════════════════════════════════════════════════════════════════
+ANNEXE C. FAIRE TOURNER LE SPU SOI-MÊME
+════════════════════════════════════════════════════════════════════════
+
+  Le SPU est une application autonome : voici tout ce qu'il faut pour
+  la faire vivre sur une machine (PC, VPS, cloud), de l'installation à
+  l'hébergement permanent.
+
+  C.1 PRÉREQUIS
+  • Node 20+ ou Bun (recommandé, le projet est testé sous Bun)
+  • ~1 Go d'espace disque (code + node_modules + base)
+
+  C.2 LES DEUX VARIABLES D'ENVIRONNEMENT
+  • DATABASE_URL  = file:/chemin/vers/db/custom.db   (obligatoire)
+  • ADMIN_TOKEN   = un secret au choix               (optionnel :
+    active la route de validation de quarantaine)
+
+  C.3 DÉMARRAGE COMPLET (5 commandes)
+    bun install                    # dépendances
+    npx prisma db push             # crée les 8 tables
+    bun run scripts/seed.ts        # injecte les 65 textes
+    bun run build                  # build de production
+    NODE_ENV=production bun .next/standalone/server.js
+                                   # sert l'application sur :3000
+
+  Mode développement équivalent : bun run dev (rechargement à chaud).
+
+  C.4 VÉRIFICATION
+    curl http://localhost:3000/api/health
+    → {"status":"ok", ... "corpus":65 ...}
+    Un « corpus:65 » prouve que la base et le seed sont bons.
+
+  C.5 LES OPTIONS UTILES
+  • Voix neuronales : scripts/portable/telecharger-voix.sh
+    (Piper + 3 modèles FR, ~210 Mo, reprisable). Sans elles : voix du
+    navigateur automatiquement.
+  • Survie du serveur : python3 scripts/demonise.py serveur
+    (démarrage démon) + python3 scripts/demonise.py gardien
+    (relance automatique en cas de chute).
+  • Musique par mode : scripts/telecharger-musique.sh (14 pistes).
+
+  C.6 DÉMÉNAGER VERS UN HÉBERGEMENT PERMANENT
+  Le build standalone est fait pour ça : le dossier
+  .next/standalone/ contient le serveur ET ses dépendances.
+    1. louer un VPS (ou créer un service cloud Node/SQLite)
+    2. y copier : .next/standalone/ + public/ + db/ + src/data/
+    3. configurer DATABASE_URL vers un disque PERSISTANT
+    4. démarrer : NODE_ENV=production bun .next/standalone/server.js
+    5. poser un reverse-proxy HTTPS (Caddy : 3 lignes de configuration ;
+       un exemple Caddyfile est livré à la racine du projet)
+    6. démarrer le gardien pour la relance automatique
+  À partir de là, l'adresse du serveur est FIXE et PERMANENTE : c'est
+  cette adresse qu'on met en serveur par défaut de SPU Pocket, et les
+  utilisateurs n'ont plus jamais à la saisir.
+
+  C.7 SAUVEGARDE ANTI-PERTE (recommandé)
+  La base est un seul fichier (db/custom.db) : copier ce fichier hors
+  machine chaque nuit (cron) suffit à ne plus jamais perdre les
+  échanges lors d'un recyclage.

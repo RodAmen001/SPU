@@ -1,0 +1,164 @@
+════════════════════════════════════════════════════════════════════════
+9. LES COMPTES SPU ET LES INSTANTANÉS
+════════════════════════════════════════════════════════════════════════
+
+9.1 Un compte sans e-mail
+
+  • Inscription : pseudo (3 à 24 caractères) + mot de passe (6 à 128
+    caractères). AUCUNE adresse e-mail, aucun téléphone — le profil ne
+    stocke que le pseudo et ses sessions.
+  • Mot de passe : scrypt (node:crypto), sel aléatoire de 16 octets,
+    dérivation de 64 octets, comparaison à temps constant
+    (timingSafeEqual) — le stockage est résistant au vol de base.
+  • Anti brute-force : 15 essais par minute et par IP, sur l'inscription
+    comme sur la connexion. Message d'erreur unique et générique
+    (« Pseudo ou mot de passe incorrect » — impossible de savoir si le
+    pseudo existe).
+
+9.2 Le jeton d'authentification
+
+  • PAS de JWT : un jeton aléatoire de 64 caractères hexadécimaux
+    (32 octets d'entropie), stocké EN MÉMOIRE serveur (disparaît au
+    redémarrage — limité volontairement), durée de vie glissante de
+    7 jours, révocable par déconnexion.
+  • Transport : en-tête Authorization Bearer OU cookie spu_token.
+
+9.3 Rattacher ses sessions anonymes
+
+  L'export clé en main : une session utilisée sans compte peut être
+  « rattachée » au compte (par session ou par lot). Condition : la
+  session doit être anonyme (userId nul) — impossible de voler la
+  session d'un autre. Le rattachement repousse l'expiration à 90 jours.
+
+9.4 Les instantanés (« sauvegardes »)
+
+  • Un instantané copie le journal complet d'une session dans le compte
+    (titre ≤ 120 caractères, nombre d'échanges, mode).
+  • Le payload est une copie immuable au moment de l'export —
+    consultable et téléchargeable plus tard en txt/json/md, supprimable
+    individuellement (vérification de propriété avant toute action).
+  • NOTE : ce mécanisme a été rendu fonctionnel le jour de la première
+    édition (la table Sauvegarde manquait au schéma ; ajoutée, créée et
+    testée end-to-end — voir Annexe B).
+
+════════════════════════════════════════════════════════════════════════
+10. LA SÉCURITÉ TECHNIQUE
+════════════════════════════════════════════════════════════════════════
+
+  LIMITATION DE DÉBIT
+  20 requêtes/minute/IP sur les 5 routes de conversation (ask, repondre,
+  mentor, deep, perspective). L'adresse IP vient de l'en-tête
+  x-forwarded-for (compatible reverse-proxy). Garde-fou mémoire : la
+  table des IP est purgée au-delà de 5 000 entrées.
+
+  VALIDATION DES ENTRÉES
+  Analyse JSON protégée (400 si malformé), question bornée 1–2000
+  caractères (500 en mode enfant), étapes/niveaux forcés entre 1 et 3,
+  sessionId requis, troncatures systématiques avant tout prompt IA.
+
+  CORS MAÎTRISÉ
+  Seules deux routes exposent Access-Control-Allow-Origin: * :
+  /api/repondre et /api/version (nécessaire au WebView de l'application
+  Android, origine file://). Tout le reste n'expose pas de CORS.
+
+  ADMINISTRATION
+  La route de validation de quarantaine exige un jeton Bearer
+  (variable ADMIN_TOKEN) — 401 si absent.
+
+  AFFICHAGE SÛR
+  Échappement HTML de tout contenu affiché côté Android ; contenus
+  générés passés au filtre de 19 patterns avant diffusion.
+
+  PAS DE CLÉ CÔTÉ CLIENT
+  Aucune clé d'API n'est embarquée dans le code client ; les moteurs
+  externes sont appelés uniquement côté serveur.
+
+════════════════════════════════════════════════════════════════════════
+11. L'INTERFACE UTILISATEUR
+════════════════════════════════════════════════════════════════════════
+
+11.1 Les 9 vues
+
+  accueil · oracle · mentor · deep · enfant · journal · corpus ·
+  transparence · confidentialité
+
+11.2 L'accueil
+
+  Quatre cartes de mode avec leur description et leur musique ; les
+  badges de promesse sont MESURABLES : « 10 voix locales », « musique
+  par mode », « 65 paraboles sourcées », « 100 % local, sans clé API » ;
+  quatre accès directs (Journal, Corpus, Transparence, Confidentialité).
+
+11.3 La conversation
+
+  Fil de type messagerie horodatée (question à droite, réponse à
+  gauche), indicateur d'attente avec 5 phrases de patience en rotation
+  (toutes les 3,6 s), suggestions de questions, compteur 2000
+  caractères, raccourci Ctrl/⌘+Entrée, étiquettes « Étape n/3 » /
+  « Niveau n/3 », bouton perspective.
+
+11.4 Le journal de bord
+
+  Liste horodatée des échanges, ouverture des sessions passées, export
+  txt/json/md, export vers le compte, effacement total avec
+  confirmation. C'est le bras droit de la portabilité RGPD.
+
+11.5 Le corpus
+
+  Recherche plein texte (texte, culture, interprétations), filtres par
+  famille F1–F10, badges mode enfant, et — grâce au Service Worker —
+  version en cache disponible hors ligne (bandeau « hors-ligne » affiché
+  quand c'est le cas).
+
+11.6 L'installation (PWA)
+
+  L'application web est installable (manifest, icônes, Service Worker
+  v4.4) : stratégie réseau-d'abord pour la navigation et le corpus
+  (avec repli cache hors ligne), cache-d'abord pour les assets et les
+  médias.
+
+════════════════════════════════════════════════════════════════════════
+12. SPU POCKET, L'APPLICATION COMPAGNON (ANDROID)
+════════════════════════════════════════════════════════════════════════
+
+  Version actuelle : 1.2.0 (versionCode 3) — 62 Ko — Android 7.0+
+  (min SDK 24). Construite sans Gradle (aapt2 → javac → r8 → align →
+  sign), signée par une clé dédiée.
+
+  ARCHITECTURE
+  Un WebView plein écran chargeant une interface locale (4 fichiers :
+  index.html, app.js, data.js 48 Ko, style.css) avec un pont natif
+  SpuAndroid (TTS Android fr-FR : file d'attente, vitesse 0,3–2,5,
+  hauteur 0,3–2,0, liste des voix ; bouton retour délégué ; localStorage
+  activé).
+
+  LES 6 ÉCRANS
+  accueil · bibliothèque · lecteur · connexion serveur · poser une
+  question · à propos
+
+  LA BIBLIOTHÈQUE EMBARQUÉE
+  Les 65 textes complets (50 paraboles + 15 contes) avec leurs cultures,
+  familles, 3 interprétations et mots-clés ; recherche par sous-chaîne,
+  filtres adulte/enfant, favoris persistants, lecture vocale par blocs
+  (≤ 2600 caractères), vitesse/hauteur réglables et persistées.
+
+  DEUX FAÇONS DE POSER UNE QUESTION (écran « demander », v1.2)
+  • MODE SERVEUR : POST vers un serveur SPU (route /api/repondre,
+    délai 120 s) — réponse complète : synthèse sourcée, parabole avec
+    code et culture, histoire, nombre de sources et cohérence.
+  • MODE NOMADE (sans aucun serveur) : question envoyée à une IA publique
+    (délai 60 s) avec un prompt SPU figé (conteur bienveillant, 100 mots
+    maximum, parabole courte si connue, aucun conseil médical/juridique/
+    financier, termine en rendant la parole) — pensé pour tester l'esprit
+    du SPU chez soi sans rien configurer.
+
+  SÉCURITÉ LOCALE
+  Détection de détresse minimale (11 expressions françaises) avec
+  ressources locales affichées AVANT tout envoi réseau ; échappement
+  HTML de tout affichage ; mémorisation des 4 derniers serveurs
+  uniquement ; vérification de version via /api/version (délai 8 s).
+
+  DISTRIBUTION
+  APK signée + AAB (Play Store) + keystore + guides de publication pas
+  à pas + fiche Play Store + captures d'écran, réunis dans un kit
+  zip tout-en-un reconstruisible par script.

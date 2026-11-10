@@ -1,0 +1,343 @@
+════════════════════════════════════════════════════════════════════════
+            LIVRE BLANC — SPU : SYSTÈME PARABOLIQUE UNIVERSEL
+        Le concept, en son état actuel — édition « version normale »
+════════════════════════════════════════════════════════════════════════
+
+ÉDITION 1.1 — 6 novembre 2026
+HISTORIQUE DES ÉDITIONS DU DOCUMENT
+  Édition 1.0 — 6 novembre 2026 : première édition complète.
+  Édition 1.1 — 6 novembre 2026 : résumé 10 lignes, exemple réel de bout
+      en bout, schéma du pipeline, tableau comparatif, profil de coût,
+      cadre légal des mineurs, licence, annexe d'hébergement, bordures
+      raccourcies, version compagnon .md.
+
+LICENCE DU DOCUMENT : © 2026, projet SPU. Document du propriétaire du
+système, rédigé avec assistance d'IA et vérifié sur le code réel.
+Réutilisation autorisée avec mention du projet ; la bibliothèque de
+textes suit ses propres sources (Wikimédia, licences correspondantes).
+
+Document rédigé le 6 novembre 2026
+Serveur : SPU v4.4  ·  Application compagnon : SPU Pocket v1.2.0
+Portée : ce livre décrit le SPU complet (application web / serveur),
+        pas seulement l'application Android. SPU Pocket fait l'objet
+        de la section 12 uniquement.
+
+────────────────────────────────────────────────────────────────────────
+CE LIVRE EN 10 LIGNES (pour aller vite)
+────────────────────────────────────────────────────────────────────────
+
+  1. Le SPU répond à une question de vie en TROIS couches : une synthèse
+     sourcée, une parabole réelle, une histoire sur mesure.
+  2. Il interroge 4 sources en 8 secondes (web, IA, Wikipédia,
+     DuckDuckGo) et cite ses sources — jamais d'affirmation nue.
+  3. Il ne génère JAMAIS de sagesse : 65 textes vérifiés, 5 cultures,
+     35 URLs documentées, validation en quarantaine pour tout ajout.
+  4. La sécurité passe avant tout : détection de détresse en 3 couches
+     AVANT tout appel externe, espace enfant protégé.
+  5. Confidentialité : sessions anonymes, purge 90 jours, effacement
+     immédiat, logs de détresse sans aucun texte.
+  6. Quatre modes : Oracle (unique), Mentor (3 étapes), Deep
+     (contemplatif), Enfant (6–12 ans, contes).
+  7. Voix : théâtre sonore à 10 profils français (Piper TTS), musique
+     par mode, débit réglable.
+  8. Web installable hors ligne (PWA) + APK Android de 62 Ko avec mode
+     nomade sans serveur.
+  9. Chiffres mesurés : phase 0 à 30/30, matching top-1 à 90 %,
+     top-3 à 100 %, réponse Oracle ~9 s (streaming dès 0,8 s).
+ 10. Devise d'interface : « Un mentor, pas un maître. »
+
+────────────────────────────────────────────────────────────────────────
+SOMMAIRE
+────────────────────────────────────────────────────────────────────────
+
+ 1.  Résumé exécutif
+ 2.  La vision et les principes fondateurs
+       2.4  Ce qui change concrètement : IA générale vs SPU
+ 3.  Le concept central : une réponse en trois couches
+       3.5  Un exemple réel, de bout en bout
+ 4.  La bibliothèque universelle : 65 textes, 5 cultures, 10 familles
+ 5.  Le pipeline complet, étape par étape
+       5.1  Phase 0 — le filtre de détresse (3 couches)
+       5.2  La sécurité enfant
+       5.3  L'orchestration des 4 sources (8 secondes)
+       5.4  La synthèse sourcée
+       5.5  Le choix de la parabole (TF-IDF + arbitrage)
+       5.6  L'histoire personnalisée et son filtre
+ 6.  Les quatre modes d'écoute (plus la perspective)
+ 7.  La voix et le son : un théâtre à 10 voix
+ 8.  Mémoire, confidentialité et RGPD
+       8.5  Le cadre légal des mineurs
+ 9.  Les comptes SPU et les instantanés
+10.  La sécurité technique
+11.  L'interface utilisateur
+12.  SPU Pocket, l'application compagnon (Android)
+13.  Architecture technique et chiffres clés
+       13.5  Le profil de coût d'une question
+14.  Les limites actuelles — une évaluation honnête
+15.  Feuille de route
+16.  Glossaire
+Annexe A.  Inventaire des fichiers clés
+Annexe B.  Historique des corrections et reconstructions
+Annexe C.  Faire tourner le SPU soi-même
+
+════════════════════════════════════════════════════════════════════════
+1. RÉSUMÉ EXÉCUTIF
+════════════════════════════════════════════════════════════════════════
+
+Le Système Parabolique Universel (SPU) est un orchestrateur narratif
+multi-IA : l'utilisateur pose une question de vie — courage, patience,
+justice, deuil, décision, relation — et le SPU lui répond en trois
+couches superposées :
+
+  (1) une synthèse claire et sourcée, construite en 8 secondes maximum
+      à partir de quatre sources d'intelligence interrogées en
+      parallèle ;
+  (2) une parabole réelle, tirée d'une bibliothèque closse de 65 textes
+      authentiques issus de 5 cultures du monde, avec son interprétation ;
+  (3) une histoire courte, écrite sur mesure pour la préoccupation
+      précise de l'utilisateur, puis filtrée contre 19 patterns de
+      contenus inappropriés.
+
+Le tout est servi par une application web installable (PWA), avec quatre
+modes d'écoute (Oracle, Mentor, Deep, Enfant), un théâtre sonore à dix
+voix neuronales françaises, un journal de bord exportable, des comptes
+anonymes sans adresse e-mail et une politique de confidentialité stricte
+(purge à 90 jours, effacement immédiat, logs de détresse sans aucune
+donnée textuelle).
+
+Une application Android compagnon, SPU Pocket (62 Ko), embarque la même
+bibliothèque hors ligne et propose deux façons de poser ses questions :
+via un serveur SPU, ou en « mode nomade » sans aucun serveur.
+
+Le SPU est construit autour d'une conviction simple : les IA générales
+répondent vite, mais elles répondent souvent sans racines, sans profondeur
+culturelle et sans retenue. Le SPU fait l'inverse : il ancre chaque
+réponse dans une sagesse documentée et vérifiable, et il refuse
+délibérément d'inventer de la sagesse. Sa devise d'interface résume sa
+place : « Un mentor, pas un maître. »
+
+État de santé au jour de la rédaction : corpus complet (65/65 textes),
+base de données opérationnelle (8 tables), 23 routes API, pipeline de
+sécurité testé (30/30 cas de détection), matching mesuré (top-1 : 90 %,
+top-3 : 100 % sur la batterie de tests), serveur de production actif sous
+la surveillance d'un gardien automatique.
+
+USAGE RÉEL : le système sert déjà de vraies conversations (l'exemple de
+la section 3.5 est un échange réel journalisé). Compteurs au jour de
+l'édition : la base a été reconstruite le 6 novembre au soir (recyclage
+de l'environnement d'exécution ; les échanges de la journée ont été
+perdus avec elle), les compteurs repartent de zéro et l'architecture a
+été rendue résistante à ce type d'incident (Annexe B).
+
+════════════════════════════════════════════════════════════════════════
+2. LA VISION ET LES PRINCIPES FONDATEURS
+════════════════════════════════════════════════════════════════════════
+
+2.1 Le problème
+
+Une question de vie posée à une intelligence artificielle générale reçoit
+une réponse fluide, polie… et interchangeable. Le même ton, la même
+structure, les mêmes conseils « équilibrés ». Rien n'ancre la réponse
+dans une culture, rien ne la rend mémorable, rien ne la rend discutable.
+Et pour un enfant, ces réponses sont carrément dangereuses à utiliser
+telles quelles.
+
+2.2 La réponse du SPU
+
+Le SPU ne prétend pas répondre mieux que les grandes IA : il répond
+autrement, en combinant trois choses que les IA générales ne combinent
+pas spontanément :
+
+  • la largeur — une synthèse qui croise plusieurs sources réelles
+    (recherche web, encyclopédie, moteur d'avis instantanés) et cite
+    ses références ;
+  • la profondeur — une parabole authentique, choisie dans une
+    bibliothèque documentée, avec son interprétation et ses sources ;
+  • la proximité — une histoire courte écrite pour la situation
+    concrète de la personne, jamais générique.
+
+2.3 Les principes fondateurs (constatés dans le code)
+
+  PRINCIPE 1 — CORPUS CLOS. Le SPU ne génère jamais de parabole. Les 65
+  textes viennent de sources documentées (Wikisource, Wikipédia,
+  Wikiquote — 35 URLs vérifiées). Un texte nouveau entre par la
+  « quarantaine », un workflow de validation à deux statuts (pending →
+  validated / rejected), protégé par un jeton d'administration. La
+  sagesse ne s'invente pas, elle se transmet.
+
+  PRINCIPE 2 — HONNÊTETÉ DE DÉGRADATION. Si les quatre sources externes
+  échouent (réseau coupé, quota épuisé), le SPU ne bluffe pas : il
+  bascule en « mode dégradé » et puis directement dans la bibliothèque
+  locale, en le disant. La cohérence affichée descend, le signal
+  « sous seuil » apparaît quand une parabole n'est que « la plus proche
+  du corpus ».
+
+  PRINCIPE 3 — SÉCURITÉ AVANT INTELLIGENCE. La phase 0 (détresse) et la
+  couche enfant s'exécutent AVANT tout appel externe. Aucune question
+  en détresse ne part vers un moteur tiers ; elle reçoit une réponse
+  humaine, des ressources réelles (numéros d'urgence), et rien d'autre.
+
+  PRINCIPE 4 — PRIVATÉ PAR CONSTRUCTION. Sessions anonymes par défaut,
+  purge à 90 jours, effacement immédiat sur demande, logs de détresse
+  réduits à un hash SHA-256 et trois scores numériques — jamais de
+  texte.
+
+  PRINCIPE 5 — RENDRE LA PAROLE. Chaque parcours se termine par une
+  question ouverte : le SPU n'est pas un oracle qui clôt, c'est un
+  mentor qui ouvre. La perspective est toujours un ajout (80 à 120
+  mots), jamais une conclusion.
+
+  PRINCIPE 6 — ACCESSIBILITÉ RÉELLE. Lecture vocale complète à 10 voix,
+  débit réglable de 60 à 140 %, mode enfant avec gros boutons et
+  théâtre sonore, application Android de 62 Ko qui fonctionne sur des
+  téléphones modestes (Android 7+), PWA installable qui survit hors
+  ligne.
+
+2.4 CE QUI CHANGE CONCRÈTEMENT : IA GÉNÉRALE vs SPU
+
+  Critère              | IA générale         | SPU
+  ------------------+------------------+------------------
+  Sagesse              | générée à la volée  | corpus clos, 65 textes
+                       |                     | sourcés et vérifiables
+  Sources              | souvent citées de   | 4 sources réelles en
+                       | mémoire sans lien   | parallèle + URLs
+  Réponse              | un bloc de conseils | 3 couches : synthèse,
+                       |                     | parabole, histoire
+  Mémorabilité         | faible (ton unique) | forte (le récit ancre)
+  Contradictions       | souvent lissées     | à mentionner (imposé)
+  Question de détresse | répond au contenu   | STOP immédiat + numéro
+                       |                     | d'urgence réel
+  Mode enfant          | avertissement       | filtre avant traitement,
+                       | éventuel            | corpus de 15 contes
+  Hors ligne           | non                 | PWA + bibliothèque
+                       |                     | embarquée dans l'APK
+  Fin de la réponse    | un verdict          | une question ouverte
+
+  Ce tableau est l'argument le plus court du projet : le SPU n'est pas
+  « une IA de plus », c'est une autre architecture de la réponse.
+
+════════════════════════════════════════════════════════════════════════
+3. LE CONCEPT CENTRAL : UNE RÉPONSE EN TROIS COUCHES
+════════════════════════════════════════════════════════════════════════
+
+3.1 Couche 1 — la synthèse sourcée
+
+Le SPU interroge quatre sources en parallèle et en 8 secondes maximum
+(voir 5.3), puis les fait converger en une synthèse de 3 phrases et
+120 mots maximum, avec citations numérotées [1] [2] et un indicateur de
+confiance (cohérence des sources, en pourcentage). Les contradictions
+entre sources doivent être mentionnées, pas lissées.
+
+3.2 Couche 2 — la parabole
+
+Une parabole réelle est choisie dans la bibliothèque par un système à
+deux étages (scoring TF-IDF puis arbitrage par IA, voir 5.5). Elle est
+présentée avec : son énoncé, sa culture d'origine, sa famille thématique
+(F1 à F10), son code d'identification (P001…P050 / E001…E015), et l'une
+de ses 3 interprétations officielles. C'est le cœur du SPU : le point
+où la réponse devient mémorable et discutable — parce qu'elle est
+sourcée et datée culturellement.
+
+3.3 Couche 3 — l'histoire
+
+Une histoire courte (150 à 300 mots adulte, 100 à 200 mots enfant) est
+écrite par l'IA avec pour seule consigne d'ancrage : la préoccupation
+réelle de l'utilisateur. Elle est passée à un filtre de contenu (19
+patterns interdits) ; en cas d'échec, une régénération renforcée, puis
+en dernier recours un texte de repli intégré — le SPU préfère une
+histoire ordinaire à une histoire problématique.
+
+3.4 Ce qui circule réellement
+
+Le déroulé visible par l'utilisateur : un fil de discussion de type
+messagerie (question à droite, réponse à gauche), un indicateur
+d'attente avec 5 phrases de patience en rotation, puis les trois couches
+qui apparaissent en streaming (l'histoire arrive par fragments de 3 mots,
+avec une pause de 35 ms — un débit calibré pour la lecture à voix haute).
+
+3.5 UN EXEMPLE RÉEL, DE BOUT EN BOUT
+
+Échange réel de mise au point (journalisé le 6 novembre 2026, mode
+Oracle via la route JSON de l'application Android) :
+
+  LA QUESTION (réelle)
+  « Comment retrouver courage et patience quand tout semble échouer ? »
+
+  CE QUI S'EST PASSÉ (chronologie réelle, ~17 secondes)
+  • 0 s      la question entre ; la phase 0 la classe « pass » (aucune
+             détresse) ; le mode n'est pas enfant — fil enfantine OK ;
+  • 0–8 s    4 sources interrogées en parallèle ; les extraits
+             retenus sont mis en cache 24 h ;
+  • ~8–10 s  synthèse sourcée affichée (≤ 3 phrases, citations,
+             indicateur de cohérence) ;
+  • ~10–12 s MATCHING : la parabole P012 est retenue —
+             « Tombe sept fois, relève-toi huit. »
+             Culture : Asie · Famille F3 (Courage) · score au-dessus
+             du seuil de confiance ;
+  • ~12–17 s l'histoire (ancre : l'échec qui se répète) arrive en
+             streaming par fragments de 3 mots, lisible à voix haute ;
+  • 17 s     l'échange est journalisé (session + échange + code de
+             parabole), le SPU rend la parole.
+
+  CE QUE L'UTILISATEUR VOIT, ÉCRAN PAR ÉCRAN
+  1. son message à droite, l'indicateur de patience en rotation ;
+  2. « 🧭 Réponse » : la synthèse + 🔎 n sources + cohérence X % ;
+  3. « 📜 Parabole » : le proverbe, sa culture, son interprétation
+     (« L'échec n'est définitif que si l'on choisit d'y rester. ») ;
+  4. « 📖 Histoire » : le récit personnalisé, avec le bouton
+     « ▶ Écouter la réponse ».
+
+  Pourquoi c'est différent d'une réponse d'IA générale : l'expérience
+  se termine sur un proverbe ASIATIQUE DATÉ ET SOURCÉ que l'utilisateur
+  peut rechercher, partager, contredire — pas sur un conseil flottant.
+
+════════════════════════════════════════════════════════════════════════
+4. LA BIBLIOTHÈQUE UNIVERSELLE : 65 TEXTES, 5 CULTURES, 10 FAMILLES
+════════════════════════════════════════════════════════════════════════
+
+4.1 Composition
+
+  • 50 paraboles adultes : codes P001 à P050
+  • 15 contes enfants : codes E001 à E015 (mode « Le Jardin des Contes »)
+  • Total : 65 textes — la même bibliothèque exacte est embarquée dans
+    l'application Android (fichier data.js, 48 Ko)
+
+4.2 Les 5 cultures
+
+  Afrique de l'Ouest · Asie · Méditerranée · Nordique / Celtique ·
+  Universaliste
+
+  Répartition adulte : 10 textes par culture (50 au total) ;
+  répartition enfant : 4 cultures, 15 contes.
+
+4.3 Les 10 familles thématiques (F1 à F10)
+
+  F1 Patience      F2 Détachement   F3 Courage       F4 Justice
+  F5 Renouveau     F6 Ancrage       F7 Légèreté      F8 Intégrité
+  F9 Action        F10 Relation
+
+4.4 La documentation de chaque texte
+
+Chaque entrée porte exactement : un code unique, le texte, la culture,
+la famille, TROIS interprétations (le matching choisit laquelle servir),
+des sources (libellé + URL) et 20 à 25 mots-clés éditoriaux utilisés par
+l'index de recherche (comptés double dans le score).
+
+4.5 L'origine documentée — 35 URLs uniques
+
+  fr.wikiquote.org   19 URLs
+  fr.wikipedia.org   12 URLs
+  fr.wikisource.org   3 URLs
+  en.wikisource.org   1 URL
+
+  Un script dédié (verify-urls) permet de re-vérifier les 35 liens à la
+  demande.
+
+4.6 Pourquoi un corpus clos est une force
+
+Un corpus de 65 textes vérifiés vaut mieux que 10 000 « citations »
+générées dont personne ne peut vérifier l'origine. Le SPU assume cette
+petitesse volontaire : c'est la condition de sa fiabilité. La croissance
+prévue (voir feuille de route, section 15) passe par la quarantaine —
+un texte soumis n'entre dans la bibliothèque qu'après validation — pas
+par la génération.
