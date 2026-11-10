@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0c1124">
+<title>SPU Pocket — Système Parabolique Universel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════ ACCUEIL ══════════ -->
+  <section id="ecran-accueil" class="ecran active">
+    <div class="hero">
+      <svg class="logo" viewBox="0 0 120 120" aria-hidden="true">
+        <defs>
+          <radialGradient id="fond" cx="50%" cy="38%" r="75%">
+            <stop offset="0%" stop-color="#1b2450"/><stop offset="100%" stop-color="#0c1124"/>
+          </radialGradient>
+          <linearGradient id="or" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#f0d68a"/><stop offset="100%" stop-color="#c9992e"/>
+          </linearGradient>
+        </defs>
+        <circle cx="60" cy="60" r="57" fill="url(#fond)" stroke="#c9992e" stroke-width="1.5"/>
+        <path d="M 22 78 Q 60 10 98 78" fill="none" stroke="url(#or)" stroke-width="4" stroke-linecap="round"/>
+        <line x1="60" y1="44" x2="60" y2="66" stroke="url(#or)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="60" cy="72" r="6" fill="url(#or)"/>
+        <path d="M 34 88 Q 60 100 86 88" fill="none" stroke="#e8d9a0" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+      </svg>
+      <h1>SPU <span>Pocket</span></h1>
+      <p class="sous-titre">Système Parabolique Universel</p>
+      <p class="badge-eval">Version d'évaluation 1.2 — des mises à jour régulières viendront ✨</p>
+    </div>
+
+    <div class="cartes">
+      <button class="carte" data-nav="demander">
+        <span class="carte-ico">💬</span>
+        <span class="carte-titre">Poser une question <span class="badge-nouveau">nouveau</span></span>
+        <span class="carte-desc">Tape ta question et reçois une réponse — <b>sans serveur</b> (mode nomade) ou en narration complète avec un serveur SPU.</span>
+      </button>
+      <button class="carte" data-nav="bibliotheque">
+        <span class="carte-ico">📖</span>
+        <span class="carte-titre">Bibliothèque</span>
+        <span class="carte-desc"><b id="nb-textes">65</b> paraboles et fables, avec leurs interprétations. Fonctionne <b>hors ligne</b>.</span>
+      </button>
+      <button class="carte" data-nav="connexion">
+        <span class="carte-ico">🌐</span>
+        <span class="carte-titre">Serveur complet</span>
+        <span class="carte-desc">Histoires interactives, théâtre sonore, journal — en te connectant à un serveur SPU.</span>
+      </button>
+      <button class="carte" data-nav="apropos">
+        <span class="carte-ico">ℹ️</span>
+        <span class="carte-titre">À propos &amp; mises à jour</span>
+        <span class="carte-desc">Feuille de route, nouveautés à venir, vérifier les mises à jour.</span>
+      </button>
+    </div>
+
+    <p class="pied">« Seul on va vite, ensemble on va loin. »</p>
+  </section>
+
+  <!-- ══════════ BIBLIOTHÈQUE ══════════ -->
+  <section id="ecran-bibliotheque" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="accueil" aria-label="Retour">‹</button>
+      <h2>Bibliothèque</h2>
+      <button class="etoile-filtre" id="btn-favoris" title="Afficher uniquement les favoris">☆</button>
+    </header>
+    <div class="onglets" role="tablist">
+      <button class="onglet active" data-onglet="adulte" role="tab">Paraboles <small id="cpt-adulte"></small></button>
+      <button class="onglet" data-onglet="enfant" role="tab">Fables enfant <small id="cpt-enfant"></small></button>
+    </div>
+    <div class="recherche-wrap">
+      <input type="search" id="recherche" placeholder="Rechercher : thème, mot-clé, culture…" autocomplete="off">
+    </div>
+    <div id="liste" class="liste" role="list"></div>
+    <p id="liste-vide" class="liste-vide" hidden>Aucun texte ne correspond à ta recherche.</p>
+  </section>
+
+  <!-- ══════════ LECTEUR ══════════ -->
+  <section id="ecran-lecteur" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="bibliotheque" aria-label="Retour">‹</button>
+      <h2 id="lec-code"></h2>
+      <button class="etoile-filtre" id="btn-favori" title="Ajouter aux favoris">☆</button>
+    </header>
+    <div class="lecteur">
+      <p class="lec-culture" id="lec-culture"></p>
+      <blockquote class="lec-texte" id="lec-texte"></blockquote>
+
+      <div class="lec-lectures">
+        <h3>Interprétations</h3>
+        <ol id="lec-interpretations"></ol>
+      </div>
+
+      <div class="lec-sources">
+        <h3>Sources</h3>
+        <ul id="lec-sources"></ul>
+      </div>
+
+      <div class="lec-audio">
+        <button id="btn-ecouter" class="btn-or">▶ Écouter</button>
+        <button id="btn-stop" class="btn-simple" hidden>⏹ Stop</button>
+        <div class="curseurs">
+          <label>Vitesse <output id="out-vitesse">1,0×</output>
+            <input type="range" id="cur-vitesse" min="0.6" max="1.6" step="0.1" value="1"></label>
+          <label>Hauteur <output id="out-hauteur">1,0×</output>
+            <input type="range" id="cur-hauteur" min="0.7" max="1.4" step="0.05" value="1"></label>
+        </div>
+        <p class="moteur" id="moteur-voix"></p>
+      </div>
+
+      <div class="lec-nav">
+        <button class="btn-simple" id="btn-prec">‹ Précédent</button>
+        <button class="btn-simple" id="btn-suiv">Suivant ›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ CONNEXION SERVEUR ══════════ -->
+  <section id="ecran-connexion" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="accueil" aria-label="Retour">‹</button>
+      <h2>Serveur complet</h2>
+    </header>
+    <div class="contenu">
+      <div class="bloc">
+        <h3>🎁 Ce qui est déjà dans ta poche</h3>
+        <p>La bibliothèque complète des <b>65 textes</b> avec interprétations, la recherche, les favoris et la lecture à voix haute — <b>sans internet, sans compte</b>.</p>
+      </div>
+      <div class="bloc">
+        <h3>🌍 Ce qu'ajoute un serveur SPU</h3>
+        <p>En te connectant à un serveur SPU (celui d'un proche sur le même réseau, ou un serveur hébergé sur un cloud), tu accèdes à :</p>
+        <ul class="puces">
+          <li>histoires interactives générées à partir de tes questions,</li>
+          <li>le théâtre sonore avec voix neuronales masculines et féminines,</li>
+          <li>ton journal personnel et tes comptes,</li>
+          <li>l'export de tes histoires.</li>
+        </ul>
+      </div>
+      <div class="bloc">
+        <h3>Adresse du serveur</h3>
+        <div class="ligne-url">
+          <input type="url" id="url-serveur" placeholder="ex. http://192.168.1.20:3000 ou https://mon-spu.fr" autocomplete="off" inputmode="url">
+          <button id="btn-ouvrir" class="btn-or">Ouvrir</button>
+        </div>
+        <div id="serveurs-recents" class="recents"></div>
+        <p class="note">Sur le même réseau Wi-Fi qu'un ordinateur qui fait tourner le SPU (paquet portable), l'adresse ressemble à <code>http://IP-DU-PC:3000</code>.</p>
+      </div>
+      <div class="bloc">
+        <h3>🔄 Mises à jour</h3>
+        <p id="maj-texte">Si un serveur est configuré, SPU Pocket peut vérifier les nouveautés (nouvelles paraboles, nouvelles fonctions) et te dire où récupérer la version la plus récente.</p>
+        <button id="btn-maj" class="btn-simple">Vérifier les mises à jour</button>
+        <div id="maj-resultat" class="maj-resultat" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ POSER UNE QUESTION ══════════ -->
+  <section id="ecran-demander" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="accueil" aria-label="Retour">‹</button>
+      <h2>Poser une question</h2>
+    </header>
+    <div class="contenu">
+      <div class="bloc">
+        <p id="dem-intro">Écris ta question de vie, ta situation, ton doute — comme tu la raconterais à un conteur.</p>
+        <p id="dem-mode" class="note" style="margin-top:8px"></p>
+      </div>
+      <div class="bloc">
+        <textarea id="dem-question" rows="4" maxlength="2000" placeholder="Ex. : comment aider un ami qui traverse une période difficile ?"></textarea>
+        <div class="dem-actions">
+          <button id="btn-demander" class="btn-or">✨ Demander</button>
+          <button id="btn-dem-ecouter" class="btn-simple" hidden>▶ Écouter la réponse</button>
+        </div>
+        <p id="dem-compteur" class="note">0 / 2000</p>
+      </div>
+      <div id="dem-resultat" class="dem-resultat" hidden></div>
+      <div class="bloc" id="dem-sans-serveur">
+        <p class="note">🌟 <b>Astuce :</b> ajoute l'adresse d'un <b>serveur SPU</b> (écran « Serveur complet ») pour la réponse narrée : synthèse sourcée, parabole liée et histoire originale. <button class="btn-simple" data-nav="connexion">Configurer un serveur</button></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ À PROPOS ══════════ -->
+  <section id="ecran-apropos" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="accueil" aria-label="Retour">‹</button>
+      <h2>À propos</h2>
+    </header>
+    <div class="contenu">
+      <div class="bloc centre">
+        <p class="grand-titre">SPU Pocket <b>1.2.0</b></p>
+        <p>Companion mobile du <b>Système Parabolique Universel</b> (v4.3) — un orchestrateur narratif qui répond aux questions de la vie par des paraboles, des histoires et un théâtre de voix.</p>
+        <p class="badge-eval">Version d'évaluation publique — l'application évolue et s'améliore régulièrement.</p>
+      </div>
+      <div class="bloc">
+        <h3>🗺️ Ce qui arrive dans les prochaines versions</h3>
+        <ul class="roadmap">
+          <li><b>v1.1 ✓</b> — poser tes questions et recevoir une réponse narrée (avec un serveur SPU)</li>
+          <li><b>v1.2 ✓</b> — <b>mode nomade</b> : poser tes questions sans aucun serveur, réponse directe</li>
+          <li><b>v1.3</b> — nouvelles paraboles et fables chaque mois, partage de tes textes favoris</li>
+          <li><b>v1.4</b> — voix neuronales enrichies, création d'histoires depuis le téléphone</li>
+          <li><b>v1.5</b> — mode communautaire : proposer tes propres paraboles</li>
+          <li><b>et au-delà</b> — ta feuille de route, écrite avec vos retours</li>
+        </ul>
+        <p class="note">Quand un serveur est configuré (écran « Serveur complet »), le bouton <i>Vérifier les mises à jour</i> te signale chaque amélioration disponible.</p>
+      </div>
+      <div class="bloc">
+        <h3>🔓 Libertés &amp; technologies</h3>
+        <ul class="puces">
+          <li>65 textes du domaine public et de la tradition orale, avec leurs sources.</li>
+          <li>Questions : mode nomade via une IA publique gratuite, ou serveur SPU complet.</li>
+          <li>Lecture vocale par la synthèse de ton téléphone (Google TTS) — aucune donnée envoyée.</li>
+          <li>Le SPU utilise des outils libres : Piper TTS (licence MIT), Next.js, Prisma.</li>
+        </ul>
+      </div>
+      <div class="bloc">
+        <h3>👨‍👩‍👧 Pensé pour tous les âges</h3>
+        <p>Un onglet « Fables enfant » offre des textes courts et rassurants, et le serveur complet propose un mode enfant protégé.</p>
+      </div>
+      <p class="pied">Fait avec soin, pour grandir ensemble. 🌱</p>
+    </div>
+  </section>
+
+</div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

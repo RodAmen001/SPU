@@ -279,7 +279,7 @@ $('#btn-maj').addEventListener('click', async () => {
 });
 
 /* ── Poser une question (v1.2 — mode serveur OU mode nomade sans serveur) ── */
-const VERSION_APP = '1.2.0';
+const VERSION_APP = '1.2.1';
 
 // Sécurité de base côté téléphone (complète le serveur, jamais remplacée) :
 const DETRESSE_MIN = /suicid|mettre fin (à|a) mes jours|je veux mourir|plus envie de vivre|sans envie de vivre|me faire du mal|automutila|me tuer|tuer moi/i;
@@ -288,6 +288,42 @@ const RESSOURCES_LOCALES = [
   { region: 'Europe', lignes: ['112 — Urgences européennes'] },
   { region: 'International', lignes: ['findahelpline.com — lignes d\'écoute par pays'] },
 ];
+
+// Prompt système partagé pour la réponse directe (utilisée par POST et GET).
+const SYS_NOMADE =
+  "Tu es le SPU Pocket, un conteur bienveillant inspiré des paraboles du monde entier. " +
+  "Réponds en français, en 100 mots maximum, avec douceur et sagesse universelle. " +
+  "Si tu connais une parabole ou une fable courte qui éclaire la situation, raconte-la en une ou deux phrases. " +
+  "Ne donne jamais de conseil médical, juridique ou financier personnalisé. " +
+  "Termine par une phrase qui rend la parole à la personne (sans question pressante). Réponds avec le texte seul.";
+
+// ── Sélection hors-ligne : une parabole RÉELLE de la bibliothèque, jamais inventée ──
+function normaliserTexte(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ');
+}
+const MOTS_VIDES_DEM = new Set(('le la les un une des de du au aux et ou mais donc or ni car que qui quoi dont dans sur pour avec sans sous je tu il elle on nous vous ils elles me te se ce cet cette ces mon ma mes ton ta tes son sa ses notre nos votre vos leur leurs est sont etait etaient etre avoir ai as ont avons avez plus moins tres tout tous toute toutes aussi comme alors puis quand si ne pas encore deja toujours jamais rien quelque chose comment pourquoi quel quelle quels quelles peux peut puis doit devrais faut juste vraiment besoin envie').split(' '));
+function paraboleHorsLigne(question) {
+  const corpus = (SPU_DATA.adulte || []).concat(SPU_DATA.enfant || []);
+  const mots = normaliserTexte(question).split(/\s+/).filter((m) => m.length > 3 && !MOTS_VIDES_DEM.has(m));
+  let meilleur = null, meilleurScore = -1;
+  for (const p of corpus) {
+    const motsClesN = normaliserTexte((p.motsCles || []).join(' '));
+    const texteN = normaliserTexte(p.texte || '');
+    const blocN = texteN + ' ' + normaliserTexte((p.interpretations || []).join(' '));
+    let score = 0;
+    for (const m of mots) {
+      if (motsClesN.indexOf(m) !== -1) score += 5;
+      else if (texteN.indexOf(m) !== -1) score += 3;
+      else if (blocN.indexOf(m) !== -1) score += 1;
+    }
+    if (score > meilleurScore) { meilleurScore = score; meilleur = p; }
+  }
+  if (!meilleur || meilleurScore <= 0) {
+    // Aucun lien thématique net : rotation déterministe pour varier selon la question.
+    meilleur = corpus[question.length % corpus.length];
+  }
+  return meilleur;
+}
 
 function serveurActif() {
   let url = $('#url-serveur').value.trim().replace(/\/+$/, '');
@@ -412,48 +448,67 @@ async function poserQuestion() {
       btn.textContent = '✨ Demander';
     }
   } else {
-    // ── MODE NOMADE : réponse directe sans serveur (IA publique gratuite) ──
+    // ── MODE NOMADE — cascade à 3 niveaux, jamais en panne ──
+    // 1) IA publique en POST (réponse directe quand elle accepte la requête)
+    // 2) IA publique en GET (contourne certains refus d'origine)
+    // 3) Parabole réelle de la bibliothèque embarquée (100 % hors-ligne, toujours disponible)
     btn.textContent = '🌤️ Réflexion en cours…';
     zone.innerHTML = '<span class="titre">🌤️ Mode nomade</span>Réponse directe demandée — quelques secondes…';
     const ctl = new AbortController();
-    const fin = setTimeout(() => ctl.abort(), 60000);
+    const fin = setTimeout(() => ctl.abort(), 45000);
+    let texte = '';
     try {
-      const r = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        signal: ctl.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'openai',
-          messages: [
-            {
-              role: 'system',
-              content: "Tu es le SPU Pocket, un conteur bienveillant inspiré des paraboles du monde entier. " +
-                "Réponds en français, en 100 mots maximum, avec douceur et sagesse universelle. " +
-                "Si tu connais une parabole ou une fable courte qui éclaire la situation, raconte-la en une ou deux phrases. " +
-                "Ne donne jamais de conseil médical, juridique ou financier personnalisé. " +
-                "Termine par une phrase qui rend la parole à la personne (sans question pressante). Réponds avec le texte seul.",
-            },
-            { role: 'user', content: question.slice(0, 1500) },
-          ],
-        }),
-      });
-      clearTimeout(fin);
-      const d = await r.json();
-      const texte = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      if (!r.ok || !texte) { afficherErreurDem(zone, 'La réponse directe n’est pas disponible cette seconde (service public très demandé). Réessaie dans quelques secondes.'); return; }
-      derniereReponse = texte.trim();
-      zone.innerHTML = '<div class="dem-part"><h3>🌤️ Réponse nomade</h3><p>' + echapper(derniereReponse) + '</p></div>' +
-        '<p class="note">Réponse simple et directe. Pour la réponse narrée complète (synthèse sourcée, parabole, histoire), configure un serveur SPU.</p>';
+      try {
+        const r = await fetch('https://text.pollinations.ai/openai', {
+          method: 'POST',
+          signal: ctl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'openai',
+            messages: [
+              { role: 'system', content: SYS_NOMADE },
+              { role: 'user', content: question.slice(0, 1500) },
+            ],
+          }),
+        });
+        const d = await r.json();
+        texte = (d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+      } catch (e) { texte = ''; }
+      if (!texte) {
+        try {
+          const g = await fetch('https://text.pollinations.ai/' + encodeURIComponent(question.slice(0, 700)) +
+            '?model=openai&system=' + encodeURIComponent(SYS_NOMADE.slice(0, 280)), { signal: ctl.signal });
+          if (g.ok) {
+            const t = await g.text();
+            if (t && t.trim().length > 10 && !/^(Free limit|HTTP)/i.test(t.trim())) texte = t.trim();
+          }
+        } catch (e) { texte = ''; }
+      }
+    } catch (e) { /* passe directement au niveau 3 */ }
+    clearTimeout(fin);
+
+    if (!texte) {
+      // Niveau 3 — hors-ligne garanti : une vraie parabole, jamais une invention.
+      const p = paraboleHorsLigne(question);
+      const interp = (p.interpretations && p.interpretations[0]) || '';
+      derniereReponse = '« ' + p.texte + ' » ' + (interp ? '— ' + interp : '');
+      zone.innerHTML = '<div class="dem-part"><h3>🌙 Parabole hors-ligne ' + echapper(p.code || '') +
+        (p.culture ? ' <span class="dem-culture">— ' + echapper(p.culture) + '</span>' : '') + '</h3>' +
+        '<blockquote>' + echapper(p.texte) + '</blockquote>' +
+        (interp ? '<p class="note"><b>Interprétation :</b> ' + echapper(interp) + '</p>' : '') +
+        '<p class="note">Le service public d\'IA directe est indisponible cette seconde. Le SPU t\'offre une parabole réelle de sa bibliothèque, qui fonctionne toujours — même sans internet. Pour la réponse narrée complète, configure un serveur SPU.</p>';
       $('#btn-dem-ecouter').hidden = false;
-    } catch (e) {
-      clearTimeout(fin);
-      afficherErreurDem(zone, navigator.onLine === false
-        ? "Pas de connexion internet. La bibliothèque hors ligne reste disponible."
-        : "Le service de réponse directe est injoignable. Réessaie dans un instant — la bibliothèque hors ligne reste disponible.");
-    } finally {
       btn.disabled = false;
       btn.textContent = '✨ Demander';
+      return;
     }
+
+    derniereReponse = texte;
+    zone.innerHTML = '<div class="dem-part"><h3>🌤️ Réponse nomade</h3><p>' + echapper(derniereReponse) + '</p></div>' +
+      '<p class="note">Réponse simple et directe. Pour la réponse narrée complète (synthèse sourcée, parabole, histoire), configure un serveur SPU.</p>';
+    $('#btn-dem-ecouter').hidden = false;
+    btn.disabled = false;
+    btn.textContent = '✨ Demander';
   }
 }
 

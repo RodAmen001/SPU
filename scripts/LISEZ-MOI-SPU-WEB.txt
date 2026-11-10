@@ -1,0 +1,43 @@
+══════════════════════════════════════════════════════════
+  SPU POCKET — VERSION WEB AUTONOME (v1.2.1, ~100 Ko)
+══════════════════════════════════════════════════════════
+
+QU'EST-CE QUE C'EST ?
+  La même interface que l'application Android SPU Pocket,
+  mais en simple page web : 4 fichiers, aucune installation,
+  aucun serveur requis pour commencer.
+
+COMMENT L'UTILISER ?
+  1. Dézippez ce dossier où vous voulez (même sur une clé USB).
+  2. Double-cliquez sur index.html → elle s'ouvre dans votre
+     navigateur (Chrome, Firefox, Edge, Safari…).
+  3. C'est tout.
+
+LES MODES
+  • Mode nomade (par défaut) : « Poser une question » répond
+    directement, sans serveur SPU, grâce à une cascade à 3
+    niveaux — jamais en panne :
+      1. IA publique gratuite (réponse directe) ;
+      2. si elle refuse, seconde voie d'accès ;
+      3. sinon, une PARABOLE RÉELLE de la bibliothèque est
+         choisie selon votre question (100 % hors-ligne,
+         même sans internet — jamais une invention).
+    La Bibliothèque des 65 paraboles fonctionne toujours
+    100 % hors-ligne (textes embarqués dans data.js).
+  • Serveur complet : écran « Serveur complet » → entrez
+    l'adresse d'un serveur SPU pour la réponse narrée complète
+    (synthèse sourcée, parabole choisie, histoire interactive).
+    À noter : si cette page est hébergée sur un site https://
+    (comme la version officielle en ligne), le serveur SPU
+    doit aussi être en https:// — règle de sécurité des
+    navigateurs. En ouvrant le fichier en local (file://),
+    un serveur http:// local fonctionne aussi.
+
+VERSION OFFICIELLE EN LIGNE (toujours à jour)
+  https://rodamen001.github.io/SPU/app/
+
+PROJET COMPLET
+  https://github.com/RodAmen001/SPU
+
+  Un mentor, pas un maître 🌿
+  © 2026 Rodamen001 — ramenyido@gmail.com
