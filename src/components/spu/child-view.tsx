@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Volume2, VolumeX, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { streamSSE } from '@/lib/spu/sse-client';
-import { useSpuStore, REPONSE_VIDE, heureMaintenant, type ReponseVue } from '@/lib/spu/store';
+import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, type ReponseVue } from '@/lib/spu/store';
 import { getMoteurAudio } from '@/lib/spu/audio-engine';
-import { ttsStop, lireTheatre } from '@/lib/spu/tts';
+import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
 import { EtapesEnDirect } from './reponse-view';
 import { BulleUtilisateur, BulleSpu, type MessageFil } from './fil-discussion';
 
@@ -26,7 +26,7 @@ let _uid = 0;
 const uid = () => `e${Date.now()}-${_uid++}`;
 
 export function VueEnfant({ surRetour }: { surRetour: () => void }) {
-  const { sessionId, setSessionId, ttsActive, setTtsActive, audioActive, voixNarrateur, voixPersonnages, debitVoix } = useSpuStore();
+  const { sessionId, setSessionId, ttsActive, setTtsActive, audioActive, voixNarrateur, debitVoix } = useSpuStore();
   const [question, setQuestion] = useState('');
   const [reponse, setReponse] = useState<ReponseVue | null>(null);
   const [messages, setMessages] = useState<MessageFil[]>([]);
@@ -90,13 +90,15 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         setReponse({ ...r.current });
       },
     });
-    // Stream terminé → bulle horodatée + jingle + théâtre sonore si la voix est activée
+    // Stream terminé → bulle horodatée + jingle + TOUTE la réponse lue par le narrateur
+    // (parabole, interprétation, histoire, mise en perspective) si la voix est activée.
     r.current.enCours = false;
     const finie = { ...r.current };
     setMessages((m) => [...m, { id: uid(), role: 'spu', heure: heureMaintenant(), reponse: { ...finie, heure: null } }]);
     if (getMoteurAudio().volume > 0) getMoteurAudio().jingleReponse();
-    if (ttsActive && finie.histoire) {
-      void lireTheatre(finie.histoire, { narrateur: voixNarrateur, personnages: voixPersonnages, debit: debitVoix });
+    if (ttsActive) {
+      const texte = texteNarrationComplete(finie);
+      if (texte.trim()) void ttsParler(texte, { profil: profilParId(voixNarrateur), debitGlobal: debitVoix });
     }
     setReponse(null);
   };
@@ -115,8 +117,9 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
             const v = !ttsActive;
             setTtsActive(v);
             if (!v) ttsStop();
-            else if (dernierSpu?.reponse?.histoire) {
-              void lireTheatre(dernierSpu.reponse.histoire, { narrateur: voixNarrateur, personnages: voixPersonnages, debit: debitVoix });
+            else if (dernierSpu?.reponse) {
+              const texte = texteNarrationComplete(dernierSpu.reponse);
+              if (texte.trim()) void ttsParler(texte, { profil: profilParId(voixNarrateur), debitGlobal: debitVoix });
             }
           }}
           className="rounded-full h-11 text-base"

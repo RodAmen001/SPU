@@ -131,13 +131,8 @@ export function VueReponse({
         </div>
       )}
 
-      {/* Réflexion Mentor (étape 2) — la parole du Mentor */}
-      {reponse.reflexion && (
-        <Card className="p-5 apparu border-[--secondary]/50">
-          <h3 className="font-semibold text-[15px] mb-2 text-[--secondary]">Le Mentor t&apos;écoute</h3>
-          <p className="text-[15px] leading-relaxed whitespace-pre-line">{reponse.reflexion}</p>
-        </Card>
-      )}
+      {/* La parole du Mentor (réflexion d'écoute) est REPLIÉE dans l'onglet réflexion
+          ci-dessous — plus aucune section « Le Mentor t'écoute » déployée dans le corps. */}
 
       {/* Méditation Deep (niveau 2) */}
       {reponse.meditation && (
@@ -222,8 +217,9 @@ export function VueReponse({
         </Card>
       )}
 
-      {/* ── ONGLET DÉROULANT — la réflexion (synthèse IA + sources), consultable à volonté ── */}
-      {reponse.synthese && (
+      {/* ── ONGLET DÉROULANT — la réflexion (synthèse IA + sources + parole du Mentor),
+          consultable à volonté — jamais déployée d'office dans la réponse ── */}
+      {(reponse.synthese || reponse.reflexion) && (
         <div className="rounded-2xl border border-[--border]/70 bg-[--card]/60 apparu">
           <button
             className="w-full flex items-center gap-2 px-5 py-3.5 text-left"
@@ -232,19 +228,47 @@ export function VueReponse({
           >
             <FlaskConical className="h-4 w-4 text-[--muted-foreground]" aria-hidden />
             <span className="text-sm font-medium text-[--muted-foreground]">
-              La réflexion derrière la réponse — synthèse et sources
+              La réflexion derrière la réponse — synthèse, sources et écoute du Mentor
             </span>
             <ChevronDown className={`h-4 w-4 ml-auto text-[--muted-foreground] transition-transform ${reflexionOuverte ? 'rotate-180' : ''}`} aria-hidden />
           </button>
           {reflexionOuverte && (
             <div className="px-5 pb-5 pt-1 border-t border-[--border]/60">
-              <p className="text-[14px] leading-relaxed mt-3">{reponse.synthese.text}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {reponse.synthese.sources.map((s) => (
-                  <Badge key={s} className="text-xs bg-[--muted] text-[--muted-foreground] hover:bg-[--muted]">{s}</Badge>
-                ))}
-                <Badge variant="outline" className="text-xs">confiance {Math.round(reponse.synthese.confiance * 100)} %</Badge>
-              </div>
+              {reponse.reflexion && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[--secondary] mb-1.5">Ce que le Mentor a entendu</p>
+                  <p className="text-[14px] leading-relaxed whitespace-pre-line">{reponse.reflexion}</p>
+                </div>
+              )}
+              {reponse.synthese && (
+                <>
+                  {reponse.reflexion && <div className="h-px bg-[--border]/60 my-4" />}
+                  <p className="text-[14px] leading-relaxed mt-3">{reponse.synthese.text}</p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    {reponse.synthese.sources.map((s) => (
+                      <Badge key={s} className="text-xs bg-[--muted] text-[--muted-foreground] hover:bg-[--muted]">{s}</Badge>
+                    ))}
+                    <Badge variant="outline" className="text-xs">
+                      {reponse.synthese.niveauSources ? `${reponse.synthese.niveauSources} source${reponse.synthese.niveauSources > 1 ? 's' : ''} · ` : ''}confiance {Math.round(reponse.synthese.confiance * 100)} %
+                    </Badge>
+                  </div>
+                  {reponse.synthese.escalade && reponse.synthese.escalade.length > 1 && (
+                    <p className="text-xs text-[--muted-foreground] mt-2 leading-relaxed">
+                      <span className="font-medium">Escalade des sources : </span>
+                      {reponse.synthese.escalade
+                        .map((e) => `${e.niveau} source${e.niveau > 1 ? 's' : ''} ${Math.round(e.confiance * 100)} %`)
+                        .join(' → ')}
+                      {' → configuration retenue : '}
+                      {reponse.synthese.niveauSources} source{reponse.synthese.niveauSources > 1 ? 's' : ''}.
+                    </p>
+                  )}
+                  {reponse.synthese.confiance < 0.5 && (
+                    <p className="text-xs text-[--muted-foreground] mt-2 italic">
+                      Aucune configuration de sources n&apos;a atteint 50 % de confiance — j&apos;ai gardé celle qui avait le score le plus élevé.
+                    </p>
+                  )}
+                </>
+              )}
               <p className="text-xs text-[--muted-foreground] mt-3 leading-relaxed">
                 Aucune intelligence seule ne détient la vérité : je compare plusieurs points de vue et je te
                 montre d&apos;où vient chaque élément. Cette synthèse est une étape réflexive — un éclairage, jamais une vérité absolue.
@@ -274,7 +298,11 @@ export function AnglesMentor({ angles, enCours, choisir }: { angles: string[]; e
   if (!angles.length) return null;
   return (
     <Card className="p-5 border-[--accent] apparu">
-      <h3 className="font-semibold text-[15px] mb-3">Pour affiner, je te demande</h3>
+      <h3 className="font-semibold text-[15px] mb-1.5">Deux questions pour affiner — si tu le souhaites</h3>
+      <p className="text-xs text-[--muted-foreground] leading-relaxed mb-3">
+        Elles m&apos;aident à mieux cerner ta préoccupation et à circonscrire la réponse. Tu n&apos;es pas obligé d&apos;y répondre :
+        partage plutôt librement ce que tu veux — un détail, un ressenti, un souvenir — ou poursuis sans rien préciser.
+      </p>
       <ul className="space-y-2.5">
         {angles.map((a, i) => (
           <li key={i} className="flex gap-2.5 text-[15px] leading-relaxed">
@@ -295,7 +323,7 @@ export function AnglesMentor({ angles, enCours, choisir }: { angles: string[]; e
           </li>
         ))}
       </ul>
-      {enCours && <p className="text-xs text-[--muted-foreground] mt-3">Réponds librement — ou passe à la synthèse si tu préfères.</p>}
+      {enCours && <p className="text-xs text-[--muted-foreground] mt-3">Réponds librement — ou poursuis sans répondre, comme tu préfères.</p>}
     </Card>
   );
 }

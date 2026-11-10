@@ -134,6 +134,20 @@ export async function sourceDuckDuckGo(question: string): Promise<string | null>
   return morceaux.length ? morceaux.join('\n').slice(0, 900) : null;
 }
 
+// ── Source 5 : IA libre (Pollinations — gratuite, sans clé) ──────────────────
+// Ajoutée à la demande du concepteur : 5 sources libres et gratuites au total.
+// Utilisée uniquement quand l'escalade de confiance le demande (voir plus bas).
+export async function sourceIaLibre(question: string): Promise<string | null> {
+  const systeme =
+    "Tu es une source d'information consultée parmi d'autres. Donne un éclairage bref (80 mots maximum), nuancé et neutre sur la question posée. Ne prends pas position, ne donne pas de conseil médical, juridique ou financier personnalisé. N'invente aucun fait. Écris en français.";
+  const url = `https://text.pollinations.ai/${encodeURIComponent(question.slice(0, 250))}?model=openai&system=${encodeURIComponent(systeme)}`;
+  const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(TIMEOUT_SOURCE_MS) }), TIMEOUT_SOURCE_MS, 'ia-libre');
+  if (!res.ok) return null;
+  const t = (await res.text()).trim();
+  if (!t || t.length < 30 || /^(Free limit|HTTP|Error)/i.test(t)) return null;
+  return `IA libre (Pollinations) : ${t.slice(0, 900)}`;
+}
+
 // ── Orchestrateur ────────────────────────────────────────────────────────────
 export interface SourceResultat {
   nom: string;
@@ -161,23 +175,83 @@ async function avecCache(question: string, nom: string, fn: () => Promise<string
 }
 
 export interface ResultatOrchestration {
-  sources: SourceResultat[];
+  sources: SourceResultat[]; // toutes les sources consultées avec succès (journalisation)
+  synthese: Synthese | null; // LA synthèse retenue (configuration gagnante)
   toutesEchouees: boolean;
   dureeMs: number;
+  niveauSources: number; // nombre de sources de la configuration retenue
+  historique: { niveau: number; confiance: number }[]; // trace honnête de l'escalade
 }
 
+// ── Les 5 sources libres et gratuites du SPU ─────────────────────────────────
+const SOURCES_SPU: { nom: string; fn: (q: string) => Promise<string | null> }[] = [
+  { nom: 'Recherche Web', fn: sourceRechercheWeb },
+  { nom: 'Intelligence réflexive', fn: sourceLlmReflexif },
+  { nom: 'Encyclopédie', fn: sourceEncyclopedie },
+  { nom: 'DuckDuckGo', fn: sourceDuckDuckGo },
+  { nom: 'IA libre', fn: sourceIaLibre },
+];
+
+export const SEUIL_CONFIANCE_SOURCES = 0.5; // 50 % — critère d'escalade du concepteur
+
+/**
+ * Orchestration ADAPTIVE (critère du concepteur v4.5) :
+ *   • on démarre avec 2 sources et on synthétise ;
+ *   • confiance < 50 % → on ajoute une 3ᵉ source et on re-synthétise ;
+ *     si ≥ 50 % avec 3 sources → on garde ces 3 sources ;
+ *   • sinon → 4ᵉ source ; si ≥ 50 % avec 4 → on garde ces 4 sources ;
+ *   • sinon → 5ᵉ source ; si ≥ 50 % avec 5 → on garde ces 5 sources ;
+ *   • sinon → on retient la configuration dont le score de confiance est le plus élevé.
+ * Chaque source n'est tentée qu'une fois (cache 24 h conservé).
+ */
 export async function orchestrerSources(question: string): Promise<ResultatOrchestration> {
   const t0 = Date.now();
-  const resultats = await Promise.allSettled([
-    avecCache(question, 'Recherche Web', () => sourceRechercheWeb(question)),
-    avecCache(question, 'Intelligence réflexive', () => sourceLlmReflexif(question)),
-    avecCache(question, 'Encyclopédie', () => sourceEncyclopedie(question)),
-    avecCache(question, 'DuckDuckGo', () => sourceDuckDuckGo(question)),
-  ]);
-  const sources = resultats
-    .map((r) => (r.status === 'fulfilled' ? r.value : null))
-    .filter((s): s is SourceResultat => s !== null);
-  return { sources, toutesEchouees: sources.length === 0, dureeMs: Date.now() - t0 };
+  const consultees: SourceResultat[] = [];
+  const historique: { niveau: number; confiance: number }[] = [];
+  const syntheses: { niveau: number; synthese: Synthese }[] = [];
+
+  for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
+    // tente les sources pas encore consultées jusqu'à atteindre la cible
+    const manquantes = SOURCES_SPU.slice(consultees.length, cible);
+    if (manquantes.length) {
+      const resultats = await Promise.allSettled(
+        manquantes.map((s) => avecCache(question, s.nom, () => s.fn(question)))
+      );
+      for (const r of resultats) {
+        if (r.status === 'fulfilled' && r.value) consultees.push(r.value);
+      }
+    }
+    if (!consultees.length) continue; // aucune source vivante pour l'instant
+
+    const synthese = await synthetiser(question, consultees);
+    const niveau = consultees.length;
+    syntheses.push({ niveau, synthese });
+    historique.push({ niveau, confiance: synthese.confiance });
+
+    // critère d'arrêt : confiance ≥ 50 % pour ce niveau de sources
+    if (synthese.confiance >= SEUIL_CONFIANCE_SOURCES) break;
+  }
+
+  // aucune source joignable → mode dégradé honnête
+  if (!consultees.length || !syntheses.length) {
+    return { sources: [], synthese: null, toutesEchouees: true, dureeMs: Date.now() - t0, niveauSources: 0, historique };
+  }
+
+  // sélection finale : première config ≥ 50 % (déjà en tête) sinon le score le plus élevé
+  let retenue = syntheses[0];
+  for (const s of syntheses) {
+    if (s.synthese.confiance >= SEUIL_CONFIANCE_SOURCES) { retenue = s; break; }
+    if (s.synthese.confiance > retenue.synthese.confiance) retenue = s;
+  }
+
+  return {
+    sources: consultees,
+    synthese: retenue.synthese,
+    toutesEchouees: false,
+    dureeMs: Date.now() - t0,
+    niveauSources: retenue.niveau,
+    historique,
+  };
 }
 
 // ── PHASE 2 : Synthèse sourcée ───────────────────────────────────────────────

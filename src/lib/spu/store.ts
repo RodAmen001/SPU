@@ -72,7 +72,7 @@ export interface ReponseVue {
   statut: string | null;
   distress: { message: string; resources: { region: string; lignes: string[] }[]; prudent?: boolean } | null;
   erreur: string | null;
-  synthese: { text: string; sources: string[]; confiance: number } | null;
+  synthese: { text: string; sources: string[]; confiance: number; niveauSources?: number; escalade?: { niveau: number; confiance: number }[] } | null;
   parabole: ParaboleVue | null;
   histoire: string;
   meditation: string;
@@ -111,4 +111,17 @@ export function heureMaintenant(): string {
 export function dateHeureComplete(d: Date | string): string {
   const date = typeof d === 'string' ? new Date(d) : d;
   return date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Script de narration complet : parabole + interprétation + histoire + mise en
+ *  perspective — TOUTE la réponse est lue par le narrateur (exigence v4.5). */
+export function texteNarrationComplete(r: ReponseVue): string {
+  const parties: string[] = [];
+  if (r.parabole?.enonce) {
+    parties.push(`La parabole. « ${r.parabole.enonce} »`);
+    if (r.parabole.interpretation) parties.push(`L'interprétation. ${r.parabole.interpretation}`);
+  }
+  if (r.histoire && r.histoire.trim()) parties.push(`L'histoire. ${r.histoire}`);
+  if (r.perspective && r.perspective.trim()) parties.push(`La mise en perspective. ${r.perspective}`);
+  return parties.join('\n\n');
 }

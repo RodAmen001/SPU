@@ -31,6 +31,7 @@ interface Corps {
   etape?: number;
   sessionId?: string;
   audioActive?: boolean;
+  saute?: boolean; // l'utilisateur poursuit sans répondre aux questions d'affinage (jamais forcé)
 }
 
 interface EtatMentor {
@@ -150,8 +151,69 @@ export async function POST(req: NextRequest) {
         // ── ÉTAPE 2 : APPROFONDISSEMENT ──
         if (etape === 2) {
           const reponse = (corps.reponse || '').trim();
-          if (!reponse) {
+          if (!reponse && !corps.saute) {
             send('erreur', { message: 'Réponse vide.' });
+            return;
+          }
+          if (corps.saute) {
+            // Poursuite libre : l'utilisateur n'a PAS à répondre aux questions d'affinage.
+            // On avance doucement, sans rien inventer sur ce qu'il n'a pas partagé.
+            status('approfondissement');
+            const reflLibre = `Très bien, je te suis — avançons doucement. Si un détail te vient en chemin, un ressenti ou un souvenir, tu pourras toujours le partager : je prendrai le temps de l\'écouter.`;
+            const echLibre = await db.echange.create({
+              data: {
+                sessionId: session.id, question: '(poursuite sans préciser davantage)', mode: 'mentor', etape: 2,
+                payload: JSON.stringify({ reflexion: reflLibre, type: 'mentor-poursuite-libre' }),
+              },
+            });
+            send('reflexion', { text: reflLibre });
+            if (etat.parabole1?.id) {
+              try {
+                const pb = await db.parabole.findUnique({ where: { id: etat.parabole1.id } });
+                if (pb) {
+                  const interps = JSON.parse(pb.interpretations) as string[];
+                  const interp2 = interps.find((i) => i !== etat.parabole1?.interpretation) || etat.parabole1.interpretation;
+                  send('parabole', {
+                    id: pb.id, code: pb.code, enonce: pb.texte, interpretation: interp2,
+                    culture: pb.culture, famille: `${pb.famille} — approfondissement`,
+                    sources: JSON.parse(pb.sources), score: 0.9, sousSeuil: false,
+                  });
+                  status('histoire');
+                  const histoire2 = await genererHistoire({
+                    enonce: pb.texte,
+                    interpretation: interp2,
+                    contexte: 'échange avec le Mentor (la personne avance à son rythme)',
+                    culture: pb.culture,
+                    tonalite: 'neutre',
+                    mode: 'adulte',
+                    preoccupation: etat.questionInitiale.slice(0, 600),
+                  });
+                  for (const chunk of chunker(histoire2.texte, 3)) {
+                    send('histoire', { chunk });
+                    await new Promise((r) => setTimeout(r, 35));
+                  }
+                  status('perspective');
+                  const perspective2 = await genererPerspective(
+                    etat.questionInitiale,
+                    pb.texte,
+                    interp2,
+                    { contexte: 'La personne explore sa question à son rythme, sans préciser davantage pour le moment.' },
+                  );
+                  send('perspective', { text: perspective2 });
+                  await db.echange.update({
+                    where: { id: echLibre.id },
+                    data: { paraboleId: pb.id, interpretation: interp2, histoire: histoire2.texte, perspective: perspective2 },
+                  }).catch(() => {});
+                }
+              } catch {
+                /* la poursuite reste utilisable même si la couche parabole échoue */
+              }
+            }
+            etat.angles = await genererAngles(etat.questionInitiale, etat.synthese1 || '', etat.parabole1?.texte || '');
+            etat.etape = 3;
+            await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
+            send('angles', { questions: etat.angles });
+            send('final', { echangeId: etat.echangeId, sessionId: session.id, etape: 2, perspectiveDisponible: false });
             return;
           }
           // Phase 0 sur la réponse aussi
@@ -175,7 +237,7 @@ export async function POST(req: NextRequest) {
                 {
                   role: 'system',
                   content:
-                    "Tu es le Mentor du SPU : un guide qui n'impose rien, ne juge rien, et aide à clarifier. L'utilisateur répond à tes questions d'angle. Rebondis sur SA réponse (pas de liste de conseils), reformule ce que tu entends, et propose 2 nouvelles questions d'angle, plus précises. Ton : chaleureux, sobre, humble. Maximum 120 mots. Termine exactement par un bloc JSON sur sa propre ligne : {\"angles\": [\"…\", \"…\"]}",
+                    "Tu es le Mentor du SPU : un guide qui n'impose rien, ne juge rien, et aide à clarifier. L'utilisateur répond à tes questions d'affinage — ou partage librement autre chose. Rebondis sur CE QU'IL A PARTAGÉ (pas de liste de conseils), reformule ce que tu entends avec chaleur, et propose 2 nouvelles questions d'affinage, plus précises. N'oublie jamais : ces questions sont des invitations facultatives, il peut aussi partager tout autre détail qu'il souhaite. Ton : chaleureux, sobre, humble. Maximum 120 mots. Termine exactement par un bloc JSON sur sa propre ligne : {\"angles\": [\"…\", \"…\"]}",
                 },
                 {
                   role: 'user',
@@ -254,8 +316,82 @@ export async function POST(req: NextRequest) {
 
         // ── ÉTAPE 3 : SYNTHÈSE ──
         const reponse = (corps.reponse || '').trim();
-        if (!reponse) {
+        if (!reponse && !corps.saute) {
           send('erreur', { message: 'Réponse vide.' });
+          return;
+        }
+        if (corps.saute) {
+          // Synthèse finale construite sur ce qui a déjà été partagé — rien n'est forcé.
+          status('synthèse');
+          const contexteLibre = `Question initiale : ${etat.questionInitiale}. La personne a choisi d'avancer sans préciser davantage — honore son rythme, ne suppose rien.`;
+          const syntheseLibre = await llmChat(
+            [
+              {
+                role: 'system',
+                content:
+                  "Tu es un synthétiseur neutre. À partir de la question initiale de l'utilisateur, produis une synthèse douce de 2 à 3 phrases (français), sans conseil, sans position, qui reflète ce que sa question met en lumière. Maximum 90 mots. Réponds avec le texte seul.",
+              },
+              { role: 'user', content: contexteLibre },
+            ],
+            { timeoutMs: 15000, temperature: 0.5, maxTokens: 200 }
+          );
+          send('synthesis', { text: syntheseLibre.trim(), sources: ['Échange Mentor'], confiance: 0.75 });
+          status('matching');
+          const matchLibre = await trouverParabole(`${contexteLibre} ${syntheseLibre}`, etat.questionInitiale, 'adulte');
+          if (matchLibre && etat.parabole1?.id && matchLibre.id === etat.parabole1.id && matchLibre.interpretations.length > 1) {
+            const autre = matchLibre.interpretations.find((i) => i !== etat.parabole1?.interpretation);
+            if (autre) matchLibre.interpretationChoisie = autre;
+          }
+          if (matchLibre) {
+            send('parabole', {
+              id: matchLibre.id, code: matchLibre.code, enonce: matchLibre.texte, interpretation: matchLibre.interpretationChoisie,
+              culture: matchLibre.culture, famille: matchLibre.famille, sources: matchLibre.sources, score: matchLibre.score, sousSeuil: matchLibre.sousSeuil,
+            });
+          }
+          status('histoire');
+          const histoireLibre = matchLibre
+            ? await genererHistoire({
+                enonce: matchLibre.texte,
+                interpretation: matchLibre.interpretationChoisie,
+                contexte: contexteLibre.slice(0, 400),
+                culture: matchLibre.culture,
+                tonalite: 'neutre',
+                mode: 'adulte',
+                preoccupation: etat.questionInitiale.slice(0, 600),
+              })
+            : null;
+          if (histoireLibre) {
+            for (const chunk of chunker(histoireLibre.texte, 3)) {
+              send('histoire', { chunk });
+              await new Promise((r) => setTimeout(r, 35));
+            }
+          }
+          let perspectiveLibre = '';
+          if (matchLibre) {
+            status('perspective');
+            perspectiveLibre = await genererPerspective(
+              etat.questionInitiale,
+              matchLibre.texte,
+              matchLibre.interpretationChoisie,
+              { contexte: 'La personne a avancé à son rythme, sans préciser davantage.' },
+            );
+            send('perspective', { text: perspectiveLibre });
+          }
+          send('question-ouverte', { text: QUESTION_OUVERTE_FINALE });
+          const echLibre3 = await db.echange.create({
+            data: {
+              sessionId: session.id, question: '(synthèse demandée sans préciser davantage)', synthese: syntheseLibre.trim(),
+              sourcesReponse: JSON.stringify(['Échange Mentor']),
+              paraboleId: matchLibre?.id || null, interpretation: matchLibre?.interpretationChoisie || null,
+              histoire: histoireLibre?.texte || null, perspective: perspectiveLibre || null,
+              audioActive: corps.audioActive || false,
+              mode: 'mentor', etape: 3,
+              payload: JSON.stringify({ type: 'mentor-synthese-libre', score: matchLibre?.score ?? null }),
+            },
+          });
+          etat.etape = 1;
+          await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
+          send('final', { echangeId: echLibre3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
           return;
         }
         const p0 = await phase0(reponse);
@@ -371,7 +507,7 @@ async function genererAngles(question: string, synthese: string, parabole: strin
         {
           role: 'system',
           content:
-            'Tu es le Mentor du SPU. Génère exactement 2 questions d\'angle ouvertes, douces et sans jugement, pour aider l\'utilisateur à explorer sa question. Chaque question : maximum 25 mots. Réponds UNIQUEMENT avec un JSON : {"angles": ["…", "…"]}',
+            'Tu es le Mentor du SPU. Génère exactement 2 questions d\'affinage : ouvertes, douces et sans jugement, pour mieux cerner la préoccupation de l\'utilisateur et mieux circonscrire la réponse qui lui sera offerte. Ce sont des invitations facultatives — jamais des exigences, jamais des demandes d\'informations personnelles. Chaque question : maximum 25 mots. Réponds UNIQUEMENT avec un JSON : {"angles": ["…", "…"]}',
         },
         { role: 'user', content: `Question : ${question}\nSynthèse : ${synthese}\nParabole : ${parabole}` },
       ],

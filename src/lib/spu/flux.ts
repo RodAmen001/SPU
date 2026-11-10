@@ -2,7 +2,7 @@
 // Utilisé par /api/ask (Oracle/Enfant), /api/mentor (étape 1) et /api/deep (niveau 1).
 // Les événements suivent la Partie 15 du cahier des charges.
 
-import { orchestrerSources, synthetiser, type Synthese, type SourceResultat } from './sources';
+import { orchestrerSources, type Synthese, type SourceResultat } from './sources';
 import { trouverParabole, detecterTonalite, type ParaboleMatch } from './matching';
 import { genererHistoire, chunker, type HistoireGeneree } from './story';
 import { genererPerspective } from './perspective';
@@ -11,7 +11,7 @@ import { MESSAGE_ERREUR_SOURCES } from './constants';
 export type EvenementSSE =
   | { type: 'status'; step: string }
   | { type: 'erreur'; message: string }
-  | { type: 'synthesis'; text: string; sources: string[]; confiance: number }
+  | { type: 'synthesis'; text: string; sources: string[]; confiance: number; niveauSources?: number; escalade?: { niveau: number; confiance: number }[] }
   | {
       type: 'parabole';
       id: string;
@@ -64,9 +64,18 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     yield { type: 'status', step: 'matching' };
   } else {
     yield { type: 'status', step: 'synthèse' };
-    const synthese = await synthetiser(question, orch.sources);
+    // La synthèse retenue sort directement de l'escalade adaptative 2 → 3 → 4 → 5
+    // sources (critère de confiance ≥ 50 %, sinon meilleur score).
+    const synthese = orch.synthese!;
     resultat.synthese = synthese;
-    yield { type: 'synthesis', text: synthese.texte, sources: synthese.sources, confiance: synthese.confiance };
+    yield {
+      type: 'synthesis',
+      text: synthese.texte,
+      sources: synthese.sources,
+      confiance: synthese.confiance,
+      niveauSources: orch.niveauSources,
+      escalade: orch.historique,
+    };
     yield { type: 'status', step: 'matching' };
   }
 

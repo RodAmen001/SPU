@@ -1,4 +1,4 @@
-// SPU v4.4 — Service Worker (PWA + mode dégradé hors-ligne, 7.5 du cahier)
+// SPU v4.5 — Service Worker (PWA + mode dégradé hors-ligne, 7.5 du cahier)
 //
 // Correction majeure v4.4 : l'ancienne stratégie « cache d'abord » sur les
 // fichiers JS/CSS gardait l'application figée sur une vieille version dans le
@@ -9,7 +9,7 @@
 //     hors-ligne, ces fichiers ne changent presque jamais) ;
 //   • chaque nouvelle version a un nom de cache différent → les caches
 //     anciens sont effacés à l'activation.
-const VERSION = 'spu-v4.4.0';
+const VERSION = 'spu-v4.5.0';
 const COQUILLE = `${VERSION}-shell`;
 const DONNEES = `${VERSION}-data`;
 const MEDIA = `${VERSION}-media`;

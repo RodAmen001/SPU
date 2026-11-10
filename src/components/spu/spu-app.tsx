@@ -1,8 +1,10 @@
-// SPU v4.4 — Application principale (single route, navigation par vues)
-// v4.4 : structure universelle de réponse (parabole + interprétation + histoire
-// + perspective), synthèse repliée, carte « Quoi de neuf », version affichée
-// depuis VERSION_SPU. Historique : v4.1 fil de discussion, musique MP3 par mode,
-// théâtre sonore à 10 voix, compte SPU.
+// SPU v4.5 — Application principale (single route, navigation par vues)
+// v4.5 : sources adaptatives 2→3→4→5 (confiance ≥ 50 %, sinon meilleur score),
+// questions d'affinage facultatives (max 2, invitation douce, poursuite libre),
+// parole du Mentor repliée dans l'onglet réflexion, TOUTE la réponse lue par
+// le narrateur. Historique : v4.4 structure universelle de réponse (parabole +
+// interprétation + histoire + perspective), synthèse repliée, carte « Quoi de
+// neuf » ; v4.1 fil de discussion, musique MP3 par mode, théâtre sonore, compte.
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,10 +17,10 @@ import {
   Volume2, ArrowLeft, ArrowDown, RefreshCw, Send, AudioLines, Music4,
 } from 'lucide-react';
 import { streamSSE } from '@/lib/spu/sse-client';
-import { useSpuStore, REPONSE_VIDE, heureMaintenant, type ReponseVue } from '@/lib/spu/store';
+import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, type ReponseVue } from '@/lib/spu/store';
 import { VERSION_SPU } from '@/lib/spu/constants';
 import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
-import { ttsStop, lireTheatre } from '@/lib/spu/tts';
+import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
 import { VueReponse, EtapesEnDirect, AnglesMentor } from './reponse-view';
 import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fil-discussion';
 import { VueEnfant } from './child-view';
@@ -177,7 +179,7 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
         </div>
       </div>
 
-      {/* ── Quoi de neuf — chaque version est visible et expliquée (exigence v4.4) ── */}
+      {/* ── Quoi de neuf — chaque version est visible et expliquée (exigence v4.4/v4.5) ── */}
       <div className="rounded-2xl border border-[--border] bg-[--card]/70 p-5 mb-10">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
@@ -185,25 +187,30 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
         </div>
         <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
           <li>
-            <span className="font-medium text-[--foreground]">La structure universelle de réponse :</span>{' '}
-            pour toute question, dans tous les modes, tu reçois la parabole, son interprétation,
-            une histoire écrite pour toi et la mise en perspective. La synthèse des sources
-            devient un onglet déroulant, consultable à volonté.
+            <span className="font-medium text-[--foreground]">Le narrateur lit toute la réponse :</span>{' '}
+            quand la voix est activée, il te lit la parabole, son interprétation, l&apos;histoire
+            et la mise en perspective — dans tous les modes.
           </li>
           <li>
-            <span className="font-medium text-[--foreground]">Les mises à jour ne se bloquent plus :</span>{' '}
-            la page se rafraîchit automatiquement quand une nouvelle version arrive — tu verras
-            toujours la dernière.
+            <span className="font-medium text-[--foreground]">Sources adaptatives :</span> je démarre
+            avec 2 sources ; si leur confiance descend sous 50 %, j&apos;ajoute une 3ᵉ, puis une 4ᵉ,
+            puis une 5ᵉ — et je garde la configuration la plus cohérente (5 sources libres et gratuites).
           </li>
           <li>
-            <span className="font-medium text-[--foreground]">Parabole garantie :</span> même si les
-            sources externes sont indisponibles, le corpus local t&apos;offre toujours une parabole
-            réelle et sourcée.
+            <span className="font-medium text-[--foreground]">Questions d&apos;affinage plus douces :</span>{' '}
+            au plus 2 questions, facultatives — tu peux y répondre, partager librement un autre détail,
+            ou poursuivre sans rien préciser. La section « Le Mentor t&apos;écoute » disparaît du corps :
+            sa parole est repliée dans l&apos;onglet réflexion.
+          </li>
+          <li>
+            <span className="font-medium text-[--foreground]">La structure universelle reste garantie :</span>{' '}
+            pour toute question, dans tous les modes : parabole, interprétation, histoire, mise en
+            perspective — la synthèse des sources reste un onglet déroulant.
           </li>
         </ul>
         <p className="text-xs text-[--muted-foreground]/80 mt-3">
-          Si cette page affiche encore une ancienne version, ferme-la complètement puis rouvre-la :
-          la mise à jour s&apos;appliquera aussitôt.
+          Si cette page affiche encore une ancienne version, ferme-la complètement puis rouvre-la (ou
+          recharge avec Ctrl+Shift+R) : la mise à jour s&apos;appliquera aussitôt.
         </p>
       </div>
 
@@ -305,9 +312,22 @@ function ZoneQuestion({
   );
 }
 
+// ── Lecture complète de la réponse par le narrateur (exigence du concepteur) ──
+// TOUTE la réponse du SPU est lue par LA voix du narrateur : la parabole, son
+// interprétation, l'histoire et la mise en perspective — dans cet ordre.
+// (le script texteNarrationComplete vit dans store.ts, partagé avec le mode Enfant)
+function narrerReponseComplete(r: ReponseVue, reglages: { voixNarrateur: string; debitVoix: number }) {
+  const texte = texteNarrationComplete(r);
+  if (!texte.trim()) return;
+  void ttsParler(texte, {
+    profil: profilParId(reglages.voixNarrateur),
+    debitGlobal: reglages.debitVoix,
+  });
+}
+
 // ── Hook commun : finalise une réponse terminée (son + lecture) et crée la bulle ──
 function useFinalisation() {
-  const { ttsActive, voixNarrateur, voixPersonnages, debitVoix, audioActive } = useSpuStore();
+  const { ttsActive, voixNarrateur, debitVoix, audioActive } = useSpuStore();
 
   return useCallback(
     (finie: ReponseVue): MessageFil => {
@@ -318,16 +338,10 @@ function useFinalisation() {
         reponse: { ...finie, enCours: false, heure: null },
       };
       if (audioActive) getMoteurAudio().jingleReponse();
-      if (ttsActive && finie.histoire) {
-        void lireTheatre(finie.histoire, {
-          narrateur: voixNarrateur,
-          personnages: voixPersonnages,
-          debit: debitVoix,
-        });
-      }
+      if (ttsActive) narrerReponseComplete(finie, { voixNarrateur, debitVoix });
       return msg;
     },
-    [ttsActive, voixNarrateur, voixPersonnages, debitVoix, audioActive]
+    [ttsActive, voixNarrateur, debitVoix, audioActive]
   );
 }
 
@@ -494,6 +508,11 @@ function FluxMentor() {
         r.questionOuverte = String(d.text || '');
         setReponse({ ...r });
       },
+      // le serveur émet le nom hyphéné « question-ouverte » — même gestionnaire
+      'question-ouverte': (d) => {
+        r.questionOuverte = String(d.text || '');
+        setReponse({ ...r });
+      },
       erreur: (d) => {
         r.erreur = String(d.message || '');
         setReponse({ ...r });
@@ -534,6 +553,13 @@ function FluxMentor() {
     const contenu = angle ? `${angle}\n${texte}` : texte;
     setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: texte }]);
     void appeler({ reponse: contenu, etape });
+  };
+
+  // L'utilisateur n'est JAMAIS forcé de répondre aux questions d'affinage :
+  // il peut poursuivre sans rien préciser, et la suite reste complète.
+  const poursuivreSansRepondre = () => {
+    setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: '(je poursuis sans préciser davantage)' }]);
+    void appeler({ reponse: '', saute: true, etape });
   };
 
   const dernierSpu = [...messages].reverse().find((m) => m.role === 'spu');
@@ -588,11 +614,14 @@ function FluxMentor() {
               onChange={(e) => setBrouillon(e.target.value)}
               rows={2}
               maxLength={2000}
-              placeholder="Réponds librement, en quelques mots…"
+              placeholder="Partage librement ce que tu veux — un détail, un ressenti, un souvenir…"
               className="rounded-2xl resize-none"
-              aria-label="ta réponse au mentor"
+              aria-label="ce que tu veux partager avec le mentor (facultatif)"
             />
-            <div className="flex justify-end mt-2">
+            <div className="flex flex-wrap justify-end gap-2 mt-2">
+              <Button variant="ghost" onClick={() => { poursuivreSansRepondre(); setBrouillon(''); }} className="rounded-full min-h-[44px] text-[--muted-foreground]">
+                Poursuivre sans répondre
+              </Button>
               <Button onClick={() => { if (brouillon.trim()) { repondreAngle(brouillon.trim()); setBrouillon(''); } }} disabled={!brouillon.trim()} className="rounded-full min-h-[44px]">
                 <Send className="h-4 w-4 mr-2" aria-hidden /> {etape === 2 ? 'Continuer (étape 2/3)' : 'Recevoir la synthèse (3/3)'}
               </Button>
@@ -658,6 +687,11 @@ function FluxDeep() {
         setReponse({ ...r });
       },
       questionOuverte: (d) => {
+        r.questionOuverte = String(d.text || '');
+        setReponse({ ...r });
+      },
+      // le serveur émet le nom hyphéné « question-ouverte » — même gestionnaire
+      'question-ouverte': (d) => {
         r.questionOuverte = String(d.text || '');
         setReponse({ ...r });
       },
