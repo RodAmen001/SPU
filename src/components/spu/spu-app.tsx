@@ -1,6 +1,8 @@
-// SPU v4.0 — Application principale (single route, navigation par vues)
-// v4.1 : fil de discussion type messagerie horodaté, musique MP3 réelle par mode,
-// théâtre sonore à 10 voix réglables, compte SPU, indicateur d'attente animé.
+// SPU v4.4 — Application principale (single route, navigation par vues)
+// v4.4 : structure universelle de réponse (parabole + interprétation + histoire
+// + perspective), synthèse repliée, carte « Quoi de neuf », version affichée
+// depuis VERSION_SPU. Historique : v4.1 fil de discussion, musique MP3 par mode,
+// théâtre sonore à 10 voix, compte SPU.
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,6 +16,7 @@ import {
 } from 'lucide-react';
 import { streamSSE } from '@/lib/spu/sse-client';
 import { useSpuStore, REPONSE_VIDE, heureMaintenant, type ReponseVue } from '@/lib/spu/store';
+import { VERSION_SPU } from '@/lib/spu/constants';
 import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
 import { ttsStop, lireTheatre } from '@/lib/spu/tts';
 import { VueReponse, EtapesEnDirect, AnglesMentor } from './reponse-view';
@@ -156,7 +159,7 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
       <div className="text-center mb-10">
-        <p className="text-sm tracking-[0.3em] text-[--muted-foreground] uppercase mb-3">Version 4.1</p>
+        <p className="text-sm tracking-[0.3em] text-[--muted-foreground] uppercase mb-3">Version {VERSION_SPU}</p>
         <h1 className="text-3xl sm:text-5xl font-serif font-bold leading-tight mb-4">
           Pose ta question.<br />
           <span className="text-[--primary]">Reçois une parabole.</span>
@@ -172,6 +175,36 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
           <Badge variant="outline" className="rounded-full">📚 65 paraboles sourcées</Badge>
           <Badge variant="outline" className="rounded-full">🔒 100 % local, sans clé API</Badge>
         </div>
+      </div>
+
+      {/* ── Quoi de neuf — chaque version est visible et expliquée (exigence v4.4) ── */}
+      <div className="rounded-2xl border border-[--border] bg-[--card]/70 p-5 mb-10">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
+          <h2 className="font-semibold text-[15px]">Quoi de neuf — v{VERSION_SPU}</h2>
+        </div>
+        <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
+          <li>
+            <span className="font-medium text-[--foreground]">La structure universelle de réponse :</span>{' '}
+            pour toute question, dans tous les modes, tu reçois la parabole, son interprétation,
+            une histoire écrite pour toi et la mise en perspective. La synthèse des sources
+            devient un onglet déroulant, consultable à volonté.
+          </li>
+          <li>
+            <span className="font-medium text-[--foreground]">Les mises à jour ne se bloquent plus :</span>{' '}
+            la page se rafraîchit automatiquement quand une nouvelle version arrive — tu verras
+            toujours la dernière.
+          </li>
+          <li>
+            <span className="font-medium text-[--foreground]">Parabole garantie :</span> même si les
+            sources externes sont indisponibles, le corpus local t&apos;offre toujours une parabole
+            réelle et sourcée.
+          </li>
+        </ul>
+        <p className="text-xs text-[--muted-foreground]/80 mt-3">
+          Si cette page affiche encore une ancienne version, ferme-la complètement puis rouvre-la :
+          la mise à jour s&apos;appliquera aussitôt.
+        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -755,7 +788,7 @@ function PiedDePage({ aller }: { aller: (v: Vue) => void }) {
   return (
     <footer className="mt-auto border-t border-[--border]/60 bg-[--card]/60 pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-4xl mx-auto px-4 py-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[--muted-foreground]">
-        <span className="font-medium text-[--foreground]">SPU v4.1</span>
+        <span className="font-medium text-[--foreground]">SPU v{VERSION_SPU}</span>
         <button onClick={() => aller('transparence')} className="hover:text-[--primary]">Transparence</button>
         <button onClick={() => aller('confidentialite')} className="hover:text-[--primary]">Confidentialité &amp; RGPD</button>
         <button onClick={() => aller('corpus')} className="hover:text-[--primary]">Corpus</button>

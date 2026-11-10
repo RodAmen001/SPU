@@ -1,4 +1,7 @@
-// Constantes SPU v4.0 — messages imposés par le cahier des charges (Parts 13, 15, 21)
+// Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
+
+/** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
+export const VERSION_SPU = '4.4';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',
@@ -14,7 +17,7 @@ export const FAMILLES: Record<string, string> = {
 };
 
 // 21.4 — Message d'accueil
-export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v4.0.
+export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v4.4.
 
 Je suis un orchestrateur narratif. Je consulte plusieurs sources d'intelligence artificielle et de recherche, je synthétise leurs réponses, puis je te propose une parabole réelle et une histoire personnalisée.
 
