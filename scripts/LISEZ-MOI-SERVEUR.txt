@@ -1,0 +1,45 @@
+══════════════════════════════════════════════════════════
+  SPU — VERSION WEB (SERVEUR) v4.4 — GUIDE DE DÉPLOIEMENT
+  Mise en perspective restaurée — 10 novembre 2026
+══════════════════════════════════════════════════════════
+
+QU'EST-CE QUE C'EST ?
+  L'application web complète du SPU (Next.js 16) : les 4 modes
+  Oracle, Mentor, Deep et Enfant. Chaque réponse affiche
+  désormais TOUJOURS : la parabole, son interprétation,
+  l'histoire, la mise en perspective (le pont entre la question
+  et la parabole). La synthèse des IA et des moteurs de
+  recherche est rangée dans un onglet déroulant que
+  l'utilisateur ouvre à volonté.
+
+CE QU'IL FAUT
+  • Linux/macOS avec Bun (ou Node.js 20+), 512 Mo de RAM
+  • Ce zip : code source complet, corpus exclu (il se sème)
+
+INSTALLATION EN 6 COMMANDES
+  1. Dézippez puis entrez dans le dossier.
+  2. bun install
+  3. Copiez .env.example vers .env et adaptez :
+       DATABASE_URL=file:/CHEMIN/ABSOLU/VERS/ce-dossier/db/custom.db
+       ADMIN_TOKEN=une-longue-chaine-aleatoire
+     ⚠️ Le chemin de la base doit être ABSOLU.
+  4. bunx prisma db push        (crée les 8 tables)
+  5. bun run scripts/seed.ts    (sème les 65 paraboles —
+       sans cette étape, aucune parabole ne sera proposée !)
+  6. bun run build && NODE_ENV=production bun .next/standalone/server.js
+     → l'application est sur http://localhost:3000
+
+SURVIE EN DÉMON (production)
+  python3 scripts/demonise.py serveur   (démarre, survit au shell)
+  python3 scripts/demonise.py gardien   (relance si chute)
+
+VÉRIFIER QUE TOUT EST PRÊT
+  curl http://localhost:3000/api/health
+  → {"status":"ok", "sources":{ "corpus": 65 ... }}
+  Si corpus est 0 : rejouez l'étape 5 (seed), puis redémarrez.
+
+PROJET COMPLET ET MISES À JOUR
+  https://github.com/RodAmen001/SPU
+
+  Un mentor, pas un maître 🌿
+  © 2026 Rodamen001 — ramenyido@gmail.com
