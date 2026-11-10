@@ -3,7 +3,7 @@
 import zipfile, subprocess, pathlib
 
 RACINE = pathlib.Path('/home/z/my-project')
-SORTIE = RACINE / 'telechargements' / 'spu-serveur-v4.4.zip'
+SORTIE = RACINE / 'telechargements' / 'spu-serveur-v4.5.zip'
 
 INCLUS = [
     'src', 'public', 'package.json', 'bun.lock', 'next.config.ts',

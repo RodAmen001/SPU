@@ -1,40 +1,68 @@
 ══════════════════════════════════════════════════════════
-  SPU — VERSION WEB (SERVEUR) v4.4 — GUIDE DE DÉPLOIEMENT
-  Mise en perspective restaurée — 10 novembre 2026
+  SPU — VERSION WEB (SERVEUR) v4.5 — GUIDE DE DÉPLOIEMENT
+  10 novembre 2026
 ══════════════════════════════════════════════════════════
 
-NOUVEAUTÉS v4.4 (10 novembre 2026)
-  • Structure universelle de réponse : parabole + interprétation
-    + histoire + mise en perspective, pour toute question et dans
-    tous les modes (Oracle, Mentor, Deep, Enfant).
-  • La synthèse des IA est repliée dans un onglet déroulant
-    (« La réflexion derrière la réponse »), consultable à volonté.
-  • Fin des versions figées : le service worker est passé en
-    « réseau d'abord » pour les pages et scripts ; une nouvelle
-    version du SPU s'applique désormais toute seule (la page se
-    rafraîchit une fois, automatiquement).
-  • Carte « Quoi de neuf » sur l'accueil : chaque version est
-    annoncée et expliquée dans l'application.
-  • Parabole garantie : même si les sources externes tombent, le
-    corpus local offre toujours une parabole réelle et sourcée.
-  • IMPORTANT : si l'écran affiche encore « v4.1 », fermez
-    complètement la page puis rouvrez-la — la mise à jour
-    s'applique aussitôt (le vieux cache est purgé automatiquement).
+NOUVEAUTÉS v4.5 (10 novembre 2026)
+  • Le narrateur lit TOUTE la réponse : la parabole, son
+    interprétation, l'histoire et la mise en perspective —
+    dans tous les modes, dès que la voix est activée
+    (icône « Voix » dans l'en-tête). Piper sur le serveur,
+    repli automatique sur les voix du navigateur.
+  • Sources adaptatives : le SPU démarre avec 2 sources et
+    synthétise ; si la confiance descend sous 50 %, il ajoute
+    une 3ᵉ source, puis une 4ᵉ, puis une 5ᵉ (5 sources libres
+    et gratuites). Il garde la première configuration qui
+    atteint 50 %, sinon celle qui a le score le plus élevé.
+    La trace de l'escalade est visible dans l'onglet réflexion
+    (« 2 sources 30 % → 3 sources 40 % → … »).
+  • Questions d'affinage plus douces : au plus 2 questions,
+    présentées comme des invitations facultatives. L'utilisateur
+    peut y répondre, partager librement n'importe quel détail,
+    ou cliquer « Poursuivre sans répondre » — la suite du
+    dialogue reste complète dans tous les cas.
+  • Fin de la section « Le Mentor t'écoute » : la parole du
+    Mentor est repliée dans l'onglet réflexion, le corps de la
+    réponse n'affiche que les 4 blocs (parabole, interprétation,
+    histoire, mise en perspective).
+  • Question ouverte finale corrigée : elle s'affiche à nouveau
+    à la fin des dialogues Mentor et Deep.
 
-QU'EST-CE QUE C'EST ?
-  L'application web complète du SPU (Next.js 16) : les 4 modes
+NOUVEAUTÉS v4.4 (rappel)
+  • Structure universelle de réponse dans tous les modes.
+  • Synthèse des IA repliée dans l'onglet déroulant.
+  • Fin des versions figées : service worker en « réseau
+    d'abord », la page se rafraîchit à l'arrivée d'une nouvelle
+    version. Carte « Quoi de neuf » sur l'accueil.
+
+  IMPORTANT — si l'écran affiche encore « v4.1 » ou « v4.4 » :
+  1. Fermez complètement l'onglet puis rouvrez-le (ou
+     Ctrl+Shift+R).
+  2. Vérifiez que le serveur qui tourne est bien le dernier
+     build : curl http://localhost:3000/api/version
+     → "serveur": {"version": "4.5" ...}
+  3. Vérifiez le corpus : curl http://localhost:3000/api/health
+     → "corpus": 65 (si 0 : rejouez le seed, étape 5).
+
+CE QU'EST LE SPU
+  L'application web complète (Next.js 16) : les 4 modes
   Oracle, Mentor, Deep et Enfant. Chaque réponse affiche
-  désormais TOUJOURS : la parabole, son interprétation,
-  l'histoire, la mise en perspective (le pont entre la question
-  et la parabole). La synthèse des IA et des moteurs de
-  recherche est rangée dans un onglet déroulant que
-  l'utilisateur ouvre à volonté.
+  TOUJOURS : la parabole, son interprétation, l'histoire, la
+  mise en perspective. La synthèse des IA et des moteurs de
+  recherche reste rangée dans un onglet déroulant.
 
 CE QU'IL FAUT
   • Linux/macOS avec Bun (ou Node.js 20+), 512 Mo de RAM
   • Ce zip : code source complet, corpus exclu (il se sème)
 
-INSTALLATION EN 6 COMMANDES
+MISE À JOUR DEPUIS UNE VERSION INSTALLÉE (recommandé)
+  1. Dans le dossier du SPU : git pull (dépôt RodAmen001/SPU)
+  2. bun install
+  3. bun run build
+  4. Redémarrez : python3 scripts/demonise.py serveur
+  5. curl http://localhost:3000/api/version → "4.5" ✓
+
+INSTALLATION FRAÎCHE EN 6 COMMANDES
   1. Dézippez puis entrez dans le dossier.
   2. bun install
   3. Copiez .env.example vers .env et adaptez :
@@ -54,7 +82,7 @@ SURVIE EN DÉMON (production)
 VÉRIFIER QUE TOUT EST PRÊT
   curl http://localhost:3000/api/health
   → {"status":"ok", "sources":{ "corpus": 65 ... }}
-  Si corpus est 0 : rejouez l'étape 5 (seed), puis redémarrez.
+  curl http://localhost:3000/api/version → "4.5"
 
 PROJET COMPLET ET MISES À JOUR
   https://github.com/RodAmen001/SPU
