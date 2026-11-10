@@ -91,7 +91,27 @@ export async function trouverParabole(synthese: string, question: string, mode: 
         scoreCosinus: Math.round(t.score * 1000) / 1000,
       };
     });
-  if (!candidats.length) return null;
+  if (!candidats.length) {
+    // Garantie « toujours une parabole » : si l'index est muet, on offre une
+    // parabole RÉELLE du corpus (rotation déterministe), honnêtement sous le seuil.
+    // Jamais d'IA générative n'invente une parabole.
+    const toutes = await db.parabole.findMany({ where: { mode }, take: 80 });
+    if (!toutes.length) return null;
+    const p = toutes[question.length % toutes.length];
+    const interps = safeParse<string[]>(p.interpretations, []);
+    return {
+      id: p.id,
+      code: p.code,
+      texte: p.texte,
+      culture: p.culture,
+      famille: p.famille,
+      interpretations: interps,
+      sources: safeParse<string[]>(p.sources, []),
+      score: 0.3,
+      interpretationChoisie: interps[0] || p.texte,
+      sousSeuil: true,
+    };
+  }
 
   // ── Arbitrage LLM : précision sémantique sur le top-5 ──
   let arbitrage: { id: string; score: number; interpretation_index: number } | null = null;

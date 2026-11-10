@@ -303,7 +303,6 @@ function FluxOracle() {
   const { sessionId, setSessionId, audioActive } = useSpuStore();
   const [messages, setMessages] = useState<MessageFil[]>([]);
   const [reponse, setReponse] = useState<ReponseVue | null>(null); // réponse en cours de streaming
-  const [perspectiveEnCours, setPerspectiveEnCours] = useState(false);
   const finaliser = useFinalisation();
 
   const poser = async (q: string) => {
@@ -327,6 +326,10 @@ function FluxOracle() {
       },
       histoire: (d) => {
         r.histoire += String(d.chunk || '');
+        setReponse({ ...r });
+      },
+      perspective: (d) => {
+        r.perspective = String(d.text || '');
         setReponse({ ...r });
       },
       erreur: (d) => {
@@ -354,23 +357,6 @@ function FluxOracle() {
     setReponse(null);
   };
 
-  const demanderPerspective = async (echangeId: string, idMsg: string) => {
-    setPerspectiveEnCours(true);
-    try {
-      const res = await fetch('/api/perspective', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ echangeId }),
-      });
-      const j = (await res.json()) as { perspective?: string; error?: string };
-      const texte = j.perspective || j.error || "La perspective n'est pas disponible pour l'instant.";
-      setMessages((ms) => ms.map((m) => (m.id === idMsg && m.reponse ? { ...m, reponse: { ...m.reponse, perspective: texte } } : m)));
-    } catch {
-      setMessages((ms) => ms.map((m) => (m.id === idMsg && m.reponse ? { ...m, reponse: { ...m.reponse, perspective: "La perspective n'est pas disponible pour l'instant." } } : m)));
-    }
-    setPerspectiveEnCours(false);
-  };
-
   const vierge = messages.length === 0 && !reponse;
 
   return (
@@ -392,11 +378,7 @@ function FluxOracle() {
               enfants={
                 <>
                   {m.reponse?.enCours && <EtapesEnDirect reponse={m.reponse} />}
-                  <VueReponse
-                    reponse={m.reponse || REPONSE_VIDE}
-                    surPerspective={m.reponse?.final?.perspectiveDisponible && !m.reponse.perspective ? () => demanderPerspective(m.reponse!.final!.echangeId, m.id) : undefined}
-                    perspectiveEnCours={perspectiveEnCours}
-                  />
+                  <VueReponse reponse={m.reponse || REPONSE_VIDE} />
                 </>
               }
             />
@@ -461,6 +443,10 @@ function FluxMentor() {
       },
       histoire: (d) => {
         r.histoire += String(d.chunk || '');
+        setReponse({ ...r });
+      },
+      perspective: (d) => {
+        r.perspective = String(d.text || '');
         setReponse({ ...r });
       },
       reflexion: (d) => {

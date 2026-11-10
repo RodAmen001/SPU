@@ -20,6 +20,8 @@ if __name__ == '__main__':
     if quoi == 'gardien':
         os.execvp('bash', ['bash', '/home/z/my-project/scripts/gardien-serveur.sh'])
     elif quoi == 'serveur':
+        # Production : build standalone Next.js, base SQLite en chemin absolu (.env)
         os.chdir('/home/z/my-project')
-        os.execvp('bun', ['bun', 'run', 'dev'])
+        env = dict(os.environ, NODE_ENV='production')
+        os.execvpe('bun', ['bun', '.next/standalone/server.js'], env)
     time.sleep(1)

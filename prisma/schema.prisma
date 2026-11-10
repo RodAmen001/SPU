@@ -82,6 +82,7 @@ model Echange {
   parabole       Parabole? @relation(fields: [paraboleId], references: [id])
   interpretation String?
   histoire       String?
+  perspective    String? // mise en perspective : pont entre la question posée et la parabole offerte
   audioActive    Boolean   @default(false)
   distressFlagged Boolean  @default(false)
   mode           String    @default("oracle")

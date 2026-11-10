@@ -3,9 +3,8 @@
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpenText, Sparkles, Loader2, Quote, Eye, Phone, AlertCircle, ChevronDown } from 'lucide-react';
+import { BookOpenText, Sparkles, Loader2, Quote, FlaskConical, Eye, Phone, AlertCircle, ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReponseVue } from '@/lib/spu/store';
 
@@ -19,6 +18,7 @@ const ETAPES_LISIBILES: Record<string, string> = {
   'préparation': 'Je prépare la suite…',
   'approfondissement': 'J\'approfondis avec toi…',
   'méditation': 'Je compose une méditation…',
+  'perspective': 'Je relie ta question et la parabole…',
 };
 
 // Phrases de patience affichées en rotation pendant que le SPU réfléchit —
@@ -73,18 +73,15 @@ export function EtapesEnDirect({ reponse }: { reponse: ReponseVue }) {
 
 export function VueReponse({
   reponse,
-  surPerspective,
-  perspectiveEnCours,
   modeEtape,
   enfantine,
 }: {
   reponse: ReponseVue;
-  surPerspective?: () => void;
-  perspectiveEnCours?: boolean;
   modeEtape?: string;
   enfantine?: boolean;
 }) {
   const [sourcesOuvertes, setSourcesOuvertes] = useState(false);
+  const [reflexionOuverte, setReflexionOuverte] = useState(false);
 
   if (reponse.distress) {
     return (
@@ -134,39 +131,7 @@ export function VueReponse({
         </div>
       )}
 
-      {/* Synthèse sourcée */}
-      {reponse.synthese && (
-        <Card className="p-5 apparu">
-          <div className="flex items-center gap-2 mb-2.5">
-            <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
-            <h3 className="font-semibold text-[15px]">Synthèse de mes sources</h3>
-            <Badge variant="outline" className="ml-auto text-xs">
-              confiance {Math.round(reponse.synthese.confiance * 100)} %
-            </Badge>
-          </div>
-          <p className="text-[15px] leading-relaxed">{reponse.synthese.text}</p>
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
-            {reponse.synthese.sources.map((s) => (
-              <Badge key={s} className="text-xs bg-[--muted] text-[--muted-foreground] hover:bg-[--muted]">{s}</Badge>
-            ))}
-            <button
-              className="text-xs text-[--primary] underline-offset-2 hover:underline ml-1"
-              onClick={() => setSourcesOuvertes((v) => !v)}
-              aria-expanded={sourcesOuvertes}
-            >
-              {sourcesOuvertes ? 'masquer' : 'pourquoi plusieurs sources ?'}
-            </button>
-          </div>
-          {sourcesOuvertes && (
-            <p className="text-xs text-[--muted-foreground] mt-2 leading-relaxed">
-              Aucune intelligence seule ne détient la vérité : je compare plusieurs points de vue et je te
-              montre d&apos;où vient chaque élément. Cette synthèse est un éclairage, pas une sentence.
-            </p>
-          )}
-        </Card>
-      )}
-
-      {/* Réflexion Mentor (étape 2) */}
+      {/* Réflexion Mentor (étape 2) — la parole du Mentor */}
       {reponse.reflexion && (
         <Card className="p-5 apparu border-[--secondary]/50">
           <h3 className="font-semibold text-[15px] mb-2 text-[--secondary]">Le Mentor t&apos;écoute</h3>
@@ -182,7 +147,7 @@ export function VueReponse({
         </Card>
       )}
 
-      {/* Parabole */}
+      {/* ── LA PARABOLE — cœur de toute réponse du SPU, toujours visible ── */}
       {reponse.parabole && (
         <Card className="p-6 apparu border-[--primary]/30 bg-gradient-to-br from-[--card] to-[--accent]/15">
           <div className="flex items-center gap-2 mb-3">
@@ -233,7 +198,7 @@ export function VueReponse({
         </Card>
       )}
 
-      {/* Histoire */}
+      {/* ── L'HISTOIRE associée à la réponse — toujours visible ── */}
       {reponse.histoire && (
         <Card className="p-6 apparu">
           <div className="flex items-center gap-2 mb-3">
@@ -245,12 +210,48 @@ export function VueReponse({
         </Card>
       )}
 
-      {/* Perspective (Oracle) */}
+      {/* ── LA MISE EN PERSPECTIVE — le pont entre la question posée et la parabole offerte ── */}
       {reponse.perspective && (
-        <Card className="p-6 apparu border-[--secondary]/50">
-          <h3 className="font-semibold text-[15px] mb-2 text-[--secondary]">Mise en perspective</h3>
+        <Card className="p-6 apparu border-[--secondary]/50 bg-[--secondary]/5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <FlaskConical className="h-4 w-4 text-[--secondary]" aria-hidden />
+            <h3 className="font-semibold text-[15px] text-[--secondary]">Mise en perspective</h3>
+          </div>
+          <p className="text-[13px] text-[--muted-foreground] mb-2.5">Pourquoi cette parabole répond à ta question :</p>
           <p className="font-serif text-[15px] leading-relaxed whitespace-pre-line">{reponse.perspective}</p>
         </Card>
+      )}
+
+      {/* ── ONGLET DÉROULANT — la réflexion (synthèse IA + sources), consultable à volonté ── */}
+      {reponse.synthese && (
+        <div className="rounded-2xl border border-[--border]/70 bg-[--card]/60 apparu">
+          <button
+            className="w-full flex items-center gap-2 px-5 py-3.5 text-left"
+            onClick={() => setReflexionOuverte((v) => !v)}
+            aria-expanded={reflexionOuverte}
+          >
+            <FlaskConical className="h-4 w-4 text-[--muted-foreground]" aria-hidden />
+            <span className="text-sm font-medium text-[--muted-foreground]">
+              La réflexion derrière la réponse — synthèse et sources
+            </span>
+            <ChevronDown className={`h-4 w-4 ml-auto text-[--muted-foreground] transition-transform ${reflexionOuverte ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
+          {reflexionOuverte && (
+            <div className="px-5 pb-5 pt-1 border-t border-[--border]/60">
+              <p className="text-[14px] leading-relaxed mt-3">{reponse.synthese.text}</p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                {reponse.synthese.sources.map((s) => (
+                  <Badge key={s} className="text-xs bg-[--muted] text-[--muted-foreground] hover:bg-[--muted]">{s}</Badge>
+                ))}
+                <Badge variant="outline" className="text-xs">confiance {Math.round(reponse.synthese.confiance * 100)} %</Badge>
+              </div>
+              <p className="text-xs text-[--muted-foreground] mt-3 leading-relaxed">
+                Aucune intelligence seule ne détient la vérité : je compare plusieurs points de vue et je te
+                montre d&apos;où vient chaque élément. Cette synthèse est une étape réflexive — un éclairage, jamais une vérité absolue.
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Question ouverte finale */}
@@ -260,19 +261,9 @@ export function VueReponse({
         </Card>
       )}
 
-      {/* Action perspective */}
-      {reponse.final?.perspectiveDisponible && !reponse.perspective && surPerspective && (
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={surPerspective} disabled={perspectiveEnCours} className="rounded-full">
-            {perspectiveEnCours ? <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden /> : <Sparkles className="h-4 w-4 mr-2" aria-hidden />}
-            Souhaites-tu une mise en perspective ?
-          </Button>
-        </div>
-      )}
-
       {!enfantine && reponse.final && !reponse.enCours && (
         <p className="text-center text-xs text-[--muted-foreground]">
-          Réponse assemblée à partir de plusieurs sources — un éclairage, jamais une vérité absolue. 🌿
+          La synthèse n&apos;était qu&apos;une étape réflexive — la parabole, elle, est réelle, sourcée et choisie pour toi. 🌿
         </p>
       )}
     </div>

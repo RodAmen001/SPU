@@ -67,6 +67,10 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         r.current.histoire += String(d.chunk || '');
         setReponse({ ...r.current });
       },
+      perspective: (d) => {
+        r.current.perspective = String(d.text || '');
+        setReponse({ ...r.current });
+      },
       erreur: (d) => {
         r.current.erreur = String(d.message || '');
         setReponse({ ...r.current });
@@ -185,6 +189,12 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
                         « {m.reponse.parabole.enonce} »
                       </blockquote>
                       <p className="text-[--muted-foreground] mt-2">{m.reponse.parabole.culture}</p>
+                      {m.reponse.parabole.interpretation && (
+                        <p className="text-lg leading-relaxed mt-3">
+                          <span className="font-semibold">Ce que ça veut dire : </span>
+                          {m.reponse.parabole.interpretation}
+                        </p>
+                      )}
                     </div>
                   )}
                   {m.reponse?.erreur && <p className="text-lg whitespace-pre-line">{m.reponse.erreur}</p>}
@@ -193,6 +203,20 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
                       <h2 className="text-xl font-bold mb-3">📖 Ton histoire</h2>
                       <p className="font-serif text-lg sm:text-xl leading-[1.9] whitespace-pre-line">{m.reponse.histoire}</p>
                     </>
+                  )}
+                  {m.reponse?.perspective && (
+                    <div className="mt-5 rounded-2xl bg-[--accent]/20 p-4">
+                      <h3 className="text-lg font-bold mb-1">🌟 Et toi alors ?</h3>
+                      <p className="text-base sm:text-lg leading-relaxed">{m.reponse.perspective}</p>
+                    </div>
+                  )}
+                  {m.reponse?.synthese && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-sm text-[--muted-foreground]">
+                        Pour les grands — la réflexion derrière le conte
+                      </summary>
+                      <p className="text-sm text-[--muted-foreground] leading-relaxed mt-2">{m.reponse.synthese.text}</p>
+                    </details>
                   )}
                 </Card>
               }

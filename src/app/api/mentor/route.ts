@@ -12,6 +12,7 @@ import { fluxNarratif } from '@/lib/spu/flux';
 import { llmChat, extractJson } from '@/lib/spu/llm';
 import { trouverParabole, detecterTonalite } from '@/lib/spu/matching';
 import { genererHistoire, chunker } from '@/lib/spu/story';
+import { genererPerspective } from '@/lib/spu/perspective';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -39,6 +40,7 @@ interface EtatMentor {
   synthese1?: string;
   parabole1?: { id: string; texte: string; interpretation: string; culture: string };
   histoire1?: string;
+  perspective1?: string;
   angles?: string[];
 }
 
@@ -117,8 +119,22 @@ export async function POST(req: NextRequest) {
             if (ev.type === 'synthesis') etat.synthese1 = ev.text;
             if (ev.type === 'parabole') etat.parabole1 = { id: ev.id, texte: ev.enonce, interpretation: ev.interpretation, culture: ev.culture };
             if (ev.type === 'histoire') etat.histoire1 = (etat.histoire1 || '') + ev.chunk;
+            if (ev.type === 'perspective') etat.perspective1 = ev.text;
             send(ev.type, ev);
           }
+
+          // journalisation complète de l'ouverture (synthèse → parabole → histoire → perspective)
+          db.echange.update({
+            where: { id: etat.echangeId },
+            data: {
+              synthese: etat.synthese1 || null,
+              paraboleId: etat.parabole1?.id || null,
+              interpretation: etat.parabole1?.interpretation || null,
+              histoire: etat.histoire1 || null,
+              perspective: etat.perspective1 || null,
+              payload: JSON.stringify({ type: 'mentor-ouverture' }),
+            },
+          }).catch(() => {});
 
           // questions d'angle pour l'étape 2
           status('préparation');
@@ -175,7 +191,7 @@ export async function POST(req: NextRequest) {
           const anglesJson = extractJson<{ angles: string[] }>(refl);
           const angles2 = anglesJson?.angles?.length ? anglesJson.angles.slice(0, 2) : ['Si tu devais nommer ce qui a le plus de poids pour toi, ce serait quoi ?'];
 
-          await db.echange.create({
+          const ech2 = await db.echange.create({
             data: {
               sessionId: session.id, question: reponse, mode: 'mentor', etape: 2,
               payload: JSON.stringify({ reflexion, type: 'mentor-approfondissement' }),
@@ -183,6 +199,51 @@ export async function POST(req: NextRequest) {
           });
 
           send('reflexion', { text: reflexion });
+
+          // ── La parabole reste au cœur de chaque réponse du SPU (approfondissement) ──
+          if (etat.parabole1?.id) {
+            try {
+              const pb = await db.parabole.findUnique({ where: { id: etat.parabole1.id } });
+              if (pb) {
+                const interps = JSON.parse(pb.interpretations) as string[];
+                const interp2 = interps.find((i) => i !== etat.parabole1?.interpretation) || etat.parabole1.interpretation;
+                send('parabole', {
+                  id: pb.id, code: pb.code, enonce: pb.texte, interpretation: interp2,
+                  culture: pb.culture, famille: `${pb.famille} — approfondissement`,
+                  sources: JSON.parse(pb.sources), score: 0.9, sousSeuil: false,
+                });
+                status('histoire');
+                const histoire2 = await genererHistoire({
+                  enonce: pb.texte,
+                  interpretation: interp2,
+                  contexte: 'échange avec le Mentor (approfondissement)',
+                  culture: pb.culture,
+                  tonalite: 'neutre',
+                  mode: 'adulte',
+                  preoccupation: `${etat.questionInitiale} ${reponse}`.slice(0, 600),
+                });
+                for (const chunk of chunker(histoire2.texte, 3)) {
+                  send('histoire', { chunk });
+                  await new Promise((r) => setTimeout(r, 35));
+                }
+                status('perspective');
+                const perspective2 = await genererPerspective(
+                  `${etat.questionInitiale} ${reponse}`,
+                  pb.texte,
+                  interp2,
+                  { contexte: `Ce que la personne a répondu au Mentor : ${reponse.slice(0, 300)}` },
+                );
+                send('perspective', { text: perspective2 });
+                await db.echange.update({
+                  where: { id: ech2.id },
+                  data: { paraboleId: pb.id, interpretation: interp2, histoire: histoire2.texte, perspective: perspective2 },
+                }).catch(() => {});
+              }
+            } catch {
+              /* l'approfondissement reste utilisable même si la couche parabole échoue */
+            }
+          }
+
           etat.angles = angles2;
           etat.etape = 3;
           await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
@@ -254,6 +315,19 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // ── Mise en perspective : le pont entre la question initiale et la parabole finale ──
+        let perspective3 = '';
+        if (match) {
+          status('perspective');
+          perspective3 = await genererPerspective(
+            etat.questionInitiale,
+            match.texte,
+            match.interpretationChoisie,
+            { contexte: `Chemin de l'échange avec le Mentor : ${reponse.slice(0, 300)}` },
+          );
+          send('perspective', { text: perspective3 });
+        }
+
         // Question ouverte finale (posture éthique 1.3)
         send('question-ouverte', { text: QUESTION_OUVERTE_FINALE });
 
@@ -262,7 +336,8 @@ export async function POST(req: NextRequest) {
             sessionId: session.id, question: reponse, synthese: syntheseFinale.trim(),
             sourcesReponse: JSON.stringify(['Échange Mentor']),
             paraboleId: match?.id || null, interpretation: match?.interpretationChoisie || null,
-            histoire: histoire?.texte || null, audioActive: corps.audioActive || false,
+            histoire: histoire?.texte || null, perspective: perspective3 || null,
+            audioActive: corps.audioActive || false,
             mode: 'mentor', etape: 3,
             payload: JSON.stringify({ type: 'mentor-synthese', score: match?.score ?? null }),
           },

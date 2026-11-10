@@ -119,6 +119,8 @@ export async function POST(req: NextRequest) {
           });
           etat.echangeId = echange1.id;
 
+          let histoire1 = '';
+          let perspective1 = '';
           for await (const ev of fluxNarratif(question, { modeCorpus: 'adulte', contexte: 'démarche contemplative, ton lent' })) {
             if (ev.type === 'parabole') {
               etat.paraboleId = ev.id;
@@ -126,9 +128,23 @@ export async function POST(req: NextRequest) {
               etat.interpretation1 = ev.interpretation;
               etat.culture = ev.culture;
             }
+            if (ev.type === 'histoire') histoire1 += ev.chunk;
+            if (ev.type === 'perspective') perspective1 = ev.text;
             send(ev.type, ev);
             if (ev.type === 'histoire') await pause(70); // rythme plus lent, audio plus présent
           }
+
+          // journalisation complète du niveau 1 (parabole → histoire → perspective)
+          db.echange.update({
+            where: { id: echange1.id },
+            data: {
+              paraboleId: etat.paraboleId || null,
+              interpretation: etat.interpretation1 || null,
+              histoire: histoire1 || null,
+              perspective: perspective1 || null,
+              payload: JSON.stringify({ type: 'deep-ouverture' }),
+            },
+          }).catch(() => {});
 
           etat.niveau = 2;
           await db.session.update({ where: { id: session.id }, data: { deepState: JSON.stringify(etat) } });

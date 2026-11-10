@@ -5,6 +5,7 @@
 import { orchestrerSources, synthetiser, type Synthese, type SourceResultat } from './sources';
 import { trouverParabole, detecterTonalite, type ParaboleMatch } from './matching';
 import { genererHistoire, chunker, type HistoireGeneree } from './story';
+import { genererPerspective } from './perspective';
 import { MESSAGE_ERREUR_SOURCES } from './constants';
 
 export type EvenementSSE =
@@ -23,7 +24,8 @@ export type EvenementSSE =
       score: number;
       sousSeuil: boolean;
     }
-  | { type: 'histoire'; chunk: string };
+  | { type: 'histoire'; chunk: string }
+  | { type: 'perspective'; text: string };
 
 export interface OptionsFlux {
   modeCorpus: 'adulte' | 'enfant';
@@ -36,6 +38,7 @@ export interface ResultatFlux {
   sources: SourceResultat[];
   parabole: ParaboleMatch | null;
   histoire: HistoireGeneree | null;
+  perspective: string | null;
   erreur: string | null;
 }
 
@@ -49,7 +52,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * (histoire par template sûr) restent disponibles hors-ligne.
  */
 export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncGenerator<EvenementSSE, ResultatFlux> {
-  const resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, erreur: null };
+  const resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
 
   yield { type: 'status', step: 'sources' };
   const orch = await orchestrerSources(question);
@@ -109,6 +112,14 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     yield { type: 'histoire', chunk: c };
     await pause(35); // rythme de lecture, respiration du stream
   }
+
+  // ── Mise en perspective : le pont entre LA question posée et LA parabole offerte ──
+  // Exigence du concept : visible dans la réponse, quel que soit le mode.
+  yield { type: 'status', step: 'perspective' };
+  resultat.perspective = await genererPerspective(question, match.texte, match.interpretationChoisie, {
+    enfantine: opts.modeCorpus === 'enfant',
+  });
+  yield { type: 'perspective', text: resultat.perspective };
 
   return resultat;
 }

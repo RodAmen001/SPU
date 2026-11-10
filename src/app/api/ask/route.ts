@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
         // ── Flux narratif complet ──
         const modeCorpus = mode === 'enfant' ? 'enfant' : 'adulte';
-        let resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, erreur: null };
+        let resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
         for await (const ev of fluxNarratif(question, { modeCorpus, contexte: 'non partagé' })) {
           const e = ev as EvenementSSE;
           if (e.type === 'synthesis')
@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
               interpretations: [e.interpretation], sources: e.sources, score: e.score,
               interpretationChoisie: e.interpretation, sousSeuil: e.sousSeuil,
             };
+          if (e.type === 'perspective') resultat.perspective = e.text;
           if (e.type === 'erreur') resultat.erreur = e.message;
           send(e.type, e);
         }
@@ -168,6 +169,7 @@ export async function POST(req: NextRequest) {
             paraboleId: resultat.parabole?.id || null,
             interpretation: resultat.parabole?.interpretationChoisie || null,
             histoire: resultat.histoire?.texte || null,
+            perspective: resultat.perspective || null,
             audioActive: corps.audioActive || false,
             distressFlagged: false,
             mode,

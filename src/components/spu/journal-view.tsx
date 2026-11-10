@@ -23,6 +23,7 @@ interface EchangeJournal {
   parabole: { code: string; enonce: string; culture: string; famille: string } | null;
   interpretation: string | null;
   histoire: string | null;
+  perspective: string | null;
 }
 
 interface SessionCompte {
@@ -290,6 +291,12 @@ export function VueJournal({ surRetour: _surRetour, surOuvrirSession }: { surRet
                       {histoireOuverte && (
                         <p className="font-serif text-[15px] leading-[1.85] whitespace-pre-line mt-3">{e.histoire}</p>
                       )}
+                    </Card>
+                  )}
+                  {e.perspective && (
+                    <Card className="p-4 border-[--secondary]/50 bg-[--secondary]/5">
+                      <p className="text-xs font-semibold text-[--muted-foreground] mb-1.5">MISE EN PERSPECTIVE — le pont entre la question et la parabole</p>
+                      <p className="font-serif text-sm leading-relaxed">{e.perspective}</p>
                     </Card>
                   )}
                 </div>

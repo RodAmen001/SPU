@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
           : null,
         interpretation: e.interpretation,
         histoire: e.histoire,
+        perspective: e.perspective,
       })),
     });
   } catch (err) {
