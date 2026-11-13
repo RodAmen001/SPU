@@ -1,4 +1,6 @@
-// SPU v4.5 — Application principale (single route, navigation par vues)
+// SPU v4.7 — Application principale (single route, navigation par vues)
+// v4.7 : grande fluidité — matching parallèle aux sources, histoire et perspective
+// en parallèle, tonalité locale, escalade plafonnée, budget de réponse garanti.
 // v4.5 : sources adaptatives 2→3→4→5 (confiance ≥ 50 %, sinon meilleur score),
 // questions d'affinage facultatives (max 2, invitation douce, poursuite libre),
 // parole du Mentor repliée dans l'onglet réflexion, TOUTE la réponse lue par
@@ -186,6 +188,13 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
           <h2 className="font-semibold text-[15px]">Quoi de neuf — v{VERSION_SPU}</h2>
         </div>
         <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
+          <li>
+            <span className="font-medium text-[--foreground]">Grande fluidité (v4.7) :</span> la recherche de
+            parabole démarre <span className="font-medium text-[--foreground]">pendant</span> la consultation des
+            sources, l&apos;histoire et la mise en perspective sont générées en parallèle, et un garde-fou
+            plafonne chaque réponse à 90 secondes — une réponse complète est toujours servie, sur
+            ordinateur comme sur téléphone, même quand les sources sont saturées.
+          </li>
           <li>
             <span className="font-medium text-[--foreground]">Horodatage complet (v4.6) :</span> toutes
             les conversations — questions, réponses, journal de bord — portent désormais la{' '}

@@ -214,7 +214,9 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
     // Garde-fou budget : si le temps global de la requête s'épuise, on ne monte
     // plus d'échelon — la meilleure synthèse déjà obtenue est retenue.
-    if (syntheses.length && budgetEpuise(12000)) break;
+    // v4.7 : seuil relevé à 30 s — inutile d'entamer un palier (source + nouvelle
+    // synthèse) qu'on n'aurait pas le temps de mener jusqu'au bout.
+    if (syntheses.length && budgetEpuise(30000)) break;
     // tente les sources pas encore consultées jusqu'à atteindre la cible
     const manquantes = SOURCES_SPU.slice(consultees.length, cible);
     if (manquantes.length) {
@@ -237,7 +239,7 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
       synthese = null;
     }
     if (!synthese) {
-      if (budgetEpuise(12000)) break;
+      if (budgetEpuise(30000)) break;
       continue; // escalade possible tant que le budget le permet
     }
     const niveau = consultees.length;

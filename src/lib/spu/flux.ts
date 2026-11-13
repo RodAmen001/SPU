@@ -54,7 +54,12 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncGenerator<EvenementSSE, ResultatFlux> {
   const resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
 
+  // ── v4.7 Fluidité : le matching du corpus démarre EN MÊME TEMPS que la
+  // consultation des sources. L'arbitre identifie le cœur émotionnel de LA
+  // QUESTION (pas celui de la synthèse), il n'a donc pas besoin d'attendre :
+  // ses ~12 s d'analyse se déroulent pendant que les sources répondent.
   yield { type: 'status', step: 'sources' };
+  const matchPromis = trouverParabole(question, question, opts.modeCorpus).catch(() => null);
   const orch = await orchestrerSources(question);
   resultat.sources = orch.sources;
   let modeDegrade = false;
@@ -79,7 +84,8 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     yield { type: 'status', step: 'matching' };
   }
 
-  const match = await trouverParabole(modeDegrade ? question : `${question} ${resultat.synthese?.texte || ''}`, question, opts.modeCorpus);
+  // Le matching a tourné pendant les sources : il est déjà prêt (coût résiduel ≈ 0).
+  const match = await matchPromis;
   if (!match) {
     const msg = modeDegrade
       ? MESSAGE_ERREUR_SOURCES
@@ -103,7 +109,13 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   };
 
   yield { type: 'status', step: 'histoire' };
+  // v4.7 : la tonalité est détectée localement (instantané, plus d'appel IA) et la
+  // mise en perspective est générée EN PARALLÈLE de l'histoire — les deux ne
+  // dépendent que de la parabole. Restitution dans l'ordre canonique.
   const tonalite = opts.modeCorpus === 'enfant' ? 'neutre' : await detecterTonalite(question);
+  const perspectivePromis = genererPerspective(question, match.texte, match.interpretationChoisie, {
+    enfantine: opts.modeCorpus === 'enfant',
+  });
   const histoire = await genererHistoire({
     enonce: match.texte,
     interpretation: match.interpretationChoisie,
@@ -124,10 +136,9 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
 
   // ── Mise en perspective : le pont entre LA question posée et LA parabole offerte ──
   // Exigence du concept : visible dans la réponse, quel que soit le mode.
+  // (déjà générée en parallèle de l'histoire — plus d'attente supplémentaire)
   yield { type: 'status', step: 'perspective' };
-  resultat.perspective = await genererPerspective(question, match.texte, match.interpretationChoisie, {
-    enfantine: opts.modeCorpus === 'enfant',
-  });
+  resultat.perspective = await perspectivePromis;
   yield { type: 'perspective', text: resultat.perspective };
 
   return resultat;

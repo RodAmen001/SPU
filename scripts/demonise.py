@@ -20,9 +20,13 @@ if __name__ == '__main__':
     if quoi == 'gardien':
         os.execvp('bash', ['bash', '/home/z/my-project/scripts/gardien-serveur.sh'])
     elif quoi == 'serveur':
-        # Production : build standalone Next.js, base SQLite en chemin absolu (.env)
+        # Production : build standalone Next.js, base SQLite en chemin absolu
+        # (v4.7 : DATABASE_URL explicite — le dossier standalone ne dépend plus du .env)
         os.chdir('/home/z/my-project')
-        env = dict(os.environ, NODE_ENV='production')
+        fd_log = os.open('/home/z/my-project/server.log', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        os.dup2(fd_log, 1)
+        os.dup2(fd_log, 2)
+        env = dict(os.environ, NODE_ENV='production', DATABASE_URL='file:/home/z/my-project/db/custom.db')
         os.execvpe('bun', ['bun', '.next/standalone/server.js'], env)
     elif quoi == 'dev':
         # Développement : next dev sur le port 3000, journal dans dev.log

@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { EnregistreurSW } from '@/components/spu/enregistreur-sw';
 
 export const metadata: Metadata = {
-  title: 'SPU v4.6 — Système Parabolique Universel',
+  title: 'SPU v4.7 — Système Parabolique Universel',
   description:
     'Orchestrateur narratif multi-IA : synthèse sourcée de plusieurs intelligences, parabole réelle issue d\'un corpus sourcé, histoire personnalisée. Un mentor, pas un maître.',
   applicationName: 'SPU',

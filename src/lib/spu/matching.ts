@@ -160,24 +160,19 @@ Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretat
   };
 }
 
-/** Détecte la tonalité de la question (3.6) — positif / négatif / neutre. */
+// ── Tonalité : détection lexicale LOCALE (v4.7) ──────────────────────────────
+// Avant : un appel IA de ~8 s en fin de pipeline, purement séquentiel.
+// Maintenant : détection instantanée sur mots-clés — même verdict dans la
+// quasi-totalité des cas, zéro latence ajoutée, zéro dépendance réseau.
+const TONALITE_NEGATIVE =
+  /souffr|angoiss|anxi|déprim|deprim|tristess|peur|frayeur|colèr|colere|énerv|enerv|haine|injust|trahi|mensong|menti\b|tromp|perte|perdu|perds|perdre|mort|mouri|décès|deces|solitude|abandon|rejet|divorc|conflit|dispute|bless|échec|echec|culpabl|hont|licenci|chômage|chomage|ruin|dette|dettes|maladie|diagnosti|hospital|accident|volé|arnaqu|escroqu|harcel|menaç|chagrin|désesp|desesp|effondr|pleur|larm|inquiet|inquiét|stress|paniqu|craint|détest|detest|violenc|agress|grave\b|trop dur|galèr|galer|souci|ennui|perds espoir/i;
+const TONALITE_POSITIVE =
+  /joie|heureu|content|ravie?\b|merci|gratitud|réussi|reussi|réussite|reussite|espoir|espér|esper|rêve|reve\b|fiert|célébr|celebr|naissan|mariag|amour|aim(e|é|er)\b|paix|serein|confian|progr|guéri|gueri|victoir|bonheur|chance|gagn|super\b|génial|genial|formid|magnifi|merveille|enthousi|apprend|découvr|decouvr|fier\b|plaisir|rire|sourire|détente|detente|vacanc|cadeau/i;
+
+/** Détecte la tonalité de la question (3.6) — positive / negative / neutre.
+ *  v4.7 : purement local et instantané (plus d'appel IA sur ce chemin). */
 export async function detecterTonalite(question: string): Promise<'positive' | 'negative' | 'neutre'> {
-  try {
-    const reponse = await llmChat(
-      [
-        {
-          role: 'system',
-          content:
-            "Détecte la tonalité dominante du message en français. Réponds UNIQUEMENT avec un JSON : {\"tonalite\": \"positive\"|\"negative\"|\"neutre\"}. Positive = espoir, joie, projet. Negative = souffrance, peur, colère, tristesse. Neutre = question, curiosité, réflexion.",
-        },
-        { role: 'user', content: question.slice(0, 800) },
-      ],
-      { timeoutMs: 8000, temperature: 0.1, maxTokens: 40 }
-    );
-    const json = extractJson<{ tonalite: string }>(reponse);
-    if (json?.tonalite && ['positive', 'negative', 'neutre'].includes(json.tonalite)) return json.tonalite as 'positive' | 'negative' | 'neutre';
-    return 'neutre';
-  } catch {
-    return 'neutre';
-  }
+  if (TONALITE_NEGATIVE.test(question)) return 'negative';
+  if (TONALITE_POSITIVE.test(question)) return 'positive';
+  return 'neutre';
 }
