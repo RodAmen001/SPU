@@ -11,6 +11,7 @@ import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif } from '@/lib/spu/flux';
 import { llmChat } from '@/lib/spu/llm';
 import { genererHistoire, chunker } from '@/lib/spu/story';
+import { avecBudget, BUDGET_DEEP_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -61,6 +62,9 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       const status = (step: string) => send('status', { step });
 
+      // Budget global du niveau Deep : au-delà, les appels IA cèdent la place
+      // aux modèles locaux — la réponse complète est toujours servie.
+      await avecBudget(BUDGET_DEEP_MS, async () => {
       try {
         let session = corps.sessionId ? await db.session.findUnique({ where: { id: corps.sessionId } }) : null;
         if (!session) {
@@ -253,6 +257,7 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
       }
+      });
     },
   });
 

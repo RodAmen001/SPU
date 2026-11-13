@@ -13,6 +13,7 @@ import { llmChat, extractJson } from '@/lib/spu/llm';
 import { trouverParabole, detecterTonalite } from '@/lib/spu/matching';
 import { genererHistoire, chunker } from '@/lib/spu/story';
 import { genererPerspective } from '@/lib/spu/perspective';
+import { avecBudget, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       const status = (step: string) => send('status', { step });
 
+      // Budget global de l'étape Mentor : au-delà, les appels IA cèdent la place
+      // aux modèles locaux — la réponse complète est toujours servie.
+      await avecBudget(BUDGET_MENTOR_MS, async () => {
       try {
         // Session + état — rattachée au compte SPU si l'utilisateur est connecté
         const compte = await utilisateurDeReq(req).catch(() => null);
@@ -488,6 +492,7 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
       }
+      });
     },
   });
 

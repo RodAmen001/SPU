@@ -8,6 +8,7 @@ import { phase0, coucheA } from '@/lib/spu/distress';
 import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif, type EvenementSSE, type ResultatFlux } from '@/lib/spu/flux';
+import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
 import { MESSAGE_DEDETRESSE, MESSAGE_PRUDENT, RESSOURCES_DEDETRESSE, MESSAGE_ERREUR_SOURCES } from '@/lib/spu/constants';
 
 export const maxDuration = 120;
@@ -81,6 +82,9 @@ export async function POST(req: NextRequest) {
     const compte = await utilisateurDeReq(req).catch(() => null);
     const modeCorpus = mode === 'enfant' ? 'enfant' : 'adulte';
     const resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
+    // Budget global : la réponse complète (parabole, histoire, perspective) est
+    // toujours servie en moins de ~2 minutes, même si les sources saturent.
+    await avecBudget(BUDGET_ORACLE_MS, async () => {
     for await (const ev of fluxNarratif(question, { modeCorpus, contexte: 'non partagé' })) {
       const e = ev as EvenementSSE;
       if (e.type === 'synthesis') resultat.synthese = { texte: e.text, sources: e.sources, confiance: e.confiance };
@@ -95,6 +99,7 @@ export async function POST(req: NextRequest) {
       if (e.type === 'perspective') resultat.perspective = e.text;
       if (e.type === 'erreur') resultat.erreur = e.message;
     }
+    });
 
     if (!resultat.synthese && !resultat.parabole && !resultat.histoire) {
       return NextResponse.json({ error: resultat.erreur || MESSAGE_ERREUR_SOURCES }, { status: 502, headers: CORS });

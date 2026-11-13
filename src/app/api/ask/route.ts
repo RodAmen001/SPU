@@ -7,6 +7,7 @@ import { phase0, coucheA } from '@/lib/spu/distress';
 import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif, type EvenementSSE, type ResultatFlux } from '@/lib/spu/flux';
+import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
 
       let echangeId = '';
       let sessionId = corps.sessionId || '';
+      // Budget global de la requête : au-delà, tous les appels IA cèdent la place
+      // aux modèles locaux — une réponse complète est toujours servie.
+      await avecBudget(BUDGET_ORACLE_MS, async () => {
       try {
         // ── Session (anonyme par défaut, purge 90 jours) ──
         // Utilisateur connecté au compte SPU : la session est rattachée à son compte
@@ -212,6 +216,7 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
       }
+      });
     },
   });
 

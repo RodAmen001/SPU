@@ -99,7 +99,7 @@ Rappel absolu : ton histoire doit être 100 % appropriée${enfant ? ' pour des e
     : consigne;
   return llmChat(
     [{ role: 'user', content: contrainte }],
-    { timeoutMs: 30000, temperature: enfant ? 0.8 : 0.85, maxTokens: enfant ? 500 : 700 }
+    { timeoutMs: 20000, temperature: enfant ? 0.8 : 0.85, maxTokens: enfant ? 500 : 700 }
   );
 }
 

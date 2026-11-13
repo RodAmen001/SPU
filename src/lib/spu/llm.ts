@@ -1,5 +1,8 @@
 // Wrapper LLM (SDK z-ai, backend uniquement) + utilitaires JSON/timeout
+// v4.6 : respecte le budget de temps global de la requête (budget.ts) —
+// un appel qui dépasse son délai utile est abandonné sans insister.
 import ZAI from 'z-ai-web-dev-sdk';
+import { budgetEpuise, delaiEffectif } from './budget';
 
 let _zai: Awaited<ReturnType<typeof ZAI.create>> | null = null;
 
@@ -64,8 +67,15 @@ export async function llmChat(
   opts: { timeoutMs?: number; temperature?: number; maxTokens?: number } = {}
 ): Promise<string> {
   const { timeoutMs = 30000, temperature = 0.7, maxTokens = 1200 } = opts;
+  if (budgetEpuise()) {
+    // Plus de temps utile : on cède tout de suite la place aux modèles locaux.
+    throw new Error('budget épuisé — repli local');
+  }
   let derniereErreur: unknown = null;
+  let retentations429 = 0;
   for (let essai = 0; essai < 4; essai++) {
+    const delai = delaiEffectif(timeoutMs);
+    if (delai === null) throw new Error('budget épuisé — repli local');
     try {
       const zai = await getZai();
       const call = zai.chat.completions.create({
@@ -74,7 +84,7 @@ export async function llmChat(
         temperature,
         max_tokens: maxTokens,
       } as never);
-      const completion = await withTimeout(call, timeoutMs, 'llm');
+      const completion = await withTimeout(call, delai, 'llm');
       return completion.choices[0]?.message?.content ?? '';
     } catch (e) {
       derniereErreur = e;
@@ -84,9 +94,15 @@ export async function llmChat(
         await recreeZai();
         continue;
       }
-      if (/429|too many/i.test(msg) && essai < 3) {
-        await new Promise((r) => setTimeout(r, 2500 * (essai + 1))); // temporisation progressive
-        continue;
+      if (/429|too many/i.test(msg)) {
+        // Quota momentané : UNE seule petite attente, puis on bascule au secours —
+        // insister longtemps ne fait que gonfler la latence totale.
+        if (retentations429 < 1) {
+          retentations429++;
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        break;
       }
       // SDK indisponible (pas de configuration, hébergement externe…) :
       // inutile d'insister, on passe directement au moteur de secours.
@@ -95,11 +111,15 @@ export async function llmChat(
     }
   }
   // ── Secours gratuit (aucune clé requise) : le SPU répond partout ──
-  try {
-    return await appelSecours(messages, timeoutMs + 20000, temperature, maxTokens);
-  } catch {
-    throw derniereErreur;
+  if (!budgetEpuise(3000)) {
+    try {
+      const delaiSecours = delaiEffectif(timeoutMs + 20000, 2000);
+      if (delaiSecours) return await appelSecours(messages, delaiSecours, temperature, maxTokens);
+    } catch {
+      /* le secours aussi a échoué : on remonte l'erreur d'origine */
+    }
   }
+  throw derniereErreur;
 }
 
 /** Extrait le premier objet JSON d'un texte (robuste aux ```json ... ```). */

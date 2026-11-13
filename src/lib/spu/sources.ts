@@ -10,6 +10,7 @@
 import { createHash } from 'crypto';
 import { db } from '@/lib/db';
 import { llmChat, getZai, withTimeout, extractJson } from './llm';
+import { budgetEpuise } from './budget';
 import { PROMPT_SYNTHESE, TIMEOUT_SOURCE_MS, CACHE_TTL_MS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, MESSAGE_ERREUR_SOURCES } from './constants';
 
 // ── Rate limiting (7.3 : 20 req/min/IP) ──────────────────────────────────────
@@ -211,6 +212,9 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   const syntheses: { niveau: number; synthese: Synthese }[] = [];
 
   for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
+    // Garde-fou budget : si le temps global de la requête s'épuise, on ne monte
+    // plus d'échelon — la meilleure synthèse déjà obtenue est retenue.
+    if (syntheses.length && budgetEpuise(12000)) break;
     // tente les sources pas encore consultées jusqu'à atteindre la cible
     const manquantes = SOURCES_SPU.slice(consultees.length, cible);
     if (manquantes.length) {
@@ -223,7 +227,19 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
     }
     if (!consultees.length) continue; // aucune source vivante pour l'instant
 
-    const synthese = await synthetiser(question, consultees);
+    // Garde-fou : un échec de synthèse (quota, budget épuisé…) ne doit jamais
+    // faire échouer la requête entière — on passe au niveau suivant ou au repli local.
+    let synthese: Synthese | null = null;
+    try {
+      synthese = await synthetiser(question, consultees);
+    } catch (e) {
+      console.error('[orchestrateur] synthèse en échec au niveau', consultees.length, ':', e instanceof Error ? e.message : e);
+      synthese = null;
+    }
+    if (!synthese) {
+      if (budgetEpuise(12000)) break;
+      continue; // escalade possible tant que le budget le permet
+    }
     const niveau = consultees.length;
     syntheses.push({ niveau, synthese });
     historique.push({ niveau, confiance: synthese.confiance });
