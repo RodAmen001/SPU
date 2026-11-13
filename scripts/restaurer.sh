@@ -1,60 +1,89 @@
-#!/bin/bash
-# ─────────────────────────────────────────────────────────────────────────────
-# Restaure et lance le SPU complet depuis ce dépôt GitHub — UNE COMMANDE.
+#!/usr/bin/env bash
+# Installe, prépare et lance SPU en production depuis n'importe quel dossier.
 # Usage : bash scripts/restaurer.sh
-# Prérequis : Bun (curl -fsSL https://bun.sh/install | bash)
-#
-# Elle réinstalle les dépendances, installe la base du corpus (65 paraboles)
-# depuis db-origine/custom.db (ou la reconstruit depuis src/data/*.json si
-# absente), compile la production et démarre le serveur en démon.
-# ─────────────────────────────────────────────────────────────────────────────
-set -e
-cd "$(dirname "$0")/.."
+set -Eeuo pipefail
 
-# Chemin de base ABSOLU (évite toute ambiguïté Prisma selon le dossier courant)
-export DATABASE_URL="file:$(pwd)/db/custom.db"
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 
-command -v bun >/dev/null 2>&1 || {
-  echo "Bun est absent. Installe-le d'abord :"
-  echo "  curl -fsSL https://bun.sh/install | bash"
+PORT_SPU="${PORT_SPU:-3000}"
+export PORT="$PORT_SPU"
+export DATABASE_URL="${DATABASE_URL:-file:${ROOT}/db/custom.db}"
+HEALTH_URL="http://127.0.0.1:${PORT_SPU}/api/health"
+
+fail() {
+  echo "❌ $*" >&2
   exit 1
 }
 
-echo "── 1/6 · Dépendances ──────────────────────────────"
+for cmd in bun python3 curl; do
+  command -v "$cmd" >/dev/null 2>&1 || fail "Prérequis manquant : $cmd. Installez-le puis relancez ce script."
+done
+
+[[ "$PORT_SPU" =~ ^[0-9]+$ ]] && (( PORT_SPU >= 1 && PORT_SPU <= 65535 )) \
+  || fail "PORT_SPU doit être un port numérique entre 1 et 65535 (valeur reçue : '$PORT_SPU')."
+
+[[ -f "$ROOT/package.json" ]] || fail "package.json introuvable dans $ROOT : le dépôt semble incomplet."
+[[ -f "$ROOT/prisma/schema.prisma" ]] || fail "Schéma Prisma introuvable : prisma/schema.prisma."
+
+# Ne jamais arrêter une application inconnue ni remplacer une base existante.
+if curl -fsS --max-time 2 "$HEALTH_URL" >/dev/null 2>&1; then
+  fail "Un serveur répond déjà sur le port $PORT_SPU ($HEALTH_URL). Arrêtez-le explicitement avant de relancer la restauration."
+fi
+if ! python3 - "$PORT_SPU" <<'PY'
+import socket, sys
+port = int(sys.argv[1])
+with socket.socket() as sock:
+    sock.bind(("127.0.0.1", port))
+PY
+then
+  fail "Le port $PORT_SPU est déjà utilisé. Libérez-le ou relancez avec PORT_SPU=<port libre>."
+fi
+
+printf '── 1/6 · Dépendances ──────────────────────────────\n'
 bun install
 
-echo "── 2/6 · Client Prisma ────────────────────────────"
+printf '── 2/6 · Client Prisma ────────────────────────────\n'
 bunx prisma generate
 
-echo "── 3/6 · Base de données (corpus 65 paraboles) ────"
-mkdir -p db
-if [ -f db-origine/custom.db ]; then
-  cp db-origine/custom.db db/custom.db
-  echo "base copiée depuis db-origine/custom.db (prête à l'emploi)"
+printf '── 3/6 · Base de données ──────────────────────────\n'
+mkdir -p "$ROOT/db"
+if [[ -f "$ROOT/db/custom.db" ]]; then
+  echo "Base existante conservée : db/custom.db (aucune donnée remplacée)."
+elif [[ -f "$ROOT/db-origine/custom.db" ]]; then
+  cp "$ROOT/db-origine/custom.db" "$ROOT/db/custom.db"
+  echo "Base initialisée depuis db-origine/custom.db."
 else
+  echo "Instantané absent : création du schéma puis import du corpus."
   bunx prisma db push --skip-generate
   bun run scripts/seed.ts
-  echo "base neuve créée puis corpus inséré depuis src/data/"
 fi
+[[ -f "$ROOT/db/custom.db" ]] || fail "La base attendue n'a pas été créée : $ROOT/db/custom.db"
 
-echo "── 4/6 · Build de production ──────────────────────"
+printf '── 4/6 · Build de production ──────────────────────\n'
 bun run build
+[[ -f "$ROOT/.next/standalone/server.js" ]] \
+  || fail "Le build n'a pas produit .next/standalone/server.js. Consultez les erreurs ci-dessus."
 
-echo "── 5/6 · Démarrage en démon (survit au shell) ─────"
-# arrête une éventuelle instance précédente
-pkill -f "standalone/server.js" 2>/dev/null || true
-sleep 1
-python3 scripts/demonise.py serveur || {
-  echo "démon indisponible — démarrage direct en arrière-plan"
-  NODE_ENV=production bun .next/standalone/server.js >> server.log 2>&1 &
-}
+printf '── 5/6 · Démarrage en démon ───────────────────────\n'
+# DATABASE_URL et PORT sont transmis au démon par l'environnement.
+python3 "$ROOT/scripts/demonise.py" serveur \
+  || fail "Impossible de lancer le démon. Vérifiez Python, Bun et les permissions du dossier."
 
-echo "── 6/6 · Vérification ─────────────────────────────"
-sleep 6
-if curl -s -m 10 http://localhost:3000/api/health; then
-  echo ""
-  echo "✅ SPU prêt sur http://localhost:3000 (journal : server.log)"
-else
-  echo ""
-  echo "⚠️ le serveur met du temps à répondre — regarde server.log"
+printf '── 6/6 · Vérification de santé ────────────────────\n'
+health=""
+for _ in {1..30}; do
+  if health="$(curl -fsS --max-time 3 "$HEALTH_URL" 2>/dev/null)"; then
+    printf '%s\n' "$health"
+    printf '\n✅ SPU répond sur http://localhost:%s (journal : %s/server.log)\n' "$PORT_SPU" "$ROOT"
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "❌ Le serveur n'a pas répondu après 60 secondes à $HEALTH_URL." >&2
+if [[ -f "$ROOT/server.log" ]]; then
+  echo "Dernières lignes de server.log :" >&2
+  tail -n 40 "$ROOT/server.log" >&2
 fi
+exit 1
