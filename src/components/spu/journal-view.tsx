@@ -249,7 +249,7 @@ export function VueJournal({ surRetour: _surRetour, surOuvrirSession }: { surRet
                       {e.question}
                     </div>
                     <div className="text-[11px] text-[--muted-foreground] mt-1 text-right pr-1">
-                      {new Date(e.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {dateHeureComplete(e.date)}
                     </div>
                   </div>
                 </div>
@@ -261,7 +261,7 @@ export function VueJournal({ surRetour: _surRetour, surOuvrirSession }: { surRet
                   <span className="h-7 w-7 rounded-full bg-[--primary] text-[--primary-foreground] flex items-center justify-center font-serif text-xs" aria-hidden>♠</span>
                   <span className="text-xs font-semibold text-[--muted-foreground]">SPU</span>
                   <span className="text-[11px] text-[--muted-foreground]">
-                    {new Date(new Date(e.date).getTime() + 9000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    {dateHeureComplete(new Date(new Date(e.date).getTime() + 9000).toISOString())}
                   </span>
                 </div>
                 <div className="space-y-3">

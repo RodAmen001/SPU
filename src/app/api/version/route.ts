@@ -11,10 +11,11 @@ export async function GET() {
     {
       app: 'SPU Pocket',
       apk: { version: '1.2.0', code: 3 },
-      serveur: { version: '4.5', nom: 'Système Parabolique Universel' },
+      serveur: { version: '4.6', nom: 'Système Parabolique Universel' },
       ameliorations: true,
       note: 'Le SPU évolue régulièrement : nouvelles paraboles, voix enrichies, mode création. Reviens sur ta page de distribution pour récupérer la dernière version de l\'application.',
       nouveautes: [
+        'v4.6 — horodatage complet de toutes les conversations (date + heure) + serveur plus résilient',
         'v1.2 — mode nomade : pose tes questions sans aucun serveur, réponse directe 🌤️',
         'v1.1 — écran « Poser une question » avec serveur : synthèse sourcée, parabole, histoire',
         'À venir — paraboles mensuelles, voix enrichies, mode communautaire',

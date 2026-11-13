@@ -102,9 +102,11 @@ export const REPONSE_VIDE: ReponseVue = {
   heure: null,
 };
 
-/** Heure courante au format messagerie (fr-FR) : « 14:07 ». */
+/** Horodatage complet de chaque message (exigence v4.6) : « 13/11/2026 à 14:07 ».
+ *  Toutes les conversations — bulles utilisateur, réponses du SPU, journal —
+ *  portent désormais la DATE et l'HEURE, pas seulement l'heure. */
 export function heureMaintenant(): string {
-  return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return dateHeureComplete(new Date());
 }
 
 /** Date + heure complète pour l'historique : « 01/11/2026 à 14:07 ». */

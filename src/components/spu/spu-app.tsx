@@ -187,6 +187,12 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
         </div>
         <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
           <li>
+            <span className="font-medium text-[--foreground]">Horodatage complet (v4.6) :</span> toutes
+            les conversations — questions, réponses, journal de bord — portent désormais la{' '}
+            <span className="font-medium text-[--foreground]">date et l&apos;heure</span> (« 13/11/2026
+            à 07:14 »), à l&apos;écran comme dans l&apos;API.
+          </li>
+          <li>
             <span className="font-medium text-[--foreground]">Le narrateur lit toute la réponse :</span>{' '}
             quand la voix est activée, il te lit la parabole, son interprétation, l&apos;histoire
             et la mise en perspective — dans tous les modes.

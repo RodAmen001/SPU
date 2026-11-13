@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
     // ── Réponse finale ──
     const reponseFinale = {
       ok: true,
+      horodatage: new Date().toISOString(),
       reponse: resultat.synthese?.texte || '',
       sourcesUtilisees: resultat.synthese?.sources || [],
       confiance: resultat.synthese?.confiance ?? null,
