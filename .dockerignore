@@ -30,4 +30,3 @@ dev.log
 voix-piper
 README.md
 Dockerfile
-docker-entrypoint.sh
