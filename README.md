@@ -8,10 +8,14 @@ synthèse sourcée de plusieurs intelligences, mise en correspondance avec une
 **histoire personnalisée** générée à la demande. Aucune parabole inventée par
 l'IA : chaque texte est réel, attribué honnêtement et vérifié.
 
-- **Serveur SPU v4.4** : application web complète (Next.js 16) — modes Oracle,
-  Mentor, Deep et Enfant, comptes utilisateurs, journal, sauvegardes.
-- **SPU Pocket v1.2.0** : application Android compagnon (APK 62 Ko, Android 7+),
-  avec un **mode nomade qui fonctionne dès l'installation, sans serveur**.
+## Deux applications, un dépôt — bien les distinguer
+
+| | **SPU — version web** (le grand SPU) | **SPU Pocket** (l'application Android) |
+|---|---|---|
+| C'est quoi ? | L'application complète : synthèse multi-IA, corpus, journal, comptes | L'application compagnon pour le téléphone, avec mode nomade hors-ligne |
+| Fichiers | À la **racine** du dépôt (`src/`, `prisma/`, `scripts/`…) | Dossier **`apk-spu/`** (+ scripts `android/`, guide `docs/INSTALLER-SPU-POCKET.txt`) |
+| Lancer | `bash scripts/restaurer.sh` — une seule commande (voir plus bas) | APK prêt à installer dans **`telechargements/`** — rien à compiler |
+| Version actuelle | **v4.7** — grande fluidité | **v1.2.0** — mode nomade |
 
 ---
 
@@ -88,6 +92,12 @@ et une page de téléchargement conviviale est servie par GitHub Pages :
 Le corpus est consultable dans l'application et téléchargeable en JSON
 (`src/data/corpus-adulte.json`, `src/data/corpus-enfant.json`).
 
+**La base est embarquée dans le dépôt** : `db-origine/custom.db` est un
+instantané neuf contenant exactement les 65 paraboles (aucune donnée
+utilisateur). Copiez-le dans `db/custom.db` pour démarrer immédiatement, ou
+reconstruisez la base avec `bun run scripts/seed.ts` — les JSON de `src/data/`
+sont la source canonique, la base en est toujours dérivable.
+
 ---
 
 ## 📱 SPU Pocket v1.2.0
@@ -119,7 +129,15 @@ Application Android native (62 Ko) développée sans framework :
 
 ## 🚀 Faire tourner le SPU soi-même
 
-Prérequis : Node.js 20+ ou Bun, une machine avec 1 Go de RAM suffit.
+**Une seule commande** (après avoir installé [Bun](https://bun.sh)) :
+
+```bash
+bash scripts/restaurer.sh
+# → dépendances → base (65 paraboles) → build production → serveur en démon
+# → vérification automatique de /api/health ; journal : server.log
+```
+
+Ou étape par étape (prérequis : Node.js 20+ ou Bun, une machine avec 1 Go de RAM suffit) :
 
 ```bash
 # 1. Dépendances
@@ -134,9 +152,12 @@ bun run scripts/seed.ts         # 65 paraboles
 bun run dev                     # http://localhost:3000
 
 # 4. Production
-bash scripts/build-standalone.js
-bun .next/standalone/server.js  # http://localhost:3000
+bun run build                       # build standalone + assets copiés
+python3 scripts/demonise.py serveur # démon résistant, logs dans server.log
 ```
+
+> À chaque amélioration, la nouvelle version est **enregistrée sur GitHub** :
+> ce dépôt est toujours la référence la plus récente du SPU.
 
 Variable optionnelle : `ADMIN_TOKEN` (jeton de l'API d'administration
 `/api/admin/validate`). Aucune clé API n'est nécessaire : les sources
@@ -166,6 +187,7 @@ node scripts/test-e2e.mjs "question"      # parcours complet SSE ✓
 ├── src/lib/spu/      le moteur (détresse, sources, matching, histoire…)
 ├── src/data/         le corpus JSON (65 entrées)
 ├── prisma/           schéma de base (8 tables, SQLite)
+├── db-origine/       instantané NEUF de la base : les 65 paraboles, zéro donnée utilisateur
 ├── apk-spu/          SPU Pocket (sources Android + interface)
 ├── android/          scripts d'installation sur Android (proot)
 ├── electron/         habillage bureau (Windows / Mac / Linux)
