@@ -4,8 +4,9 @@
 # avec les 65 paraboles (50 adultes + 15 contes enfants), et sert le tout.
 #
 # Construire :  docker build -t spu .
-# Lancer    :  docker run -p 3000:3000 spu
-# Port      :  PORT (3000 par défaut ; Hugging Face Spaces attend 7860 → voir guide)
+# Lancer    :  docker run -p 7860:7860 spu
+# Port      :  7860 par défaut (port attendu par Hugging Face Spaces Docker) ;
+#              en local, surcharger avec -e PORT=3000 si besoin.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Étape 1 : dépendances ──
@@ -31,7 +32,7 @@ RUN bun run build
 FROM oven/bun:1 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=7860
 ENV HOSTNAME=0.0.0.0
 ENV DATABASE_URL=file:/app/db/custom.db
 
@@ -48,5 +49,5 @@ COPY --from=builder /app/src/data ./src/data
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-EXPOSE 3000
+EXPOSE 7860
 ENTRYPOINT ["./docker-entrypoint.sh"]
