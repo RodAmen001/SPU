@@ -74,10 +74,10 @@ fi
 curl -sS "$API/actions/secrets/public-key" -H "$H" -o /tmp/pk.json
 python3 - "$HF_TOKEN" <<'PY'
 import sys, json, base64
-from nacl import public
+from nacl import public, encoding
 token = sys.argv[1]
 pk = json.load(open("/tmp/pk.json"))
-cle = public.PublicKey(pk["key"].encode(), public.Encoding.Base64())
+cle = public.PublicKey(pk["key"].encode(), encoding.Base64Encoder())
 chiffre = public.SealedBox(cle).encrypt(token.encode())
 json.dump({"encrypted_value": base64.b64encode(chiffre).decode(),
            "key_id": pk["key_id"]}, open("/tmp/secret.json", "w"))
