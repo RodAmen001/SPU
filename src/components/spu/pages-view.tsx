@@ -1,9 +1,195 @@
-// Pages Transparence (13.3) et Confidentialité / RGPD (7.6)
+// Pages Transparence (13.3), Confidentialité / RGPD (7.6),
+// Comment fonctionne le SPU (v4.8), Quoi de neuf + historique (v4.8),
+// Soutenir le concepteur (v4.8).
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { ShieldCheck, Eye, Scale, Users, HeartHandshake } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ShieldCheck, Eye, Scale, Users, HeartHandshake, Compass, Newspaper, Volume2, Music4, Mail, Phone, Leaf, BookOpen, Sparkles, History } from 'lucide-react';
+import { VERSION_SPU } from '@/lib/spu/constants';
+import { VERSIONS } from '@/data/versions';
 
+// ── v4.8 — « Comment fonctionne le SPU » (onglet dédié, exigence du concepteur) ──
+export function VueFonctionnement() {
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h2 className="text-xl font-semibold flex items-center gap-2">
+        <Compass className="h-5 w-5 text-[--primary]" aria-hidden /> Comment fonctionne le SPU
+      </h2>
+
+      <Card className="p-6">
+        <p className="text-[15px] leading-relaxed">
+          Je consulte plusieurs sources d&apos;intelligence et de recherche, je synthétise leurs réponses,
+          puis je te propose une <span className="font-medium">parabole réelle et sourcée</span> et une histoire
+          écrite pour toi. Une <span className="font-medium">parabole et son interprétation sont choisies pour
+          refléter la synthèse</span> — et si aucune des 65 paraboles du corpus ne convient efficacement,
+          je vais chercher en ligne une parabole <span className="font-medium">réelle et traditionnelle</span> (jamais
+          inventée), avec sa source vérifiée par une encyclopédie et une interprétation tournée vers ta
+          synthèse. Une miroir narratif — jamais une vérité absolue.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Badge variant="outline" className="rounded-full">🎭 10 voix locales</Badge>
+          <Badge variant="outline" className="rounded-full">🎵 51 musiques libres, variées</Badge>
+          <Badge variant="outline" className="rounded-full">📖 65 paraboles sourcées</Badge>
+          <Badge variant="outline" className="rounded-full">🔒 sans clé API</Badge>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Volume2 className="h-4 w-4 text-[--primary]" aria-hidden /> Ta réponse est entièrement lue — pour te détendre
+        </h3>
+        <p className="text-sm leading-relaxed text-[--muted-foreground]">
+          Tu passes une trentaine de secondes à écrire quelques lignes ; le SPU te répond avec un grand
+          nombre de lignes — en lire toutes prendrait environ cinq minutes avant de poser ta question
+          suivante. Pour te offrir une vraie détente, <span className="font-medium text-[--foreground]">toute la
+          réponse écrite est complètement lue, narrée ou jouée en théâtre audio</span> : la parabole, son
+          interprétation, l&apos;histoire et la mise en perspective, portées par les voix du théâtre sonore.
+          Ferme les yeux, écoute — la réponse vient à toi.
+        </p>
+        <p className="text-sm leading-relaxed mt-3">
+          <span className="font-medium">La narration est activée par défaut.</span> Tu préfères lire ? Un
+          bouton dans le menu te permet de la désactiver — et de la réactiver quand tu veux. Le volume de
+          la musique, la vitesse de lecture et le choix des voix se règlent aussi depuis l&apos;en-tête.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Music4 className="h-4 w-4 text-[--primary]" aria-hidden /> Une musique variée, jamais monotone
+        </h3>
+        <p className="text-sm leading-relaxed text-[--muted-foreground]">
+          Chaque mode a son ambiance (majestueuse pour l&apos;Oracle, chaleureuse pour le Mentor, profonde
+          pour Deep, espiègle pour l&apos;Enfant) et puise dans <span className="font-medium text-[--foreground]">51
+          musiques libres de droits</span> — la piste change au fil de tes conversations, et une musique
+          distincte accompagne chaque réponse. Tu peux couper le son à tout moment, et quitter
+          l&apos;application proprement avec le bouton <span className="font-medium text-[--foreground]">Quitter</span> du
+          menu.
+        </p>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="font-semibold mb-3">La promesse, en une phrase</h3>
+        <p className="text-sm leading-relaxed flex items-center gap-2">
+          <Leaf className="h-4 w-4 text-[--secondary]" aria-hidden />
+          <span>Un mentor, pas un maître — je ne décide jamais à ta place.</span>
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+// ── v4.8 — « Quoi de neuf » : nouveautés + historique COMPLET des versions ──
+export function VueNouveautes() {
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h2 className="text-xl font-semibold flex items-center gap-2">
+        <Newspaper className="h-5 w-5 text-[--primary]" aria-hidden /> Quoi de neuf
+      </h2>
+
+      <Card className="p-6 border-[--primary]/40">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
+          <h3 className="font-semibold">Version actuelle — v{VERSION_SPU}</h3>
+          <Badge className="ml-auto rounded-full">à jour</Badge>
+        </div>
+        <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
+          <li>Une <span className="font-medium text-[--foreground]">barre de menu</span> réunit désormais tout : fonctionnement, nouveautés, journal, corpus, transparence, RGPD et soutien.</li>
+          <li><span className="font-medium text-[--foreground]">Narration activée par défaut</span> — toute la réponse est lue comme un théâtre audio ; un bouton permet de la désactiver.</li>
+          <li><span className="font-medium text-[--foreground]">51 musiques libres</span> variées au fil des conversations (fin de la monotonie), avec arrêt du son et bouton de sortie.</li>
+          <li><span className="font-medium text-[--foreground]">Paraboles orientées vers la synthèse</span> — et repli en ligne vers une parabole réelle sourcée quand le corpus ne suffit pas.</li>
+        </ul>
+        <p className="text-xs text-[--muted-foreground]/80 mt-3">
+          Si cette page affiche encore une ancienne version, ferme-la puis rouvre-la (ou recharge avec
+          Ctrl+Shift+R) : la mise à jour s&apos;appliquera aussitôt.
+        </p>
+      </Card>
+
+      <div className="flex items-center gap-2 pt-2">
+        <History className="h-4 w-4 text-[--muted-foreground]" aria-hidden />
+        <h3 className="font-semibold text-[15px]">L&apos;historique des versions, depuis la création</h3>
+      </div>
+
+      {VERSIONS.map((v) => (
+        <Card key={v.version} className={`p-5 ${v.actuelle ? 'border-[--primary]/30' : ''}`}>
+          <div className="flex flex-wrap items-baseline gap-2 mb-2">
+            <span className="font-serif font-bold text-[--primary]">{v.version}</span>
+            <span className="text-xs text-[--muted-foreground]">{v.date}</span>
+            <span className="text-sm font-medium">{v.titre}</span>
+          </div>
+          <ul className="space-y-1 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
+            {v.points.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </Card>
+      ))}
+
+      <Card className="p-5">
+        <p className="text-sm leading-relaxed flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-[--primary] shrink-0" aria-hidden />
+          <span>
+            Le détail de l&apos;architecture, des corpus et des choix éthiques est raconté dans le{' '}
+            <a href="/LIVRE-BLANC-SPU-v4.4-2026-11-06.md" target="_blank" rel="noreferrer" className="text-[--primary] underline underline-offset-2">livre blanc</a>{' '}
+            embarqué dans l&apos;application.
+          </span>
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+// ── v4.8 — « Soutenir le concepteur » ──────────────────────────────────────────
+export function VueSoutien() {
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h2 className="text-xl font-semibold flex items-center gap-2">
+        <HeartHandshake className="h-5 w-5 text-[--primary]" aria-hidden /> Soutenir le concepteur
+      </h2>
+
+      <Card className="p-6">
+        <p className="text-sm leading-relaxed text-[--muted-foreground]">
+          Le SPU est une œuvre indépendante, pensée, écrite et maintenue par un concepteur passionné :
+          corpus rassemblé et sourcé, voix du théâtre sonore, musique libre, éthique du mentor — tout
+          cela vit grâce à du temps donné. Si l&apos;application t&apos;a éclairé ou apaisé, un mot
+          d&apos;encouragement, un retour d&apos;expérience ou un soutien matériel l&apos;aident à
+          continuer de faire grandir le corpus et les voix.
+        </p>
+        <div className="mt-4 space-y-2.5 text-sm">
+          <p className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-[--primary] shrink-0" aria-hidden />
+            <span>
+              Écrire au concepteur :{' '}
+              <a href="mailto:ramenyido@gmail.com" className="text-[--primary] underline underline-offset-2">ramenyido@gmail.com</a>
+            </span>
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-[--primary] shrink-0" aria-hidden />
+            <span>
+              Téléphone / WhatsApp :{' '}
+              <a href="tel:+22893643641" className="text-[--primary] underline underline-offset-2">00228 9-364-364-1</a>
+            </span>
+          </p>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="font-semibold mb-2">Ce que ton soutien fait grandir</h3>
+        <ul className="space-y-1.5 text-sm leading-relaxed list-disc pl-4 text-[--muted-foreground]">
+          <li>Le corpus : de nouvelles paraboles réelles, sourcées et vérifiées (50 adultes + 15 contes aujourd&apos;hui).</li>
+          <li>Les voix : de nouvelles voix neuronales pour le théâtre sonore.</li>
+          <li>La diffusion : rendre le SPU accessible dans plus de langues et plus de foyers.</li>
+        </ul>
+        <p className="text-sm leading-relaxed mt-4 flex items-center gap-2">
+          <Leaf className="h-4 w-4 text-[--secondary]" aria-hidden />
+          <span className="font-medium">Un mentor, pas un maître — et toujours un merci sincère. 🌿</span>
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+// ── Transparence (13.3) ────────────────────────────────────────────────────────
 export function VueTransparence() {
   return (
     <div className="max-w-2xl mx-auto space-y-5">

@@ -60,6 +60,7 @@ export interface ParaboleMatch {
   score: number;
   interpretationChoisie: string;
   sousSeuil: boolean; // true = "parabole la plus proche du corpus"
+  enLigne?: boolean; // v4.8 : parabole réelle retrouvée EN LIGNE (hors corpus), orientée vers la synthèse
 }
 
 /** Matching complet : cosinus top-8 puis arbitrage LLM (score de pertinence 0-1). */
@@ -157,6 +158,81 @@ Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretat
     score: Math.round(score * 100) / 100,
     interpretationChoisie: interpretation,
     sousSeuil: score < SEUIL_MATCHING,
+  };
+}
+
+// ── v4.8 — Ré-orientation vers LA SYNTHÈSE (exigence du concepteur) ─────────
+// La première arbitrage tourne sur la QUESTION (en parallèle des sources, pour
+// la fluidité v4.7). Si son score reste sous le seuil, on relance ici une
+// recherche sur le TEXTE DE LA SYNTHÈSE elle-même + un arbitrage sémantique qui
+// confronte chaque candidate À LA SYNTHÈSE : la parabole doit refléter ce que
+// les sources disent, pas seulement les mots de la question.
+export async function reArbitrerSurSynthese(
+  synthese: string,
+  question: string,
+  mode: 'adulte' | 'enfant' = 'adulte',
+): Promise<ParaboleMatch | null> {
+  const index = await getIndex(mode);
+  const top = rechercher(synthese, index, 8);
+  if (!top.length) return null;
+  const ids = top.map((t) => t.id);
+  const paraboles = await db.parabole.findMany({ where: { id: { in: ids }, mode } });
+  if (!paraboles.length) return null;
+  const parCode = new Map(paraboles.map((p) => [p.id, p]));
+  const candidats = top
+    .filter((t) => parCode.has(t.id))
+    .map((t) => {
+      const p = parCode.get(t.id)!;
+      const interps = safeParse<string[]>(p.interpretations, []);
+      return {
+        id: p.id,
+        code: p.code,
+        texte: p.texte,
+        culture: p.culture,
+        interpretations: interps,
+        scoreCosinus: Math.round(t.score * 1000) / 1000,
+      };
+    });
+  if (!candidats.length) return null;
+
+  let choisi: { id: string; score: number; interpretation_index: number } | null = null;
+  try {
+    const consigne = `On te donne la SYNTHÈSE des sources (le verdict des intelligences consultées) et ${candidats.length} paraboles réelles du corpus.
+Question d'origine : ${question.slice(0, 400)}
+Synthèse : ${synthese.slice(0, 900)}
+
+Candidates :
+${candidats.map((c, i) => `[${i}] (${c.code}, ${c.culture}) « ${c.texte} » — interprétations : ${c.interpretations.join(' / ')}`).join('\n')}
+
+Choisis la parabole dont la leçon reflète le mieux LA SYNTHÈSE (son cœur émotionnel et sa direction, pas seulement les mots de la question).
+Note la pertinence de 0 à 1 (1 = éclairage profond et juste ; 0.65 = seuil de qualité minimal).
+Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretation_index": 0}`;
+    const reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 12000, temperature: 0.2, maxTokens: 120 });
+    const json = extractJson<{ index: number; score: number; interpretation_index: number }>(reponse);
+    if (json && typeof json.index === 'number' && candidats[json.index]) {
+      choisi = {
+        id: candidats[json.index].id,
+        score: Math.max(0, Math.min(1, typeof json.score === 'number' ? json.score : 0.5)),
+        interpretation_index: typeof json.interpretation_index === 'number' ? json.interpretation_index : 0,
+      };
+    }
+  } catch {
+    return null; // arbitrage indisponible : on garde la première parabole
+  }
+  if (!choisi) return null;
+  const p = parCode.get(choisi.id)!;
+  const interps = safeParse<string[]>(p.interpretations, []);
+  return {
+    id: p.id,
+    code: p.code,
+    texte: p.texte,
+    culture: p.culture,
+    famille: p.famille,
+    interpretations: interps,
+    sources: safeParse<string[]>(p.sources, []),
+    score: Math.round(choisi.score * 100) / 100,
+    interpretationChoisie: interps[choisi.interpretation_index] || interps[0] || p.texte,
+    sousSeuil: choisi.score < SEUIL_MATCHING,
   };
 }
 

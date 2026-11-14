@@ -1,7 +1,7 @@
 // Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
 
 /** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
-export const VERSION_SPU = '4.7';
+export const VERSION_SPU = '4.8';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',

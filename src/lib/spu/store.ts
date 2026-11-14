@@ -34,7 +34,11 @@ export const useSpuStore = create<EtatSpu>()(
       sessionId: null,
       audioActive: false,
       volume: 0.3,
-      ttsActive: false,
+      // v4.8 (exigence du concepteur) : la narration complète est ACTIVÉE PAR
+      // DÉFAUT — l'utilisateur peut la désactiver à tout moment via le bouton
+      // dédié de la barre de menu. La migration persistante (version 2)
+      // réactive la narration pour les utilisateurs d'une version antérieure.
+      ttsActive: true,
       voixNarrateur: VOIX_PAR_DEFAUT.narrateur,
       voixPersonnages: [...VOIX_PAR_DEFAUT.personnages],
       debitVoix: 1,
@@ -51,7 +55,14 @@ export const useSpuStore = create<EtatSpu>()(
       reinitialiserVoix: () =>
         set({ voixNarrateur: VOIX_PAR_DEFAUT.narrateur, voixPersonnages: [...VOIX_PAR_DEFAUT.personnages], debitVoix: 1 }),
     }),
-    { name: 'spu-v4' }
+    {
+      name: 'spu-v4',
+      version: 2,
+      // Migration v1 → v2 : narration complète activée par défaut (exigence
+      // v4.8) — l'utilisateur la désactive s'il le souhaite, mais elle est
+      // proposée active à tous, y compris ceux d'une ancienne version.
+      migrate: (etat) => ({ ...(etat as object), ttsActive: true }) as never,
+    }
   )
 );
 
@@ -66,6 +77,7 @@ export interface ParaboleVue {
   sources: string[];
   score: number;
   sousSeuil: boolean;
+  enLigne?: boolean; // v4.8 : parabole réelle retrouvée en ligne (hors corpus)
 }
 
 export interface ReponseVue {

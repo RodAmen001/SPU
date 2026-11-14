@@ -13,6 +13,8 @@ const ETAPES_LISIBILES: Record<string, string> = {
   'sources': 'Je consulte mes sources…',
   'synthèse': 'Je synthétise…',
   'matching': 'Je cherche la parabole qui résonne…',
+  'reorientation': 'Je réoriente la parabole vers ta synthèse…',
+  'enligne': 'Aucune parabole ne suffit : je fouille les traditions du monde entier…',
   'histoire': 'J\'écris ton histoire…',
   'assemblage': 'J\'assemble le tout…',
   'préparation': 'Je prépare la suite…',
@@ -148,6 +150,11 @@ export function VueReponse({
           <div className="flex items-center gap-2 mb-3">
             <BookOpenText className="h-4 w-4 text-[--primary]" aria-hidden />
             <h3 className="font-semibold text-[15px]">La parabole</h3>
+            {reponse.parabole.enLigne && (
+              <Badge variant="outline" className="text-xs bg-[--accent]/30 border-[--accent]">
+                trouvée en ligne · hors corpus
+              </Badge>
+            )}
             <Badge variant="outline" className="text-xs ml-auto">{reponse.parabole.code}</Badge>
           </div>
           <blockquote className="font-serif text-lg leading-relaxed border-l-2 border-[--accent] pl-4 mb-3">
@@ -160,7 +167,14 @@ export function VueReponse({
             <span className="font-medium">Interprétation : </span>
             {reponse.parabole.interpretation}
           </p>
-          {reponse.parabole.sousSeuil && (
+          {reponse.parabole.enLigne && (
+            <p className="text-xs text-[--muted-foreground] mt-3 italic">
+              Aucune parabole du corpus n&apos;éclairait assez ta synthèse : j&apos;ai retrouvé en ligne une
+              parabole réelle et traditionnelle (jamais inventée), orientée vers la synthèse de mes sources —
+              sa source est vérifiable ci-dessous.
+            </p>
+          )}
+          {reponse.parabole.sousSeuil && !reponse.parabole.enLigne && (
             <p className="text-xs text-[--muted-foreground] mt-3 italic">
               Parabole la plus proche du corpus pour ta question — une recherche de correspondances plus fines est en cours dans mon corpus.
             </p>

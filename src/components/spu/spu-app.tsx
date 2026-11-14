@@ -16,8 +16,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Sparkles, Compass, Moon, Baby, NotebookPen, Library, Eye, ShieldCheck,
-  Volume2, ArrowLeft, ArrowDown, RefreshCw, Send, AudioLines, Music4,
+  Volume2, VolumeX, ArrowLeft, ArrowDown, RefreshCw, Send, AudioLines, Music4,
+  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { streamSSE } from '@/lib/spu/sse-client';
 import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, type ReponseVue } from '@/lib/spu/store';
 import { VERSION_SPU } from '@/lib/spu/constants';
@@ -28,11 +30,15 @@ import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fi
 import { VueEnfant } from './child-view';
 import { VueJournal } from './journal-view';
 import { VueCorpus } from './corpus-view';
-import { VueTransparence, VueConfidentialite } from './pages-view';
+import { VueTransparence, VueConfidentialite, VueFonctionnement, VueNouveautes, VueSoutien } from './pages-view';
 import { ReglagesVoix } from './reglages-voix';
 import { VoletCompte } from './compte-volet';
 
-type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'corpus' | 'transparence' | 'confidentialite';
+type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'corpus' | 'transparence' | 'confidentialite' | 'fonctionnement' | 'nouveautes' | 'soutien';
+
+// v4.8 — La barre de menu : toutes les écrits et options de l'application,
+// disposés de la manière la plus claire possible (ordinateur : barre complète
+// sous l'en-tête ; téléphone : menu déroulant).
 
 const MODES: { id: Vue; icone: React.ReactNode; titre: string; description: string; musique: string }[] = [
   { id: 'oracle', icone: <Sparkles className="h-6 w-6" aria-hidden />, titre: 'Oracle', description: 'Une réponse unique : synthèse, parabole, histoire. Pour une question ponctuelle.', musique: 'majestueuse et contemplative' },
@@ -52,8 +58,11 @@ let _uid = 0;
 const uid = () => `m${Date.now()}-${_uid++}`;
 
 export function SpuApp() {
-  const { sessionId, audioActive, setAudioActive, volume, setVolume } = useSpuStore();
+  const { sessionId, audioActive, setAudioActive, volume, setVolume, ttsActive, setTtsActive } = useSpuStore();
   const [vue, setVue] = useState<Vue>('accueil');
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  const [quitterOuvert, setQuitterOuvert] = useState(false);
+  const [adieu, setAdieu] = useState(false);
 
   // Musique de fond réelle par mode (MP3 libres) — démarre à l'entrée d'un mode,
   // s'arrête sur l'accueil et les pages documentaires.
@@ -74,46 +83,206 @@ export function SpuApp() {
     else moteur.couper();
   };
 
+  // v4.8 — Narration complète : ACTIVÉE PAR DÉFAUT (exigence du concepteur),
+  // désactivable en un clic depuis le bouton dédié de l'en-tête ou du menu.
+  const basculeNarration = (v: boolean) => {
+    setTtsActive(v);
+    if (!v) ttsStop();
+  };
+
+  // v4.8 — Bouton de SORTIE : coupe musique et voix, affiche l'adieu et tente
+  // la fermeture réelle de l'onglet (le navigateur ne permet de fermer que les
+  // onglets non ouverts par un script — sinon l'écran d'adieu reste affiché).
+  const quitter = () => {
+    getMoteurAudio().couper();
+    ttsStop();
+    setQuitterOuvert(false);
+    setAdieu(true);
+    try { window.close(); } catch { /* l'écran d'adieu reste affiché */ }
+  };
+
+  const naviguer = (v: Vue) => {
+    setMenuOuvert(false);
+    setVue(v);
+  };
+
   return (
     <div className="fond-spu min-h-screen flex flex-col text-[--foreground]">
       <EnTete
         vue={vue}
-        retour={() => setVue('accueil')}
+        retour={() => naviguer('accueil')}
         audioActive={audioActive}
         basculeAudio={basculeAudio}
         volume={volume}
         setVolume={setVolume}
-        onOuvrirJournal={() => setVue('journal')}
+        narrationActive={ttsActive}
+        basculeNarration={basculeNarration}
+        onQuitter={() => setQuitterOuvert(true)}
+        menuOuvert={menuOuvert}
+        setMenuOuvert={setMenuOuvert}
+        naviguer={naviguer}
       />
       <main className="flex-1">
-        {vue === 'accueil' && <VueAccueil choisir={setVue} aller={setVue} />}
+        {vue === 'accueil' && <VueAccueil choisir={naviguer} aller={naviguer} />}
         {vue === 'oracle' && <FluxOracle />}
         {vue === 'mentor' && <FluxMentor />}
         {vue === 'deep' && <FluxDeep />}
-        {vue === 'enfant' && <VueEnfant surRetour={() => setVue('accueil')} />}
+        {vue === 'enfant' && <VueEnfant surRetour={() => naviguer('accueil')} />}
         {vue === 'journal' && <div className="py-8 px-4"><VueJournal /></div>}
         {vue === 'corpus' && <div className="py-8 px-4"><VueCorpus /></div>}
         {vue === 'transparence' && <div className="py-8 px-4"><VueTransparence /></div>}
         {vue === 'confidentialite' && <div className="py-8 px-4"><VueConfidentialite /></div>}
+        {vue === 'fonctionnement' && <div className="py-8 px-4"><VueFonctionnement /></div>}
+        {vue === 'nouveautes' && <div className="py-8 px-4"><VueNouveautes /></div>}
+        {vue === 'soutien' && <div className="py-8 px-4"><VueSoutien /></div>}
       </main>
-      <PiedDePage aller={setVue} />
+      <PiedDePage aller={naviguer} />
+
+      {/* v4.8 — confirmation avant de quitter l'application */}
+      <Dialog open={quitterOuvert} onOpenChange={setQuitterOuvert}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-serif">
+              <LogOut className="h-4 w-4 text-[--primary]" aria-hidden /> Quitter le SPU ?
+            </DialogTitle>
+            <DialogDescription>
+              La musique et la narration s&apos;arrêteront. Tes échanges restent dans ton journal
+              (purge automatique après 90 jours). Tu pourras revenir quand tu veux.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setQuitterOuvert(false)} className="rounded-full">Rester</Button>
+            <Button variant="destructive" onClick={quitter} className="rounded-full">
+              <LogOut className="h-4 w-4 mr-1" aria-hidden /> Quitter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* v4.8 — écran d'adieu (affiché si le navigateur ne ferme pas l'onglet) */}
+      {adieu && (
+        <div className="fixed inset-0 z-50 fond-spu flex flex-col items-center justify-center text-center px-6">
+          <span className="text-5xl mb-5" aria-hidden>🌿</span>
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold mb-3">Merci d&apos;avoir partagé tes questions avec le SPU.</h2>
+          <p className="text-sm text-[--muted-foreground] max-w-md leading-relaxed mb-8">
+            La musique est coupée, la narration est silencieuse. Ton journal de bord t&apos;attend
+            quand tu reviens — les paraboles ne se lassent pas.
+          </p>
+          <p className="text-[15px] font-medium mb-10">Un mentor, pas un maître.</p>
+          <Button onClick={() => setAdieu(false)} className="rounded-full min-h-[44px]">
+            <Leaf className="h-4 w-4 mr-2" aria-hidden /> Revenir au SPU
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── En-tête : navigation, musique, voix, compte ───────────────────────────────
+// ── v4.8 — Barre de menu : tous les écrits et options, ergonomie d'abord ──────
+const MENU: { vue: Vue; label: string; labelCourt: string; icone: React.ReactNode }[] = [
+  { vue: 'fonctionnement', label: 'Comment fonctionne le SPU', labelCourt: 'Fonctionnement', icone: <Compass className="h-4 w-4" aria-hidden /> },
+  { vue: 'nouveautes', label: 'Quoi de neuf', labelCourt: 'Quoi de neuf', icone: <Newspaper className="h-4 w-4" aria-hidden /> },
+  { vue: 'journal', label: 'Journal de bord', labelCourt: 'Journal', icone: <NotebookPen className="h-4 w-4" aria-hidden /> },
+  { vue: 'corpus', label: 'Le corpus (50 + 15)', labelCourt: 'Corpus', icone: <Library className="h-4 w-4" aria-hidden /> },
+  { vue: 'transparence', label: 'Transparence', labelCourt: 'Transparence', icone: <Eye className="h-4 w-4" aria-hidden /> },
+  { vue: 'confidentialite', label: 'Confidentialité & RGPD', labelCourt: 'RGPD', icone: <ShieldCheck className="h-4 w-4" aria-hidden /> },
+  { vue: 'soutien', label: 'Soutenir le concepteur', labelCourt: 'Soutenir', icone: <HeartHandshake className="h-4 w-4" aria-hidden /> },
+];
+
+function BarreMenu({
+  vue, naviguer, menuOuvert, setMenuOuvert, narrationActive, basculeNarration, onQuitter,
+}: {
+  vue: Vue; naviguer: (v: Vue) => void; menuOuvert: boolean; setMenuOuvert: (v: boolean) => void;
+  narrationActive: boolean; basculeNarration: (v: boolean) => void; onQuitter: () => void;
+}) {
+  const item = (m: (typeof MENU)[number], surMobile = false) => (
+    <button
+      key={m.vue}
+      onClick={() => naviguer(m.vue)}
+      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors whitespace-nowrap ${
+        vue === m.vue
+          ? 'bg-[--primary] text-[--primary-foreground] font-medium'
+          : 'text-[--muted-foreground] hover:text-[--foreground] hover:bg-[--muted]'
+      } ${surMobile ? 'min-h-[44px] w-full px-4 text-[15px]' : ''}`}
+      aria-current={vue === m.vue ? 'page' : undefined}
+    >
+      {m.icone}
+      <span>{surMobile ? m.label : m.labelCourt}</span>
+    </button>
+  );
+
+  return (
+    <nav aria-label="menu principal" className="border-t border-[--border]/60 bg-[--card]/60 backdrop-blur-md">
+      {/* Ordinateur : barre complète */}
+      <div className="hidden md:flex max-w-4xl mx-auto px-4 h-11 items-center gap-1 overflow-x-auto scroll-spu">
+        {MENU.map((m) => item(m))}
+        <span className="mx-1 h-5 w-px bg-[--border]" aria-hidden />
+        <button
+          onClick={() => basculeNarration(!narrationActive)}
+          title="Narration complète de la réponse — activée par défaut, désactivable ici"
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
+            narrationActive
+              ? 'bg-[--secondary]/15 text-[--secondary] font-medium'
+              : 'text-[--muted-foreground] hover:bg-[--muted]'
+          }`}
+          aria-pressed={narrationActive}
+        >
+          {narrationActive ? <Volume2 className="h-4 w-4" aria-hidden /> : <VolumeX className="h-4 w-4" aria-hidden />}
+          Narration {narrationActive ? 'activée' : 'coupée'}
+        </button>
+        <button
+          onClick={onQuitter}
+          title="Quitter l'application"
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-[--muted-foreground] hover:bg-destructive/10 hover:text-destructive transition-colors whitespace-nowrap ml-auto"
+        >
+          <LogOut className="h-4 w-4" aria-hidden /> Quitter
+        </button>
+      </div>
+
+      {/* Téléphone : menu déroulant */}
+      {menuOuvert && (
+        <div className="md:hidden border-t border-[--border]/60 bg-[--background]/95 backdrop-blur-md">
+          <div className="max-w-4xl mx-auto px-2 py-2 flex flex-col">
+            {MENU.map((m) => item(m, true))}
+            <div className="h-px bg-[--border] my-2" aria-hidden />
+            <button
+              onClick={() => { basculeNarration(!narrationActive); }}
+              className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[15px] text-[--muted-foreground] hover:bg-[--muted] min-h-[44px]"
+              aria-pressed={narrationActive}
+            >
+              {narrationActive ? <Volume2 className="h-4 w-4" aria-hidden /> : <VolumeX className="h-4 w-4" aria-hidden />}
+              Narration {narrationActive ? 'activée (réponse lue)' : 'coupée (tu lis toi-même)'}
+            </button>
+            <button
+              onClick={onQuitter}
+              className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[15px] text-destructive hover:bg-destructive/10 min-h-[44px]"
+            >
+              <LogOut className="h-4 w-4" aria-hidden /> Quitter l&apos;application
+            </button>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+// ── En-tête : navigation, narration, musique, voix, compte ───────────────────
 function EnTete({
-  vue, retour, audioActive, basculeAudio, volume, setVolume, onOuvrirJournal,
+  vue, retour, audioActive, basculeAudio, volume, setVolume,
+  narrationActive, basculeNarration, onQuitter, menuOuvert, setMenuOuvert, naviguer,
 }: {
   vue: Vue; retour: () => void; audioActive: boolean; basculeAudio: (v: boolean) => void;
-  volume: number; setVolume: (v: number) => void; onOuvrirJournal: () => void;
+  volume: number; setVolume: (v: number) => void;
+  narrationActive: boolean; basculeNarration: (v: boolean) => void;
+  onQuitter: () => void; menuOuvert: boolean; setMenuOuvert: (v: boolean) => void;
+  naviguer: (v: Vue) => void;
 }) {
   const modeActuel = MODES.find((m) => m.id === vue);
   return (
-    <header className="sticky top-0 z-20 backdrop-blur-md bg-[--background]/80 border-b border-[--border]/70">
+    <header className="sticky top-0 z-20 backdrop-blur-md bg-[--background]/85 border-b border-[--border]/70 shadow-sm">
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-2 sm:gap-3">
         {vue !== 'accueil' ? (
-          <Button variant="ghost" size="sm" onClick={retour} className="rounded-full" aria-label="retour">
+          <Button variant="ghost" size="sm" onClick={retour} className="rounded-full" aria-label="retour à l'accueil">
             <ArrowLeft className="h-4 w-4 mr-1" aria-hidden /> Accueil
           </Button>
         ) : (
@@ -126,6 +295,18 @@ function EnTete({
           <Badge variant="outline" className="capitalize hidden sm:inline-flex">{modeActuel.titre}</Badge>
         )}
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          {/* v4.8 — bouton dédié : activer / désactiver la narration (défaut : activée) */}
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => basculeNarration(!narrationActive)}
+            className="rounded-full px-2"
+            title={narrationActive ? 'Narration activée — cliquer pour lire toi-même' : 'Narration coupée — cliquer pour écouter la réponse lue'}
+            aria-pressed={narrationActive}
+            aria-label="narration de la réponse"
+          >
+            {narrationActive ? <Volume2 className="h-4 w-4 text-[--secondary]" aria-hidden /> : <VolumeX className="h-4 w-4 text-[--muted-foreground]" aria-hidden />}
+            <span className="hidden lg:inline ml-1 text-xs">Narration</span>
+          </Button>
           {/* Théâtre sonore — réglages des 10 voix */}
           <ReglagesVoix>
             <Button variant="ghost" size="sm" className="rounded-full px-2" aria-label="régler les voix du théâtre sonore" title="Voix du théâtre sonore">
@@ -134,7 +315,7 @@ function EnTete({
             </Button>
           </ReglagesVoix>
           {/* Musique de fond */}
-          <div className="flex items-center gap-1.5" title="Musique de fond (varie selon le mode)">
+          <div className="flex items-center gap-1.5" title="Musique de fond — 51 musiques libres, variées à chaque conversation">
             <Music4 className={`h-4 w-4 ${audioActive ? 'text-[--primary]' : 'text-[--muted-foreground]'}`} aria-hidden />
             <Switch checked={audioActive} onCheckedChange={basculeAudio} aria-label="musique de fond" />
           </div>
@@ -151,9 +332,28 @@ function EnTete({
             />
           )}
           {/* Compte SPU */}
-          <VoletCompte onOuvrirSession={onOuvrirJournal} />
+          <VoletCompte onOuvrirSession={() => naviguer('journal')} />
+          {/* Menu (téléphone) */}
+          <Button
+            variant="ghost" size="sm"
+            className="md:hidden rounded-full px-2"
+            onClick={() => setMenuOuvert(!menuOuvert)}
+            aria-expanded={menuOuvert}
+            aria-label="ouvrir le menu"
+          >
+            {menuOuvert ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+          </Button>
         </div>
       </div>
+      <BarreMenu
+        vue={vue}
+        naviguer={naviguer}
+        menuOuvert={menuOuvert}
+        setMenuOuvert={setMenuOuvert}
+        narrationActive={narrationActive}
+        basculeNarration={basculeNarration}
+        onQuitter={onQuitter}
+      />
     </header>
   );
 }
@@ -161,72 +361,26 @@ function EnTete({
 // ── Accueil ───────────────────────────────────────────────────────────────────
 function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: Vue) => void }) {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
-      <div className="text-center mb-10">
-        <p className="text-sm tracking-[0.3em] text-[--muted-foreground] uppercase mb-3">Version {VERSION_SPU}</p>
-        <h1 className="text-3xl sm:text-5xl font-serif font-bold leading-tight mb-4">
+    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
+      <div className="text-center mb-12">
+        <p className="text-sm tracking-[0.3em] text-[--muted-foreground] uppercase mb-4">Version {VERSION_SPU}</p>
+        <h1 className="text-4xl sm:text-6xl font-serif font-bold leading-tight mb-5 halo-titre">
           Pose ta question.<br />
-          <span className="text-[--primary]">Reçois une parabole.</span>
+          <span className="text-[--primary]">Ferme les yeux.<br />Écoute la parabole.</span>
         </h1>
         <p className="text-[15px] sm:text-base text-[--muted-foreground] leading-relaxed max-w-xl mx-auto">
           Je consulte plusieurs sources d&apos;intelligence et de recherche, je synthétise leurs réponses,
           puis je te propose une <span className="text-[--foreground] font-medium">parabole réelle et sourcée</span> et une
-          histoire écrite pour toi. Un miroir narratif — jamais une vérité absolue.
+          histoire écrite pour toi. Et <span className="text-[--foreground] font-medium">je te lis tout</span> —
+          tu n&apos;as rien à lire, seulement à écouter. Un miroir narratif, jamais une vérité absolue.
         </p>
-        <div className="flex flex-wrap justify-center gap-2 mt-5">
+        <div className="flex flex-wrap justify-center gap-2 mt-6">
           <Badge variant="outline" className="rounded-full">🎭 10 voix locales</Badge>
-          <Badge variant="outline" className="rounded-full">🎵 musique par mode</Badge>
+          <Badge variant="outline" className="rounded-full">🔊 réponse entièrement lue</Badge>
+          <Badge variant="outline" className="rounded-full">🎵 51 musiques libres, variées</Badge>
           <Badge variant="outline" className="rounded-full">📚 65 paraboles sourcées</Badge>
-          <Badge variant="outline" className="rounded-full">🔒 100 % local, sans clé API</Badge>
+          <Badge variant="outline" className="rounded-full">🔒 sans clé API</Badge>
         </div>
-      </div>
-
-      {/* ── Quoi de neuf — chaque version est visible et expliquée (exigence v4.4/v4.5) ── */}
-      <div className="rounded-2xl border border-[--border] bg-[--card]/70 p-5 mb-10">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
-          <h2 className="font-semibold text-[15px]">Quoi de neuf — v{VERSION_SPU}</h2>
-        </div>
-        <ul className="space-y-1.5 text-sm text-[--muted-foreground] leading-relaxed list-disc pl-4">
-          <li>
-            <span className="font-medium text-[--foreground]">Grande fluidité (v4.7) :</span> la recherche de
-            parabole démarre <span className="font-medium text-[--foreground]">pendant</span> la consultation des
-            sources, l&apos;histoire et la mise en perspective sont générées en parallèle, et un garde-fou
-            plafonne chaque réponse à 90 secondes — une réponse complète est toujours servie, sur
-            ordinateur comme sur téléphone, même quand les sources sont saturées.
-          </li>
-          <li>
-            <span className="font-medium text-[--foreground]">Horodatage complet (v4.6) :</span> toutes
-            les conversations — questions, réponses, journal de bord — portent désormais la{' '}
-            <span className="font-medium text-[--foreground]">date et l&apos;heure</span> (« 13/11/2026
-            à 07:14 »), à l&apos;écran comme dans l&apos;API.
-          </li>
-          <li>
-            <span className="font-medium text-[--foreground]">Le narrateur lit toute la réponse :</span>{' '}
-            quand la voix est activée, il te lit la parabole, son interprétation, l&apos;histoire
-            et la mise en perspective — dans tous les modes.
-          </li>
-          <li>
-            <span className="font-medium text-[--foreground]">Sources adaptatives :</span> je démarre
-            avec 2 sources ; si leur confiance descend sous 50 %, j&apos;ajoute une 3ᵉ, puis une 4ᵉ,
-            puis une 5ᵉ — et je garde la configuration la plus cohérente (5 sources libres et gratuites).
-          </li>
-          <li>
-            <span className="font-medium text-[--foreground]">Questions d&apos;affinage plus douces :</span>{' '}
-            au plus 2 questions, facultatives — tu peux y répondre, partager librement un autre détail,
-            ou poursuivre sans rien préciser. La section « Le Mentor t&apos;écoute » disparaît du corps :
-            sa parole est repliée dans l&apos;onglet réflexion.
-          </li>
-          <li>
-            <span className="font-medium text-[--foreground]">La structure universelle reste garantie :</span>{' '}
-            pour toute question, dans tous les modes : parabole, interprétation, histoire, mise en
-            perspective — la synthèse des sources reste un onglet déroulant.
-          </li>
-        </ul>
-        <p className="text-xs text-[--muted-foreground]/80 mt-3">
-          Si cette page affiche encore une ancienne version, ferme-la complètement puis rouvre-la (ou
-          recharge avec Ctrl+Shift+R) : la mise à jour s&apos;appliquera aussitôt.
-        </p>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -234,7 +388,7 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
           <button
             key={m.id}
             onClick={() => choisir(m.id)}
-            className="group text-left rounded-2xl border border-[--border] bg-[--card] p-6 transition-all hover:border-[--primary]/60 hover:shadow-lg hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[--primary] min-h-[44px]"
+            className="group text-left rounded-2xl border border-[--border] bg-[--card] p-6 transition-all hover:border-[--primary]/60 hover:shadow-xl hover:shadow-[--primary]/5 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[--primary] min-h-[44px]"
           >
             <div className="flex items-center gap-3 mb-2">
               <span className="h-11 w-11 rounded-xl bg-[--primary]/10 text-[--primary] flex items-center justify-center group-hover:bg-[--primary] group-hover:text-[--primary-foreground] transition-colors" aria-hidden>
@@ -245,20 +399,29 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
             </div>
             <p className="text-sm text-[--muted-foreground] leading-relaxed">{m.description}</p>
             <p className="text-xs text-[--muted-foreground]/80 mt-2 flex items-center gap-1">
-              <Music4 className="h-3 w-3" aria-hidden /> {m.musique}
+              <Music4 className="h-3 w-3" aria-hidden /> musique {m.musique} — variée à chaque conversation
             </p>
           </button>
         ))}
       </div>
 
+      <div className="flex flex-wrap justify-center gap-2 mb-3">
+        <Button variant="outline" size="sm" onClick={() => aller('fonctionnement')} className="rounded-full">
+          <Compass className="h-4 w-4" aria-hidden /> Comment fonctionne le SPU
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => aller('nouveautes')} className="rounded-full">
+          <Newspaper className="h-4 w-4" aria-hidden /> Quoi de neuf
+        </Button>
+      </div>
       <div className="flex flex-wrap justify-center gap-2">
         {([
           ['journal', 'Journal de bord', <NotebookPen key="a" className="h-4 w-4" aria-hidden />],
           ['corpus', 'Le corpus (50 + 15)', <Library key="b" className="h-4 w-4" aria-hidden />],
           ['transparence', 'Transparence', <Eye key="c" className="h-4 w-4" aria-hidden />],
-          ['confidentialite', 'Confidentialité', <ShieldCheck key="d" className="h-4 w-4" aria-hidden />],
+          ['confidentialite', 'Confidentialité & RGPD', <ShieldCheck key="d" className="h-4 w-4" aria-hidden />],
+          ['soutien', 'Soutenir le concepteur', <HeartHandshake key="e" className="h-4 w-4" aria-hidden />],
         ] as [Vue, string, React.ReactNode][]).map(([v, label, icone]) => (
-          <Button key={v} variant="outline" size="sm" onClick={() => aller(v)} className="rounded-full">
+          <Button key={v} variant="ghost" size="sm" onClick={() => aller(v)} className="rounded-full text-[--muted-foreground]">
             {icone} {label}
           </Button>
         ))}
@@ -836,12 +999,21 @@ function FluxDeep() {
 function PiedDePage({ aller }: { aller: (v: Vue) => void }) {
   return (
     <footer className="mt-auto border-t border-[--border]/60 bg-[--card]/60 pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-4xl mx-auto px-4 py-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[--muted-foreground]">
-        <span className="font-medium text-[--foreground]">SPU v{VERSION_SPU}</span>
-        <button onClick={() => aller('transparence')} className="hover:text-[--primary]">Transparence</button>
-        <button onClick={() => aller('confidentialite')} className="hover:text-[--primary]">Confidentialité &amp; RGPD</button>
-        <button onClick={() => aller('corpus')} className="hover:text-[--primary]">Corpus</button>
-        <span className="ml-auto">Un mentor, pas un maître. 🌿</span>
+      <div className="max-w-4xl mx-auto px-4 py-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[--muted-foreground]">
+          <span className="font-medium text-[--foreground]">SPU v{VERSION_SPU}</span>
+          <button onClick={() => aller('journal')} className="hover:text-[--primary]">Journal de bord</button>
+          <button onClick={() => aller('corpus')} className="hover:text-[--primary]">Corpus</button>
+          <button onClick={() => aller('transparence')} className="hover:text-[--primary]">Transparence</button>
+          <button onClick={() => aller('confidentialite')} className="hover:text-[--primary]">Confidentialité &amp; RGPD</button>
+          <button onClick={() => aller('soutien')} className="hover:text-[--primary]">Soutenir le concepteur</button>
+          <span className="ml-auto">Un mentor, pas un maître. 🌿</span>
+        </div>
+        <p className="text-[11px] text-[--muted-foreground]/70">
+          Conçu avec soin pour qui cherche un éclairage — soutien et retours bienvenus :{' '}
+          <a href="mailto:ramenyido@gmail.com" className="underline underline-offset-2 hover:text-[--primary]">ramenyido@gmail.com</a>
+          {' '}· 00228 9-364-364-1
+        </p>
       </div>
     </footer>
   );

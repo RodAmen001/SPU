@@ -3,10 +3,12 @@
 // Les événements suivent la Partie 15 du cahier des charges.
 
 import { orchestrerSources, type Synthese, type SourceResultat } from './sources';
-import { trouverParabole, detecterTonalite, type ParaboleMatch } from './matching';
+import { trouverParabole, reArbitrerSurSynthese, detecterTonalite, type ParaboleMatch } from './matching';
+import { paraboleEnLigne } from './parabole-en-ligne';
 import { genererHistoire, chunker, type HistoireGeneree } from './story';
 import { genererPerspective } from './perspective';
 import { MESSAGE_ERREUR_SOURCES } from './constants';
+import { budgetEpuise } from './budget';
 
 export type EvenementSSE =
   | { type: 'status'; step: string }
@@ -23,6 +25,7 @@ export type EvenementSSE =
       sources: string[];
       score: number;
       sousSeuil: boolean;
+      enLigne?: boolean;
     }
   | { type: 'histoire'; chunk: string }
   | { type: 'perspective'; text: string };
@@ -85,7 +88,7 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   }
 
   // Le matching a tourné pendant les sources : il est déjà prêt (coût résiduel ≈ 0).
-  const match = await matchPromis;
+  let match = await matchPromis;
   if (!match) {
     const msg = modeDegrade
       ? MESSAGE_ERREUR_SOURCES
@@ -94,6 +97,29 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     yield { type: 'erreur', message: msg };
     return resultat;
   }
+
+  // ── v4.8 — Orientation vers la synthèse (exigence du concepteur) ───────────
+  // La parabole-réponse et son interprétation doivent refléter LA SYNTHÈSE des
+  // sources. Le premier arbitrage (sur la question, en parallèle) a laissé la
+  // parabole sous le seuil ? On ré-arbitre alors les candidates DU CORPUS
+  // directement contre la synthèse.
+  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && !budgetEpuise(14000)) {
+    yield { type: 'status', step: 'reorientation' };
+    const reorientee = await reArbitrerSurSynthese(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
+    if (reorientee && !reorientee.sousSeuil) match = reorientee;
+  }
+
+  // ── v4.8 — Repli EN LIGNE : aucune parabole du corpus ne convient efficacement
+  // ? Le SPU consulte une IA + un moteur de recherche pour RETROUVER une parabole
+  // réelle et traditionnelle (jamais inventée), sourcée et vérifiée via
+  // l'encyclopédie, orientée vers la synthèse. En cas d'échec : la parabole du
+  // corpus la plus proche reste servie, honnêtement signalée sous le seuil.
+  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && !budgetEpuise(16000)) {
+    yield { type: 'status', step: 'enligne' };
+    const trouvee = await paraboleEnLigne(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
+    if (trouvee) match = trouvee;
+  }
+
   resultat.parabole = match;
   yield {
     type: 'parabole',
@@ -106,6 +132,7 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     sources: match.sources,
     score: match.score,
     sousSeuil: match.sousSeuil || modeDegrade,
+    enLigne: match.enLigne || false,
   };
 
   yield { type: 'status', step: 'histoire' };

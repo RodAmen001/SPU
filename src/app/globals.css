@@ -121,38 +121,49 @@
   }
 }
 
-/* ════════════ SPU v4.0 — Thème chaleureux (crème / encre / terracotta / sauge) ════════════ */
+/* ════════════ SPU v4.8 — Thème moderne (crème profond / encre chaude / terracotta / sauge) ════════════
+   Même âme narrative, présentation vivante : dégradé atmosphérique, cartes plus
+   profondes, transitions douces. L'écran respire et oriente vers l'objet même
+   de l'application : poser une question, recevoir — et écouter — une parabole. */
 @theme inline {
   --font-serif: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
 }
 
 :root {
-  --background: oklch(0.972 0.014 85);
+  --background: oklch(0.968 0.016 85);
   --foreground: oklch(0.26 0.022 60);
-  --card: oklch(0.992 0.008 85);
+  --card: oklch(0.993 0.007 85);
   --card-foreground: oklch(0.26 0.022 60);
-  --popover: oklch(0.992 0.008 85);
+  --popover: oklch(0.993 0.007 85);
   --popover-foreground: oklch(0.26 0.022 60);
-  --primary: oklch(0.55 0.125 45);
+  --primary: oklch(0.545 0.135 42);
   --primary-foreground: oklch(0.985 0.01 85);
-  --secondary: oklch(0.62 0.055 125);
+  --secondary: oklch(0.60 0.06 128);
   --secondary-foreground: oklch(0.985 0.01 85);
-  --muted: oklch(0.94 0.012 85);
-  --muted-foreground: oklch(0.47 0.02 60);
-  --accent: oklch(0.78 0.085 80);
+  --muted: oklch(0.935 0.014 85);
+  --muted-foreground: oklch(0.475 0.022 60);
+  --accent: oklch(0.80 0.09 78);
   --accent-foreground: oklch(0.26 0.022 60);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.022 80);
-  --input: oklch(0.88 0.022 80);
-  --ring: oklch(0.55 0.125 45);
+  --border: oklch(0.885 0.02 80);
+  --input: oklch(0.885 0.02 80);
+  --ring: oklch(0.545 0.135 42);
 }
 
-/* Texture papier douce */
+/* Fond atmosphérique v4.8 : trois lumières douces (or du matin, sauge,
+   terracotta du soir) posées sur un crème profond — chaleureux, jamais plat. */
 .fond-spu {
   background:
-    radial-gradient(1200px 600px at 15% -10%, oklch(0.96 0.035 75 / 0.55), transparent 60%),
-    radial-gradient(1000px 500px at 110% 10%, oklch(0.94 0.03 125 / 0.4), transparent 55%),
+    radial-gradient(1100px 520px at 12% -8%, oklch(0.93 0.06 78 / 0.5), transparent 62%),
+    radial-gradient(900px 480px at 108% 6%, oklch(0.90 0.05 128 / 0.42), transparent 58%),
+    radial-gradient(1400px 700px at 50% 118%, oklch(0.92 0.045 45 / 0.35), transparent 60%),
     var(--background);
+  background-attachment: fixed;
+}
+
+/* Titre héros : lueur dorée très douce derrière la promesse de l'accueil */
+.halo-titre {
+  text-shadow: 0 1px 0 oklch(1 0 0 / 0.65), 0 12px 34px oklch(0.545 0.135 42 / 0.14);
 }
 
 /* Apparition en douceur du texte streamé */
