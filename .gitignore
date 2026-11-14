@@ -83,3 +83,8 @@ apk-spu/build/
 !/telechargements/
 !/telechargements/**
 
+
+# Sauvegardes temporaires du démon (zips volumineux)
+scripts/sauvegarde/
+*.ZNUYdR
+*.tmp.zip
