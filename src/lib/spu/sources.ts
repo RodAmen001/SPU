@@ -296,13 +296,16 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   // (2 sources, puis toutes) — les niveaux intermédiaires ne font que collecter.
   const paliersSynthese = new Set([2, SOURCES_SPU.length]);
 
-  // v5.0 — RÉESSAI (exigence du concepteur : « à tout prix ») : les moteurs
-  // gratuits flottent avec les quotas des IP partagées — si le premier balayage
-  // ne ramène AUCUNE source, on souffle 2 s et on re-balaie une seconde fois.
-  // Une passe entière n'a jamais coûté plus de ~15 s ; le budget (90 s) absorbe
-  // deux passes sans jamais mettre la réponse en danger.
-  for (let passe = 0; passe < 2 && !consultees.length; passe++) {
-    if (passe > 0) await new Promise((r) => setTimeout(r, 2000));
+  // v5.0 — PATIENCE RÉELLE (exigence du concepteur : « à tout prix ») : les
+  // moteurs gratuits appliquent leurs fenêtres (Pollinations : 1 réponse / 45 s
+  // par IP ; GitHub : fenêtres à la minute). Si le premier balayage ne ramène
+  // AUCUNE source, on attend ~20 s (le temps d'une fenêtre) et on re-balaie —
+  // jusqu'à trois passes dans le budget de 90 s. Une réponse honnête est
+  // toujours servie au bout, mais les sources ont eu TOUTES leurs chances.
+  for (let passe = 0; passe < 3 && !consultees.length; passe++) {
+    // le budget restant décide : jamais de passe qui mettrait la réponse en danger
+    if (budgetEpuise(35000)) break;
+    if (passe > 0) await new Promise((r) => setTimeout(r, 20000));
     // v5.0 — chaque source est tentée UNE SEULE fois par requête, même si les
     // sources précédentes ont échoué (l'ancien découpage par index re-essayait
     // les sources déjà servies et polluait la liste des sources).
