@@ -61,6 +61,7 @@ export interface ParaboleMatch {
   interpretationChoisie: string;
   sousSeuil: boolean; // true = "parabole la plus proche du corpus"
   enLigne?: boolean; // v4.8 : parabole réelle retrouvée EN LIGNE (hors corpus), orientée vers la synthèse
+  degrade?: boolean; // v4.9 : sources en échec — la parabole est servie sans synthèse
 }
 
 /** Matching complet : cosinus top-8 puis arbitrage LLM (score de pertinence 0-1). */

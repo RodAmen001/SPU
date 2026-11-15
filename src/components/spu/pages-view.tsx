@@ -287,3 +287,78 @@ export function VueConfidentialite() {
     </div>
   );
 }
+
+// ── v5.0 — « Les musiques du SPU » : la liste complète, avec leurs liens ──────
+// Exigence du concepteur : établir la liste des musiques de fond avec leurs
+// liens respectifs et l'insérer là où de droit. La liste est générée depuis le
+// catalogue (musiques-libres.json) — elle reste donc toujours exacte.
+import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
+
+interface PisteMusique {
+  titre: string;
+  artiste: string;
+  licence: string;
+  source: string;
+  url: string;
+  usage: string;
+  duree: string;
+  ambiance: string;
+}
+
+export function VueMusiques() {
+  const pistes = CATALOGUE_MUSIQUES as PisteMusique[];
+  const parUsage = (u: string) => pistes.filter((p) => p.usage.split('+').includes(u));
+  const groupes: { nom: string; note: string; pistes: PisteMusique[] }[] = [
+    { nom: 'Accueil et pages documentaires', note: 'musique douce présente sur chaque page du SPU', pistes: parUsage('accueil') },
+    { nom: 'Oracle', note: 'majestueuse et contemplative', pistes: parUsage('oracle') },
+    { nom: 'Mentor', note: 'chaleureuse, un compagnon de route', pistes: parUsage('mentor') },
+    { nom: 'Deep', note: 'profonde, au rythme du souffle', pistes: parUsage('deep') },
+    { nom: 'Enfant', note: 'légère, espiègle et douce', pistes: parUsage('enfant') },
+  ];
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h2 className="text-xl font-semibold flex items-center gap-2">
+        <Music4 className="h-5 w-5 text-[--primary]" aria-hidden /> Les musiques du SPU
+      </h2>
+
+      <Card className="p-6">
+        <p className="text-[15px] leading-relaxed">
+          {pistes.length} musiques libres de droits tournent dans le SPU. Depuis la v5.0, la piste est
+          choisie <span className="font-medium">en fonction de la parabole offerte</span> — sa culture
+          (Asie, Afrique de l&apos;Ouest, Méditerranée, traditions celtiques…) et sa famille
+          (patience, courage, ancrage…) orientent l&apos;ambiance musicale. Les pistes se déroulent
+          <span className="font-medium"> les unes après les autres</span> sans jamais répéter les trois
+          dernières, et le son de transition est désormais une cloche douce qui respecte toutes les
+          ambiances. La musique joue sur <span className="font-medium">chaque page</span> du SPU.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Badge variant="outline" className="rounded-full">🎵 {pistes.length} pistes vérifiées</Badge>
+          <Badge variant="outline" className="rounded-full">🎯 sélection liée à la parabole</Badge>
+          <Badge variant="outline" className="rounded-full">🔁 rotation sans répétition</Badge>
+        </div>
+      </Card>
+
+      {groupes.map((g) => (
+        <Card key={g.nom} className="p-6">
+          <h3 className="font-semibold mb-1">{g.nom}</h3>
+          <p className="text-xs text-[--muted-foreground] mb-3">{g.note} — {g.pistes.length} piste(s)</p>
+          <ul className="space-y-2">
+            {g.pistes.map((p) => (
+              <li key={p.url} className="text-sm leading-relaxed flex flex-wrap gap-x-2 items-baseline">
+                <span className="font-medium">{p.titre}</span>
+                <span className="text-[--muted-foreground]">· {p.artiste} · {p.ambiance} · {p.duree}</span>
+                <a href={p.url} target="_blank" rel="noreferrer" className="text-[--primary] underline underline-offset-2 hover:opacity-80">
+                  écouter
+                </a>
+                <a href={p.source} target="_blank" rel="noreferrer" className="text-[--muted-foreground] underline underline-offset-2 hover:text-[--primary]">
+                  source / licence
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ))}
+    </div>
+  );
+}

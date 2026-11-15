@@ -37,27 +37,19 @@ async function sondePollinations(): Promise<boolean> {
 async function sondeGithubModels(): Promise<string> {
   const jeton = process.env.GITHUB_MODELS_TOKEN || '';
   if (!jeton) return 'ko (GITHUB_MODELS_TOKEN non configuré)';
-  const modele = process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini';
-  const details: string[] = [];
-  const hotes = [
-    ['models.github.ai', 'https://models.github.ai/inference/chat/completions', modele],
-    ['azure', 'https://models.inference.ai.azure.com/chat/completions', modele.startsWith('openai/') ? modele.slice(7) : modele],
-  ] as const;
-  for (const [nom, hote, corpsModele] of hotes) {
-    try {
-      const res = await fetch(hote, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: corpsModele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) return 'ok';
-      details.push(`${nom}: HTTP ${res.status}`);
-    } catch {
-      details.push(`${nom}: réseau`);
-    }
+  // v5.0 : le premier modèle de la liste de rotation suffit à la sonde
+  const modele = (process.env.GITHUB_MODELS_MODELES || 'openai/gpt-4o-mini,openai/gpt-4.1-nano,openai/gpt-4.1-mini,openai/gpt-4o').split(',')[0].trim();
+  try {
+    const res = await fetch('https://models.github.ai/inference/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return res.ok ? 'ok' : `ko (${modele} HTTP ${res.status})`;
+  } catch {
+    return `ko (${modele} réseau)`;
   }
-  return `ko (${details.join(' ; ')})`;
 }
 
 async function sondeDuckDuckGo(): Promise<boolean> {

@@ -30,11 +30,11 @@ import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fi
 import { VueEnfant } from './child-view';
 import { VueJournal } from './journal-view';
 import { VueCorpus } from './corpus-view';
-import { VueTransparence, VueConfidentialite, VueFonctionnement, VueNouveautes, VueSoutien } from './pages-view';
+import { VueTransparence, VueConfidentialite, VueFonctionnement, VueNouveautes, VueSoutien, VueMusiques } from './pages-view';
 import { ReglagesVoix } from './reglages-voix';
 import { VoletCompte } from './compte-volet';
 
-type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'corpus' | 'transparence' | 'confidentialite' | 'fonctionnement' | 'nouveautes' | 'soutien';
+type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'corpus' | 'musiques' | 'transparence' | 'confidentialite' | 'fonctionnement' | 'nouveautes' | 'soutien';
 
 // v4.8 — La barre de menu : toutes les écrits et options de l'application,
 // disposés de la manière la plus claire possible (ordinateur : barre complète
@@ -64,13 +64,16 @@ export function SpuApp() {
   const [quitterOuvert, setQuitterOuvert] = useState(false);
   const [adieu, setAdieu] = useState(false);
 
-  // Musique de fond réelle par mode (MP3 libres) — démarre à l'entrée d'un mode,
-  // s'arrête sur l'accueil et les pages documentaires.
+  // v5.0 — Musique de fond sur TOUTES les pages (exigence du concepteur :
+  // « pas de page sans musique ») : les quatre modes gardent leur ambiance,
+  // l'accueil et les pages documentaires jouent le sac « accueil » (calme).
+  const modeMusiqueDe = (v: Vue): ModeMusique =>
+    v === 'oracle' || v === 'mentor' || v === 'deep' || v === 'enfant' ? v : 'accueil';
+
   useEffect(() => {
     const moteur = getMoteurAudio();
     moteur.setVolume(volume);
-    const estMode = vue === 'oracle' || vue === 'mentor' || vue === 'deep' || vue === 'enfant';
-    if (audioActive && estMode) moteur.jouerMode(vue as ModeMusique);
+    if (audioActive) moteur.jouerMode(modeMusiqueDe(vue));
     else moteur.couper();
   }, [vue, audioActive]);
 
@@ -78,8 +81,7 @@ export function SpuApp() {
     setAudioActive(v);
     const moteur = getMoteurAudio();
     moteur.setVolume(volume);
-    const estMode = vue === 'oracle' || vue === 'mentor' || vue === 'deep' || vue === 'enfant';
-    if (v && estMode) moteur.jouerMode(vue as ModeMusique);
+    if (v) moteur.jouerMode(modeMusiqueDe(vue));
     else moteur.couper();
   };
 
@@ -130,6 +132,7 @@ export function SpuApp() {
         {vue === 'enfant' && <VueEnfant surRetour={() => naviguer('accueil')} />}
         {vue === 'journal' && <div className="py-8 px-4"><VueJournal /></div>}
         {vue === 'corpus' && <div className="py-8 px-4"><VueCorpus /></div>}
+        {vue === 'musiques' && <div className="py-8 px-4"><VueMusiques /></div>}
         {vue === 'transparence' && <div className="py-8 px-4"><VueTransparence /></div>}
         {vue === 'confidentialite' && <div className="py-8 px-4"><VueConfidentialite /></div>}
         {vue === 'fonctionnement' && <div className="py-8 px-4"><VueFonctionnement /></div>}
@@ -184,6 +187,7 @@ const MENU: { vue: Vue; label: string; labelCourt: string; icone: React.ReactNod
   { vue: 'nouveautes', label: 'Quoi de neuf', labelCourt: 'Quoi de neuf', icone: <Newspaper className="h-4 w-4" aria-hidden /> },
   { vue: 'journal', label: 'Journal de bord', labelCourt: 'Journal', icone: <NotebookPen className="h-4 w-4" aria-hidden /> },
   { vue: 'corpus', label: 'Le corpus (100)', labelCourt: 'Corpus', icone: <Library className="h-4 w-4" aria-hidden /> },
+  { vue: 'musiques', label: 'Les musiques du SPU', labelCourt: 'Musiques', icone: <Music4 className="h-4 w-4" aria-hidden /> },
   { vue: 'transparence', label: 'Transparence', labelCourt: 'Transparence', icone: <Eye className="h-4 w-4" aria-hidden /> },
   { vue: 'confidentialite', label: 'Confidentialité & RGPD', labelCourt: 'RGPD', icone: <ShieldCheck className="h-4 w-4" aria-hidden /> },
   { vue: 'soutien', label: 'Soutenir le concepteur', labelCourt: 'Soutenir', icone: <HeartHandshake className="h-4 w-4" aria-hidden /> },
@@ -460,6 +464,7 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
         {([
           ['journal', 'Journal de bord', <NotebookPen key="a" className="h-4 w-4" aria-hidden />],
           ['corpus', 'Le corpus (100)', <Library key="b" className="h-4 w-4" aria-hidden />],
+          ['musiques', 'Les musiques du SPU', <Music4 key="f" className="h-4 w-4" aria-hidden />],
           ['transparence', 'Transparence', <Eye key="c" className="h-4 w-4" aria-hidden />],
           ['confidentialite', 'Confidentialité & RGPD', <ShieldCheck key="d" className="h-4 w-4" aria-hidden />],
           ['soutien', 'Soutenir le concepteur', <HeartHandshake key="e" className="h-4 w-4" aria-hidden />],
@@ -590,6 +595,9 @@ function FluxOracle() {
       },
       parabole: (d) => {
         r.parabole = d as never;
+        // v5.0 — la musique s'accorde à LA parabole offerte (culture + famille)
+        const dp = d as { culture?: string; famille?: string };
+        getMoteurAudio().accorderParabole({ culture: dp.culture, famille: dp.famille });
         setReponse({ ...r });
       },
       histoire: (d) => {
@@ -707,6 +715,9 @@ function FluxMentor() {
       },
       parabole: (d) => {
         r.parabole = d as never;
+        // v5.0 — la musique s'accorde à LA parabole offerte (culture + famille)
+        const dp = d as { culture?: string; famille?: string };
+        getMoteurAudio().accorderParabole({ culture: dp.culture, famille: dp.famille });
         setReponse({ ...r });
       },
       histoire: (d) => {
@@ -893,6 +904,9 @@ function FluxDeep() {
       },
       parabole: (d) => {
         r.parabole = d as never;
+        // v5.0 — la musique s'accorde à LA parabole offerte (culture + famille)
+        const dp = d as { culture?: string; famille?: string };
+        getMoteurAudio().accorderParabole({ culture: dp.culture, famille: dp.famille });
         setReponse({ ...r });
       },
       histoire: (d) => {

@@ -15,10 +15,28 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v5.0',
+    date: '15/11/2026',
+    titre: "La réponse qui ne s'arrête plus jamais : histoires vivantes, musique partout, IA en rotation",
+    actuelle: true,
+    points: [
+      "Fin des histoires génériques (exigence du concepteur) : les formules interchangeables (« quelqu'un marchait… », « la voix de l'eau lui parvint », rivière par défaut) sont interdites aux IA ; chaque histoire commence par une scène concrète — lieu, personnage caractérisé, objet — et porte le ressort émotionnel de LA question posée.",
+      "Histoires issues des livres saints (exigence du concepteur) : quand la parabole y résonne, l'histoire peut mettre en scène un passage RÉEL de la Bible, du Coran, de la Torah/Talmud ou des grandes traditions — fidèle au texte, référence citée (ex. « Luc 15 », « Coran 18 ») — ou une histoire originale dans leur esprit ; jamais de référence incertaine.",
+      'Repli local régénéré : six canevas distincts (forge, port, verger, route, maison, rivière) tissés sur les mots de la question — même sans IA, deux questions différentes ne reçoivent plus la même histoire.',
+      "Synthèse qui ne s'arrête plus (exigence du concepteur : « à tout prix, même si une seule IA répond ») : quand le LLM de synthèse est indisponible, une CONSOLIDATION EXTRACTIVE assemble honnêtement les phrases les plus informatives de chaque source, numérotées et attribuées — plus jamais de bloc brut ni de réponse sans matière quand une source vit.",
+      "Économie de quota : la synthèse LLM n'est appelée qu'à deux paliers (2 sources, puis toutes) au lieu de quatre — la capacité quotidienne est préservée pour les questions réelles.",
+      "IA en rotation multi-modèles (exigence du concepteur) : GitHub Models essaie automatiquement plusieurs modèles gratuits (gpt-4o-mini, gpt-4.1-nano, gpt-4.1-mini, gpt-4o) — chaque modèle a son propre quota journalier, la panne d'un modèle bascule sur le suivant, puis sur Pollinations.",
+      "Catalogue musical porté à 100 pistes vérifiées (exigence du concepteur) : musiques libres de droits (CC-BY Kevin MacLeod, domaine public), chaque lien contrôlé — liste complète et liens affichés sur la nouvelle page « Les musiques du SPU ».",
+      "La musique est choisie en fonction DE LA PARABOLE offerte : culture (Asie, Afrique de l'Ouest, Méditerranée, celtique…) et famille (patience, courage, ancrage…) orientent l'ambiance ; les pistes se déroulent les unes après les autres sans répétition.",
+      "Musique de fond sur CHAQUE page du SPU (exigence du concepteur : « pas de page sans musique ») — l'accueil et les pages documentaires jouent un sac calme dédié.",
+      "Son de transition remplacé (exigence du concepteur : l'ancien était trop « vivace ») : une cloche de porcelaine douce, attaque lente et longue décroissance, qui respecte toutes les ambiances musicales.",
+      "Mise en perspective variée : même en repli local, le pont entre ta question et la parabole s'exprime en trois formules distinctes au lieu d'une phrase unique répétée.",
+    ],
+  },
+  {
     version: 'v4.9',
     date: '15/11/2026',
     titre: "Le SPU recouvre ses sources : corpus 100, IA en chaîne, accueil vivant",
-    actuelle: true,
     points: [
       'Corpus porté à 100 paraboles réelles et sourcées (75 adultes + 25 enfants) : Ésope, La Fontaine, Pancatantra, Talmud, Coran, zen, soufisme, Vedanta, Tolstoï, traditions cherokee et ouest-africaines — chaque lien de source vérifié un par un.',
       "Sources d'intelligence rétablies en production : Wikipédia est de nouveau consultée en DIRECT (API publique, identification User-Agent conforme à la politique Wikimedia) — fin de la dépendance au lecteur SDK absent de l'hébergement.",

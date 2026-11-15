@@ -1,15 +1,16 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// SPU v4.8 — MOTEUR AUDIO : PLAYLIST VARIÉE (exigence du concepteur : fin de
-// la monotonie). 51 musiques libres de droits (CC-BY 4.0 — Kevin MacLeod,
-// incompetech.com ; enregistrements du domaine public) tournent au fil des
-// conversations : chaque mode a son sac de pistes adapté à son ambiance, chaque
-// nouvelle question puise la suivante (rotation sans répétition), et le jingle
-// de réponse reste local. Repli hors-ligne : les 4 fonds SoundHelix embarqués.
+// SPU v5.0 — MOTEUR AUDIO : 100 PISTES, MUSIQUE PARTOUT, SÉLECTION PAR PARABOLE
+// Exigences du concepteur : (1) catalogue porté à 100 musiques libres vérifiées ;
+// (2) la musique joue sur CHAQUE page (accueil et pages documentaires comprises) ;
+// (3) la piste est choisie en fonction DE LA PARABOLE offerte (culture + famille) ;
+// (4) rotation séquentielle sans répétition ; (5) son de transition doux (cloche
+// de porcelaine) qui convient à toutes les ambiances. Repli hors-ligne : fonds
+// SoundHelix embarqués.
 // ═════════════════════════════════════════════════════════════════════════════
 
 import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
 
-export type ModeMusique = 'oracle' | 'mentor' | 'deep' | 'enfant';
+export type ModeMusique = 'oracle' | 'mentor' | 'deep' | 'enfant' | 'accueil';
 
 interface PisteLibre {
   titre: string;
@@ -30,11 +31,60 @@ const REPLI_LOCAL: Record<ModeMusique, string> = {
   mentor: '/audio/fond-mentor.mp3',
   deep: '/audio/fond-deep.mp3',
   enfant: '/audio/fond-enfant.mp3',
+  accueil: '/audio/fond-oracle.mp3',
 };
 
-const FICHIER_JINGLE = '/audio/jingle-reponse.mp3'; // Song 13, extrait 13 s — signal de réponse
+// v5.0 — son de transition doux : cloche de porcelaine (attaque lente, longue
+// décroissance) qui respecte toutes les ambiances musicales.
+const FICHIER_JINGLE = '/audio/reponse-douce.mp3';
 
-const DUREE_FONDU_MS = 1500; // fondu enchaîné 5.4 du cahier
+const DUREE_FONDU_MS = 1800; // fondu enchaîné un peu plus long = transitions douces
+
+// ── Sélection par parabole (exigence v5.0) ───────────────────────────────────
+// Chaque famille de paraboles a son atmosphère ; la culture oriente aussi le
+// choix. Les mots-clés sont comparés aux champs « ambiance » et « titre » du
+// catalogue (catalogue v5.0 enrichi avec les « feel » du site source).
+const MOOD_FAMILLE: Record<string, string[]> = {
+  F1: ['calm', 'relaxed', 'gentle', 'peaceful', 'patient', 'slow'],
+  F2: ['peaceful', 'meditat', 'contempl', 'calm', 'serene'],
+  F3: ['epic', 'heroic', 'brave', 'determined', 'triumphant', 'courage'],
+  F4: ['solemn', 'serious', 'mysterious', 'somber', 'justice'],
+  F5: ['uplifting', 'bright', 'hopeful', 'morning', 'renewal', 'spring'],
+  F6: ['calm', 'grounded', 'warm', 'traditional', 'rooted'],
+  F7: ['playful', 'bouncy', 'cheerful', 'light', 'humorous', 'bright'],
+  F8: ['reflective', 'pure', 'honest', 'gentle', 'clear'],
+  F9: ['driving', 'grooving', 'energetic', 'motion', 'work'],
+  F10: ['warm', 'tender', 'love', 'gentle', 'folk', 'together'],
+};
+
+const MOOD_CULTURE: Record<string, string[]> = {
+  asie: ['oriental', 'asian', 'guzheng', 'koto', 'meditat', 'japan', 'china', 'pentatonic'],
+  'afrique de l\'ouest': ['africa', 'african', 'kora', 'drum', 'balafon', 'tribal'],
+  'méditerranée': ['classical', 'greek', 'oud', 'guitar', 'lute', 'harpsichord'],
+  'nordique / celtique': ['celtic', 'irish', 'folk', 'fiddle', 'nordic', 'harp'],
+  'amériques': ['native', 'flute', 'folk', 'american'],
+  universaliste: ['ambient', 'piano', 'strings', 'orchestral'],
+};
+
+function normaliser(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Score d'une piste pour une parabole donnée (culture + famille). */
+function scoreParabole(p: PisteLibre, culture?: string, famille?: string): number {
+  const texte = normaliser(`${p.ambiance} ${p.titre}`);
+  let score = 0;
+  if (famille) for (const c of MOOD_FAMILLE[famille] || []) if (texte.includes(c)) score += 3;
+  if (culture) {
+    const cN = normaliser(culture);
+    for (const [cle, cles] of Object.entries(MOOD_CULTURE)) {
+      if (cN.includes(normaliser(cle)) || normaliser(cle).includes(cN)) {
+        for (const c of cles) if (texte.includes(c)) score += 2;
+      }
+    }
+  }
+  return score;
+}
 
 /** Pistes d'un mode (usage peut être composé : "deep+oracle") — sac jamais vide. */
 function sacDePistes(mode: ModeMusique): PisteLibre[] {
@@ -48,9 +98,10 @@ export class MoteurAudio {
   private modeActuel: ModeMusique | null = null;
   private fonduTimer: ReturnType<typeof setInterval> | null = null;
   private _volume = 0.3;
-  private rotation: Record<ModeMusique, number> = { oracle: 0, mentor: 0, deep: 0, enfant: 0 };
+  private rotation: Record<ModeMusique, number> = { oracle: 0, mentor: 0, deep: 0, enfant: 0, accueil: 0 };
   private dernieresJouees: string[] = []; // URLs récentes (anti-répétition immédiate)
   private infoCourante: PisteLibre | null = null;
+  private paraboleCourante: { culture?: string; famille?: string } | null = null;
 
   get mode(): ModeMusique | null {
     return this.modeActuel;
@@ -103,12 +154,24 @@ export class MoteurAudio {
   }
 
   /**
-   * Rotation variée (v4.8) : piste suivante du sac du mode, sans répéter les
-   * 3 dernières — la musique change au fil des conversations, comme demandé.
+   * Rotation séquentielle (v5.0) : piste SUIVANTE du sac — les musiques se
+   * déroulent les unes après les autres, sans répéter les 3 dernières.
+   * `parabole` (culture + famille) oriente le choix vers l'ambiance qui
+   * résonne avec elle : la musique devient le prolongement de la parabole.
    */
   private pisterSuivante(mode: ModeMusique): PisteLibre {
-    const sac = sacDePistes(mode);
-    const base = this.rotation[mode] || Math.floor(Math.random() * sac.length);
+    let sac = sacDePistes(mode);
+    const parabole = this.paraboleCourante;
+    // sélection par parabole : parmi tout le catalogue, les meilleures résonances
+    if (parabole && (parabole.culture || parabole.famille)) {
+      const classees = [...MUSIQUES]
+        .map((p) => ({ p, s: scoreParabole(p, parabole.culture, parabole.famille) }))
+        .sort((a, b) => b.s - a.s);
+      const positives = classees.filter((x) => x.s > 0).map((x) => x.p);
+      if (positives.length >= 3) sac = positives.slice(0, Math.max(6, Math.ceil(positives.length / 2)));
+      else if (positives.length) sac = positives;
+    }
+    const base = this.rotation[mode] || 0;
     let choisie = sac[base % sac.length];
     for (let essai = 0; essai < sac.length; essai++) {
       const idx = (base + essai) % sac.length;
@@ -125,13 +188,14 @@ export class MoteurAudio {
   }
 
   /**
-   * Démarre (ou bascule avec fondu) la musique de fond du mode : une NOUVELLE
-   * piste de la playlist à chaque appel — chaque nouvelle conversation respire
-   * une musique différente. Repli automatique sur le fond local si le MP3 en
-   * ligne est indisponible (hors-ligne, blocage réseau).
+   * Démarre (ou bascule avec fondu) la musique de fond : une NOUVELLE piste à
+   * chaque appel. Repli automatique sur le fond local si le MP3 en ligne est
+   * indisponible (hors-ligne, blocage réseau).
    */
   jouerMode(mode: ModeMusique) {
     if (typeof window === 'undefined') return;
+    // changer de page sans perdre l'orientation par parabole (elle reste valable
+    // tant qu'aucune nouvelle parabole n'a été offerte)
     this.arreterFond(DUREE_FONDU_MS);
     this.modeActuel = mode;
     const info = this.pisterSuivante(mode);
@@ -166,7 +230,19 @@ export class MoteurAudio {
     lancer(audio, info);
   }
 
-  /** Jingle de réponse : joué une seule fois, par-dessus le fond légèrement atténué. */
+  /**
+   * v5.0 — accorde la musique à LA PARABOLE offerte : dès que la parabole est
+   * choisie, le fond bascule (fondu doux) vers une piste qui résonne avec sa
+   * culture et sa famille — même en cours de réponse.
+   */
+  accorderParabole(parabole: { culture?: string; famille?: string }) {
+    if (typeof window === 'undefined') return;
+    this.paraboleCourante = { culture: parabole.culture, famille: parabole.famille };
+    // retente uniquement si la musique est effectivement en cours de lecture
+    if (this.modeActuel && this.fond && !this.fond.paused) this.jouerMode(this.modeActuel);
+  }
+
+  /** Son de transition doux : joué une seule fois, par-dessus le fond légèrement atténué. */
   jingleReponse() {
     if (typeof window === 'undefined' || this._volume === 0) return;
     try {
@@ -174,11 +250,11 @@ export class MoteurAudio {
         this.jingle.pause();
         this.jingle = null;
       }
-      // atténuation douce du fond pendant le jingle (ducking)
+      // atténuation douce du fond pendant le signal (ducking léger : 60 % conservés)
       const avant = this.fond ? this.fond.volume : 0;
-      if (this.fond) this.fond.volume = Math.max(0, avant * 0.45);
+      if (this.fond) this.fond.volume = Math.max(0, avant * 0.6);
       const audio = new Audio(FICHIER_JINGLE);
-      audio.volume = Math.max(0, Math.min(1, this._volume * 0.9));
+      audio.volume = Math.max(0, Math.min(1, this._volume * 0.55));
       this.jingle = audio;
       audio.addEventListener('ended', () => {
         if (this.jingle === audio) this.jingle = null;
@@ -201,7 +277,6 @@ export class MoteurAudio {
     if (!this.fond) return;
     const audio = this.fond;
     this.fond = null;
-    this.modeActuel = null;
     const pas = 50;
     const iterations = Math.max(1, Math.floor(duree / pas));
     const volumeDepart = audio.volume;
@@ -245,6 +320,7 @@ export class MoteurAudio {
 
   couper() {
     this.arreterFond(DUREE_FONDU_MS);
+    this.modeActuel = null;
     if (this.jingle) {
       try {
         this.jingle.pause();

@@ -289,6 +289,9 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   const consultees: SourceResultat[] = [];
   const historique: { niveau: number; confiance: number }[] = [];
   const syntheses: { niveau: number; synthese: Synthese }[] = [];
+  // v5.0 — économie de quota : la synthèse LLM n'est appelée qu'à DEUX paliers
+  // (2 sources, puis toutes) — les niveaux intermédiaires ne font que collecter.
+  const paliersSynthese = new Set([2, SOURCES_SPU.length]);
 
   for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
     // Garde-fou budget : si le temps global de la requête s'épuise, on ne monte
@@ -307,6 +310,7 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
       }
     }
     if (!consultees.length) continue; // aucune source vivante pour l'instant
+    if (!paliersSynthese.has(cible)) continue; // collecte seule (économie de quota)
 
     // Garde-fou : un échec de synthèse (quota, budget épuisé…) ne doit jamais
     // faire échouer la requête entière — on passe au niveau suivant ou au repli local.
@@ -327,6 +331,21 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
 
     // critère d'arrêt : confiance ≥ 50 % pour ce niveau de sources
     if (synthese.confiance >= SEUIL_CONFIANCE_SOURCES) break;
+  }
+
+  // v5.0 — aucune synthèse LLM n'a abouti MAIS au moins une source a répondu :
+  // la consolidation extractive garantit une synthèse réelle (jamais de vide).
+  if (!syntheses.length && consultees.length) {
+    const extractive = syntheseExtractive(consultees);
+    historique.push({ niveau: consultees.length, confiance: extractive.confiance });
+    return {
+      sources: consultees,
+      synthese: extractive,
+      toutesEchouees: false,
+      dureeMs: Date.now() - t0,
+      niveauSources: consultees.length,
+      historique,
+    };
   }
 
   // aucune source joignable → mode dégradé honnête
@@ -358,6 +377,37 @@ export interface Synthese {
   confiance: number;
 }
 
+/** v5.0 — CONSOLIDATION SANS IA (exigence du concepteur : « même si c'est une
+ *  seule IA qui répond, consolider sa réponse »). Quand le LLM de synthèse est
+ *  indisponible mais que des sources ont répondu, on assemble honnêtement leurs
+ *  phrases les plus informatives, numérotées et attribuées — jamais un bloc
+ *  brut. La synthèse ne peut donc plus être vide quand une source vit. */
+export function syntheseExtractive(sources: SourceResultat[]): Synthese {
+  const nettoyer = (t: string) =>
+    t
+      .replace(/^Wikipédia\s*[—-]\s*[^:]+:\s*/i, '')
+      .replace(/^IA libre\s*\(Pollinations\)\s*:\s*/i, '')
+      .replace(/^(Intelligence réflexive|DuckDuckGo|Recherche Web)\s*:\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const morceaux = sources.map((s, i) => {
+    const phrases = nettoyer(s.texte)
+      .split(/(?<=[.!?])\s+/)
+      .filter((p) => p.length > 45)
+      .slice(0, 2)
+      .join(' ');
+    return phrases ? `[${i + 1}] ${phrases.slice(0, 300)}` : '';
+  }).filter(Boolean);
+  const intro = sources.length === 1
+    ? `Ma synthèse habituelle est indisponible en ce moment, mais une source a répondu — voici l'essentiel de ce qu'elle apporte à ta question :`
+    : `Ma synthèse habituelle est indisponible en ce moment, mais ${sources.length} sources ont répondu — voici l'essentiel, réuni sans reformulation :`;
+  return {
+    texte: `${intro} ${morceaux.join(' ')}`.trim(),
+    sources: sources.map((s) => s.nom),
+    confiance: 0.45,
+  };
+}
+
 export async function synthetiser(question: string, sources: SourceResultat[]): Promise<Synthese> {
   const extraits = sources
     .map((s, i) => `--- SOURCE [${i + 1}] (${s.nom}) ---\n${s.texte.slice(0, 900)}`)
@@ -373,17 +423,10 @@ Confiance = cohérence entre sources (1.0 = convergentes, 0.3 = contradictoires,
   try {
     reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 15000, temperature: 0.3, maxTokens: 350 });
   } catch (e) {
-    // dégradation gracieuse : le LLM de synthèse est indisponible (quota réseau…) →
-    // on livre une synthèse minimale honnête à partir des extraits, sans inventer.
-    console.error('[synthèse] LLM indisponible, repli sur extraits:', e instanceof Error ? e.message : e);
-    return {
-      texte: `Je n'ai pas pu produire ma synthèse habituelle, voici les éléments bruts recueillis : ${sources
-        .slice(0, 2)
-        .map((s) => s.texte.slice(0, 220).replace(/\s+/g, ' '))
-        .join(' … ')}`,
-      sources: sources.map((s) => s.nom),
-      confiance: 0.35,
-    };
+    // v5.0 — le LLM de synthèse est indisponible (quota, réseau…) : la
+    // CONSOLIDATION EXTRACTIVE prend le relais — jamais de bloc brut ni de vide.
+    console.error('[synthèse] LLM indisponible, consolidation extractive:', e instanceof Error ? e.message : e);
+    return syntheseExtractive(sources);
   }
   const json = extractJson<{ synthese: string; sources_utilisees: number[]; confiance: number }>(reponse);
   if (json?.synthese) {
@@ -394,12 +437,8 @@ Confiance = cohérence entre sources (1.0 = convergentes, 0.3 = contradictoires,
       confiance: typeof json.confiance === 'number' ? Math.max(0, Math.min(1, json.confiance)) : 0.6,
     };
   }
-  // repli : synthèse tronquée brute (jamais de position)
-  return {
-    texte: `Voici ce que j'ai rassemblé de mes sources sur cette question : ${sources[0]?.texte.slice(0, 180) || ''}…`,
-    sources: sources.map((s) => s.nom),
-    confiance: 0.4,
-  };
+  // v5.0 — réponse inutilisable : consolidation extractive (jamais de troncature brute)
+  return syntheseExtractive(sources);
 }
 
 export { MESSAGE_ERREUR_SOURCES };

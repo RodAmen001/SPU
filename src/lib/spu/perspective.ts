@@ -47,7 +47,19 @@ export async function genererPerspective(
     );
     return r.trim();
   } catch {
-    // Repli honnête : le pont est tracé depuis l'interprétation réelle, sans invention.
-    return `Le pont entre ta question et cette parabole : ${interpretation} C'est ce fil-là que j'ai reconnu dans ce que tu vis.`;
+    // Repli honnête, mais VARIÉ (v5.0 — fini la phrase unique répétée) : le pont
+    // est tracé depuis l'interprétation réelle, sans invention.
+    const variantes = [
+      `Le pont entre ta question et cette parabole : ${interpretation} C'est ce fil-là que j'ai reconnu dans ce que tu vis.`,
+      `Ce qui relie ta question à cette parabole : ${interpretation} Prends le temps de le laisser résonner en toi.`,
+      `Si cette parabole parle si fort, c'est peut-être parce qu'elle porte ceci : ${interpretation} Ce fil est à toi, maintenant — fais-en ce que tu veux.`,
+    ];
+    return variantes[hashChaineQuestion(question) % variantes.length];
   }
+}
+
+function hashChaineQuestion(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }

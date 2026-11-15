@@ -1,10 +1,10 @@
 // Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
 
 /** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
-export const VERSION_SPU = '4.9';
+export const VERSION_SPU = '5.0';
 
-// v4.9 — Identité réseau du SPU (politique Wikimedia : User-Agent descriptif + contact)
-export const UA_SPU = 'SPU/4.9 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
+// Identité réseau du SPU (politique Wikimedia : User-Agent descriptif + contact)
+export const UA_SPU = 'SPU/5.0 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',
@@ -74,18 +74,36 @@ Si tu veux continuer avec moi, je suis là — sans jugement, et sans prétendre
 export const PROMPT_SYNTHESE = `Tu es un synthétiseur neutre. On te donne N réponses issues de sources différentes à la question [QUESTION]. Produis une synthèse de 3 phrases maximum, en français, sans prendre position, sans inventer d'information. Cite entre crochets les sources utilisées, par exemple [1], [2], [3]. Si les sources se contredisent, mentionne-le. Ne dépasse jamais 120 mots.`;
 
 // 3.6 — Prompts de génération (ancrés sur la préoccupation réelle de l'utilisateur)
+// v5.0 — exiger la spécificité (fini les « quelqu'un marchait… » génériques) et
+// ouvrir aux LIVRES SAINTS : l'histoire peut mettre en scène un passage RÉEL de la
+// Bible, du Coran, de la Torah/Talmud ou des autres textes sacrés — fidèle au
+// texte — ou une histoire originale dans leur esprit, orientée vers la question.
 export function promptHistoireAdulte(params: { enonce: string; interpretation: string; contexte: string; culture: string; tonalite: string; preoccupation: string }): string {
   return `Tu es un conteur. Rédige une histoire de 150 à 300 mots, incarnée et émotionnelle, illustrant l'énoncé [${params.enonce}] et l'interprétation [${params.interpretation}].
 
 PRÉOCCUPATION RÉELLE DE LA PERSONNE (cœur de sa demande, à honorer en priorité) : « ${params.preoccupation} »
 
-L'histoire DOIT résonner avec cette préoccupation précise : elle peut l'aborder par une situation parallèle (métaphore narrée), mais son ressort émotionnel — trahison, patience, doute, perte, attente… — doit être le même que le sien. Ne donne aucune leçon explicite, aucun jugement : la personne doit se reconnaître et sentir que SA question a été entendue. Contexte supplémentaire : [${params.contexte}]. Culture : [${params.culture}]. Tonalité : [${params.tonalite}].`;
+SPÉCIFICITÉ OBLIGATOIRE (v5.0) :
+• INTERDIT d'écrire une histoire interchangeable : commence par une scène CONCRÈTE — un lieu précis, un personnage caractérisé (métier, nom ou trait marquant), un objet ou un moment identifiable.
+• INTERDITS ABSOLUS : « Dans un pays X, quelqu'un marchait depuis longtemps », « chargé d'une question sans nom », « la voix de l'eau lui parvint », « au bord d'une rivière » par défaut, et toute fin du type « la rivière avait passé la nuit à user sa pierre ». Ces formules génériques sont bannies.
+• L'histoire DOIT résonner avec la préoccupation précise citée ci-dessus : une situation parallèle (métaphore narrée) dont le ressort émotionnel — trahison, patience, doute, perte, attente… — est le même que le sien. La personne doit se dire « c'est MA situation ». Aucune leçon explicite, aucun jugement.
+
+LIVRES SAINTS (exigence du concepteur, v5.0) :
+• Si la parabole ou sa culture se rattache à un texte sacré (Bible, Évangiles, Coran, Torah, Talmud, suttas bouddhiques, Vedanta, traditions zen ou soufies…), tu PEUX construire l'histoire autour d'un PASSAGE RÉEL de ces textes — cite alors précisément le livre et le chapitre (ex. « Luc 15 », « Coran 18 », « Talmud, Ta'anit 23a ») et reste FIDÈLE au récit : rien d'inventé dans le passage lui-même.
+• Sinon, écris une histoire originale dans l'esprit de ces traditions.
+• INTERDIT de citer une référence dont tu n'es pas certain : en cas de doute, écris une histoire originale SANS référence.
+
+Contexte supplémentaire : [${params.contexte}]. Culture : [${params.culture}]. Tonalité : [${params.tonalite}].`;
 }
 
 export function promptHistoireEnfant(params: { enonce: string; interpretation: string; contexte: string; culture: string; preoccupation: string }): string {
   return `Tu es un conteur pour enfants de 6 à 12 ans. Rédige une histoire de 100 à 200 mots, avec un vocabulaire simple, un ton chaleureux et rassurant.
 
 CE QUE L'ENFANT A VRAIMENT DEMANDÉ (sa question ou son souci, à traiter directement) : « ${params.preoccupation} »
+
+SPÉCIFICITÉ OBLIGATOIRE (v5.0) : commence par une scène concrète avec un personnage précis et attachant (son nom ou son trait marquant, son lieu, son objet préféré). INTERDITS : « quelqu'un marchait », « une question sans nom », la rivière générique, toute formule interchangeable.
+
+LIVRES SAINTS ET CONTES (exigence du concepteur, v5.0) : tu peux puiser dans un passage simple et réconfortant de la Bible, du Coran, de la Torah ou des grandes traditions (fidèle au texte, référence citée seulement si tu en es certaine — ex. « Psaume 23 »), ou raconter une histoire originale dans cet esprit de confiance et de tendresse.
 
 L'histoire DOIT répondre à cette inquiétude précise : l'enfant doit terminer l'histoire en sentant que sa question a reçu une vraie réponse, pas une histoire générique. Si le sujet est délicat (confusion dans la famille, dispute, mensonge…), traite-le avec des personnages animaux ou symboliques, avec douceur et honnêteté adaptées à son âge, et termine par une note rassurante qui ouvre une question douce. Parabole : [${params.enonce}]. Interprétation : [${params.interpretation}]. Contexte : [${params.contexte}]. Culture : [${params.culture}].`;
 }
