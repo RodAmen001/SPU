@@ -119,6 +119,27 @@ function htmlVersTexte(html: string, maxLen = 1200): string {
 
 const EN_TETES_WIKI = { 'User-Agent': UA_SPU, 'Api-User-Agent': UA_SPU };
 
+// v4.9 — recherche par MOTS-CLÉS : poser la question brute à l'API de recherche
+// de Wikipédia ramène des articles hors sujet (ex. « Miraculous »). On extrait
+// d'abord les mots porteurs de sens, en écartant les mots vides du français.
+const MOTS_VIDES = new Set([
+  'comment', 'pourquoi', 'quand', 'quoi', 'quelle', 'quel', 'quelles', 'quels',
+  'faire', 'faut', 'peut', 'peux', 'dois', 'veux', 'etre', 'avoir', 'suis',
+  'sont', 'avec', 'sans', 'pour', 'dans', 'sur', 'sous', 'leur', 'leurs',
+  'comme', 'alors', 'ainsi', 'donc', 'mais', 'ensuite', 'jamais', 'toujours',
+  'encore', 'trop', 'tres', 'bien', 'chose', 'quelquun', 'personne', 'monde',
+  'temps', 'voir', 'garder', 'retenir', 'trouver', 'savoir', 'croire', 'aimer',
+  'apprivoiser', 'manque', 'manquer', 'besoin', 'envie', 'peur', 'apres',
+  'avant', 'entre', 'chaque', 'tout', 'toute', 'tous', 'toutes', 'rien',
+]);
+
+function motsClesQuestion(question: string): string[] {
+  const n = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ');
+  const candidats = n.split(/\s+/).filter((m) => m.length > 3 && !MOTS_VIDES.has(m));
+  // les plus longs d'abord : ils portent le sens
+  return candidats.sort((a, b) => b.length - a.length).slice(0, 5);
+}
+
 async function resumeWikipediaDirect(titre: string, langue: 'fr' | 'en'): Promise<string | null> {
   const url = `https://${langue}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(titre.replace(/ /g, '_'))}`;
   const res = await withTimeout(
@@ -133,10 +154,14 @@ async function resumeWikipediaDirect(titre: string, langue: 'fr' | 'en'): Promis
 }
 
 export async function sourceEncyclopedie(question: string): Promise<string | null> {
-  // 1) cherche la page la plus pertinente via l'API de recherche publique
+  // 1) cherche la page la plus pertinente via l'API de recherche publique,
+  //    avec mots-clés filtrés ET vérification de pertinence du titre renvoyé
+  const cles = motsClesQuestion(question);
+  if (!cles.length) return null;
+  const requete = cles.join(' ');
   for (const langue of ['fr', 'en'] as const) {
     try {
-      const recherche = `https://${langue}.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&srsearch=${encodeURIComponent(question.slice(0, 250))}`;
+      const recherche = `https://${langue}.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&srsearch=${encodeURIComponent(requete)}`;
       const res = await withTimeout(
         fetch(recherche, { headers: EN_TETES_WIKI, signal: AbortSignal.timeout(TIMEOUT_SOURCE_MS) }),
         TIMEOUT_SOURCE_MS,
@@ -146,6 +171,9 @@ export async function sourceEncyclopedie(question: string): Promise<string | nul
       const j = (await res.json()) as { query?: { search?: { title?: string }[] } };
       const titre = j.query?.search?.[0]?.title;
       if (!titre) continue;
+      // le titre doit partager au moins un mot-clé significatif avec la question
+      const titreN = titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (!cles.some((c) => titreN.includes(c))) continue;
       const resume = await resumeWikipediaDirect(titre, langue);
       if (resume) return resume;
     } catch {

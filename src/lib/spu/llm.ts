@@ -127,10 +127,10 @@ export async function llmChat(
         }
         break;
       }
-      // SDK indisponible (pas de configuration, hébergement externe…) :
-      // inutile d'insister, on passe directement au moteur de secours.
-      if (/Configuration file|not found|ECONNREFUSED|ENOTFOUND|fetch failed/i.test(msg)) break;
-      throw e;
+      // v4.9 : quelle que soit l'erreur du SDK (configuration absente, hébergement
+      // externe, réseau, format inattendu…), on passe TOUJOURS à la chaîne de
+      // secours — jamais de rejet direct qui priverait le SPU de ses moteurs.
+      break;
     }
   }
   // ── Chaîne de secours gratuite (aucune clé requise) : le SPU répond partout.

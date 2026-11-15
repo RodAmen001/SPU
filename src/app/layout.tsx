@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { EnregistreurSW } from '@/components/spu/enregistreur-sw';
+import { VERSION_SPU } from '@/lib/spu/constants';
 
 export const metadata: Metadata = {
-  title: 'SPU v4.8 — Système Parabolique Universel',
+  title: `SPU v${VERSION_SPU} — Système Parabolique Universel`,
   description:
     'Orchestrateur narratif multi-IA : synthèse sourcée de plusieurs intelligences, parabole réelle issue d\'un corpus sourcé, histoire personnalisée. Un mentor, pas un maître.',
   applicationName: 'SPU',
