@@ -166,7 +166,7 @@ async function appelGroq(c: CorpsSecours): Promise<string> {
   // retiré — HTTP 404 vérifié en direct), donc on essaie les modèles actuels dans
   // l'ordre, et le dernier qui a répondu reste en tête (modèle collant).
   const MODELES_GROQ = (process.env.GROQ_MODELES ||
-    'llama-3.1-8b-instant,llama-3.3-70b-versatile,openai/gpt-oss-20b,meta-llama/llama-4-scout-17b-16e-instruct,deepseek-r1-distill-llama-70b')
+    'openai/gpt-oss-20b,openai/gpt-oss-120b,meta-llama/llama-4-scout-17b-16e-instruct,deepseek-r1-distill-llama-70b,llama-3.3-70b-versatile')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
