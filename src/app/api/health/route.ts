@@ -53,18 +53,29 @@ async function sondeGithubModels(): Promise<string> {
 async function sondeGroq(): Promise<string> {
   const cle = process.env.GROQ_API_KEY || '';
   if (!cle) return 'ko (GROQ_API_KEY non configurée)';
-  const modele = process.env.GROQ_MODELE || 'llama-3.1-8b-instant';
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
-      signal: AbortSignal.timeout(8000),
-    });
-    return res.ok ? 'ok' : `ko (${modele} HTTP ${res.status})`;
-  } catch {
-    return `ko (${modele} réseau)`;
+  // v5.0 : les modèles Groq évoluent — on essaie la même liste de rotation que
+  // le moteur et on signale celui qui répond.
+  const modeles = (process.env.GROQ_MODELES ||
+    'llama-3.1-8b-instant,llama-3.3-70b-versatile,openai/gpt-oss-20b,meta-llama/llama-4-scout-17b-16e-instruct,deepseek-r1-distill-llama-70b')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const echecs: string[] = [];
+  for (const modele of modeles) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) return `ok (${modele})`;
+      echecs.push(`${modele}: HTTP ${res.status}`);
+    } catch {
+      echecs.push(`${modele}: réseau`);
+    }
   }
+  return `ko (${echecs.join(' ; ')})`;
 }
 
 async function sondeDuckDuckGo(): Promise<boolean> {

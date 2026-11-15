@@ -106,6 +106,7 @@ const MODELES_GITHUB = (process.env.GITHUB_MODELS_MODELES ||
   .filter(Boolean);
 
 let modeleGithubCollant: string | null = null; // dernier modèle qui a répondu
+let modeleGroqCollant: string | null = null; // dernier modèle Groq qui a répondu
 let githubRefroiditJusqua = 0; // timestamp : pas d'appel GitHub avant ce moment
 
 async function appelGithubModels(c: CorpsSecours): Promise<string> {
@@ -161,22 +162,46 @@ async function appelGithubModels(c: CorpsSecours): Promise<string> {
 async function appelGroq(c: CorpsSecours): Promise<string> {
   const cle = process.env.GROQ_API_KEY || '';
   if (!cle) throw new Error('GROQ_API_KEY non configurée');
-  const modele = process.env.GROQ_MODELE || 'llama-3.1-8b-instant';
-  const res = await withTimeout(
-    fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
-      signal: AbortSignal.timeout(c.timeoutMs),
-    }),
-    c.timeoutMs,
-    'groq'
-  );
-  if (!res.ok) throw new Error(`groq HTTP ${res.status}`);
-  const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const texte = j.choices?.[0]?.message?.content ?? '';
-  if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('groq indisponible');
-  return texte;
+  // v5.0 — ROTATION DE MODÈLES Groq : l'offre évolue (llama-3.1-8b-instant a été
+  // retiré — HTTP 404 vérifié en direct), donc on essaie les modèles actuels dans
+  // l'ordre, et le dernier qui a répondu reste en tête (modèle collant).
+  const MODELES_GROQ = (process.env.GROQ_MODELES ||
+    'llama-3.1-8b-instant,llama-3.3-70b-versatile,openai/gpt-oss-20b,meta-llama/llama-4-scout-17b-16e-instruct,deepseek-r1-distill-llama-70b')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const liste = modeleGroqCollant
+    ? [modeleGroqCollant, ...MODELES_GROQ.filter((m) => m !== modeleGroqCollant)]
+    : MODELES_GROQ;
+  const fin = Date.now() + c.timeoutMs;
+  let derniere = new Error('aucun modèle Groq essayé');
+  for (const modele of liste) {
+    const reste = fin - Date.now();
+    if (reste < 3000) break;
+    const delai = Math.min(10000, reste);
+    try {
+      const res = await withTimeout(
+        fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
+          signal: AbortSignal.timeout(delai),
+        }),
+        delai,
+        'groq'
+      );
+      if (!res.ok) throw new Error(`groq ${modele} HTTP ${res.status}`);
+      const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const texte = j.choices?.[0]?.message?.content ?? '';
+      if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('groq indisponible');
+      modeleGroqCollant = modele; // succès : ce modèle reste en tête pour la suite
+      return texte;
+    } catch (e) {
+      derniere = e instanceof Error ? e : new Error(String(e));
+      continue; // modèle suivant
+    }
+  }
+  throw derniere;
 }
 
 const CHAINE_SECOURS: { nom: string; appeler: (c: CorpsSecours) => Promise<string>; delaiMs: number }[] = [
