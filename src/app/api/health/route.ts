@@ -50,6 +50,23 @@ async function sondeGithubModels(): Promise<string> {
   }
 }
 
+async function sondeGroq(): Promise<string> {
+  const cle = process.env.GROQ_API_KEY || '';
+  if (!cle) return 'ko (GROQ_API_KEY non configurée)';
+  const modele = process.env.GROQ_MODELE || 'llama-3.1-8b-instant';
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return res.ok ? 'ok' : `ko (${modele} HTTP ${res.status})`;
+  } catch {
+    return `ko (${modele} réseau)`;
+  }
+}
+
 async function sondeDuckDuckGo(): Promise<boolean> {
   try {
     const res = await fetch('https://api.duckduckgo.com/?q=parabole&format=json&no_html=1', { signal: AbortSignal.timeout(5000) });
@@ -65,11 +82,12 @@ export async function GET() {
   }
   const data: Record<string, unknown> = { status: 'ok', checkedAt: new Date().toISOString() };
   try {
-    const [wiki, poll, gh, ddg] = await Promise.all([sondeWikipedia(), sondePollinations(), sondeGithubModels(), sondeDuckDuckGo()]);
+    const [wiki, poll, gh, ddg, groq] = await Promise.all([sondeWikipedia(), sondePollinations(), sondeGithubModels(), sondeDuckDuckGo(), sondeGroq()]);
     const sondes = {
       wikipédia: wiki ? 'ok' : 'ko',
       'ia-pollinations': poll ? 'ok' : 'ko',
       'ia-github-models': gh,
+      'ia-groq': groq,
       duckduckgo: ddg ? 'ok' : 'ko',
     };
     data.sources = {
