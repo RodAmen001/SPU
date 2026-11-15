@@ -70,8 +70,36 @@ async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
   return t;
 }
 
-// La chaîne : chaque moteur est essayé l'un après l'autre, en ~15 s maximum chacun.
+/** v4.9 — Moteur « GitHub Models » : inférence incluse dans tout jeton GitHub
+ *  (aucune clé supplémentaire à payer). Activé dès que la variable
+ *  GITHUB_MODELS_TOKEN est posée sur l'hébergement ; sinon échec immédiat et
+ *  passage au moteur suivant — la chaîne reste toujours essayée en entier. */
+async function appelGithubModels(c: CorpsSecours): Promise<string> {
+  const jeton = process.env.GITHUB_MODELS_TOKEN || '';
+  if (!jeton) throw new Error('GITHUB_MODELS_TOKEN non configuré');
+  const modele = process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini';
+  const res = await withTimeout(
+    fetch('https://models.github.ai/inference/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
+      signal: AbortSignal.timeout(c.timeoutMs),
+    }),
+    c.timeoutMs,
+    'github-models'
+  );
+  if (!res.ok) throw new Error(`github-models HTTP ${res.status}`);
+  const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const texte = j.choices?.[0]?.message?.content ?? '';
+  if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('github-models indisponible');
+  return texte;
+}
+
+// La chaîne : chaque moteur est essayé l'un après l'autre, dans l'ordre —
+// GitHub Models d'abord (fiable si configuré), puis Pollinations multi-modèles.
+// v4.9 (exigence du concepteur) : jusqu'à ~20 s par moteur est accepté.
 const CHAINE_SECOURS: { nom: string; appeler: (c: CorpsSecours) => Promise<string>; delaiMs: number }[] = [
+  { nom: 'GitHub Models (openai/gpt-4o-mini)', appeler: appelGithubModels, delaiMs: 20000 },
   { nom: 'Pollinations openai-fast', appeler: (c) => appelPollinations('openai-fast', c), delaiMs: 15000 },
   { nom: 'Pollinations openai', appeler: (c) => appelPollinations('openai', c), delaiMs: 15000 },
   { nom: 'Pollinations texte direct', appeler: appelPollinationsGet, delaiMs: 15000 },

@@ -20,7 +20,30 @@ async function sondeWikipedia(): Promise<boolean> {
 
 async function sondePollinations(): Promise<boolean> {
   try {
-    const res = await fetch('https://text.pollinations.ai/models', { signal: AbortSignal.timeout(6000) });
+    // v4.9 : sonde RÉELLE — une vraie génération, pas juste /models (qui peut
+    // répondre ok pendant que la génération est limitée par le quota anonyme).
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai-fast', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5, private: true }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function sondeGithubModels(): Promise<boolean> {
+  const jeton = process.env.GITHUB_MODELS_TOKEN || '';
+  if (!jeton) return false; // moteur non configuré — la sonde le signale comme ko
+  try {
+    const res = await fetch('https://models.github.ai/inference/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+      signal: AbortSignal.timeout(8000),
+    });
     return res.ok;
   } catch {
     return false;
@@ -42,15 +65,20 @@ export async function GET() {
   }
   const data: Record<string, unknown> = { status: 'ok', checkedAt: new Date().toISOString() };
   try {
-    const [wiki, poll, ddg] = await Promise.all([sondeWikipedia(), sondePollinations(), sondeDuckDuckGo()]);
-    const sondes = { wikipédia: wiki ? 'ok' : 'ko', 'ia-libre': poll ? 'ok' : 'ko', duckduckgo: ddg ? 'ok' : 'ko' };
+    const [wiki, poll, gh, ddg] = await Promise.all([sondeWikipedia(), sondePollinations(), sondeGithubModels(), sondeDuckDuckGo()]);
+    const sondes = {
+      wikipédia: wiki ? 'ok' : 'ko',
+      'ia-pollinations': poll ? 'ok' : 'ko',
+      'ia-github-models': gh ? 'ok' : 'ko',
+      duckduckgo: ddg ? 'ok' : 'ko',
+    };
     data.sources = {
       baseDeDonnees: 'up',
       corpus: await db.parabole.count(),
       sondes,
-      note: 'Sondes actives : chaque source externe est testée réellement (identification User-Agent conforme pour Wikipédia). « ko » peut être un incident temporaire.',
+      note: 'Sondes actives : chaque source est testée par une vraie requête (génération réelle pour les IA, identification User-Agent conforme pour Wikipédia). « ko » peut être un incident temporaire.',
     };
-    if (!wiki && !poll) data.status = 'degraded';
+    if (!wiki && !poll && !gh) data.status = 'degraded';
     cache = { t: Date.now(), data };
     return NextResponse.json(data);
   } catch {
