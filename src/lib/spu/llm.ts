@@ -71,22 +71,33 @@ async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
 }
 
 /** v5.0 — Moteur « GitHub Models » : inférence incluse dans tout jeton GitHub
- *  (aucune clé supplémentaire à payer). ROTATION DE MODÈLES : chaque modèle
- *  gratuit a son propre quota journalier — en cas de 429/5xx sur un modèle, le
- *  suivant est essayé, ce qui multiplie la capacité disponible (exigence du
- *  concepteur : la synthèse ne doit JAMAIS échouer faute de moteur). */
+ *  (aucune clé supplémentaire à payer). Deux protections contre le quota
+ *  (limite gratuite : ~15 req/min) :
+ *  • MODÈLE COLLANT : le dernier modèle qui a répondu est retenu en tête de liste
+ *    — en régime stable, chaque appel ne coûte QU'UNE requête de quota ;
+ *  • REFROIDISSEMENT : après un 429, GitHub est mis en pause 35 s (la fenêtre de
+ *    quota est commune) et la chaîne passe directement à Pollinations — on ne
+ *    gaspille plus le quota en essais qui échouent. */
 const MODELES_GITHUB = (process.env.GITHUB_MODELS_MODELES ||
   'openai/gpt-4o-mini,openai/gpt-4.1-nano,openai/gpt-4.1-mini,openai/gpt-4o')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
+let modeleGithubCollant: string | null = null; // dernier modèle qui a répondu
+let githubRefroiditJusqua = 0; // timestamp : pas d'appel GitHub avant ce moment
+
 async function appelGithubModels(c: CorpsSecours): Promise<string> {
   const jeton = process.env.GITHUB_MODELS_TOKEN || '';
   if (!jeton) throw new Error('GITHUB_MODELS_TOKEN non configuré');
+  if (Date.now() < githubRefroiditJusqua) throw new Error('github-models en refroidissement (429 récent)');
+  // le modèle collant d'abord, puis les autres dans l'ordre de la liste
+  const liste = modeleGithubCollant
+    ? [modeleGithubCollant, ...MODELES_GITHUB.filter((m) => m !== modeleGithubCollant)]
+    : MODELES_GITHUB;
   const fin = Date.now() + c.timeoutMs; // temps total distribué sur les modèles
   let derniere = new Error('aucun modèle essayé');
-  for (const modele of MODELES_GITHUB) {
+  for (const modele of liste) {
     const reste = fin - Date.now();
     if (reste < 3000) break; // plus de temps utile pour un nouvel essai
     const delai = Math.min(12000, reste);
@@ -101,14 +112,21 @@ async function appelGithubModels(c: CorpsSecours): Promise<string> {
         delai,
         'github-models'
       );
+      if (res.status === 429) {
+        // fenêtre de quota commune : on refroidit TOUT GitHub et on sort tout de suite
+        githubRefroiditJusqua = Date.now() + 35000;
+        throw new Error(`github-models ${modele} HTTP 429 — refroidissement 35 s`);
+      }
       if (!res.ok) throw new Error(`github-models ${modele} HTTP ${res.status}`);
       const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       const texte = j.choices?.[0]?.message?.content ?? '';
       if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('github-models indisponible');
+      modeleGithubCollant = modele; // succès : ce modèle reste en tête pour la suite
       return texte;
     } catch (e) {
       derniere = e instanceof Error ? e : new Error(String(e));
-      continue; // modèle suivant (nouveau quota)
+      if (Date.now() < githubRefroiditJusqua) break; // 429 vient de survenir : stop
+      continue; // modèle suivant
     }
   }
   throw derniere;
