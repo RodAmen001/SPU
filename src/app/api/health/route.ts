@@ -20,12 +20,10 @@ async function sondeWikipedia(): Promise<boolean> {
 
 async function sondePollinations(): Promise<boolean> {
   try {
-    // v4.9 : sonde RÉELLE — une vraie génération, pas juste /models (qui peut
-    // répondre ok pendant que la génération est limitée par le quota anonyme).
-    const res = await fetch('https://text.pollinations.ai/openai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'openai-fast', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5, private: true }),
+    // v5.0 : sonde RÉELLE via l'endpoint GET (le POST /openai avec `private`
+    // renvoie désormais 402 depuis les IP d'hébergement — même mécanisme que
+    // les sources du pipeline).
+    const res = await fetch('https://text.pollinations.ai/Dis%20bonjour%20en%20un%20mot?model=openai-fast', {
       signal: AbortSignal.timeout(8000),
     });
     return res.ok;

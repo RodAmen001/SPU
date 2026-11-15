@@ -41,11 +41,13 @@ interface CorpsSecours {
 }
 
 async function appelPollinations(model: string, c: CorpsSecours): Promise<string> {
+  // v5.0 — plus de paramètre `private` : il déclenche désormais une 402
+  // (endpoint devenu payant) depuis les IP d'hébergement.
   const res = await withTimeout(
     fetch(`${SECOURS_BASE}/openai`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens, private: true }),
+      body: JSON.stringify({ model, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
       signal: AbortSignal.timeout(c.timeoutMs),
     }),
     c.timeoutMs,
@@ -58,11 +60,12 @@ async function appelPollinations(model: string, c: CorpsSecours): Promise<string
   return texte;
 }
 
-/** Dernier repli : l'API GET simple de Pollinations (chemin différent du POST). */
+/** Le variant GET simple de Pollinations — le plus fiable depuis les IP
+ *  d'hébergement (testé en direct : 200 quasi constant). */
 async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
   const systeme = c.messages.find((m) => m.role === 'system')?.content || '';
   const question = c.messages.filter((m) => m.role !== 'system').map((m) => m.content).join(' ');
-  const url = `${SECOURS_BASE}/${encodeURIComponent(question.slice(0, 500))}?model=openai-fast&system=${encodeURIComponent(systeme.slice(0, 400))}&private=true`;
+  const url = `${SECOURS_BASE}/${encodeURIComponent(question.slice(0, 500))}?model=openai-fast&system=${encodeURIComponent(systeme.slice(0, 400))}`;
   const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(c.timeoutMs) }), c.timeoutMs, 'secours-get');
   if (!res.ok) throw new Error(`secours GET HTTP ${res.status}`);
   const t = (await res.text()).trim();
@@ -133,13 +136,14 @@ async function appelGithubModels(c: CorpsSecours): Promise<string> {
 }
 
 // La chaîne : chaque moteur est essayé l'un après l'autre, dans l'ordre —
-// GitHub Models d'abord (fiable si configuré), puis Pollinations multi-modèles.
-// v4.9 (exigence du concepteur) : jusqu'à ~20 s par moteur est accepté.
+// GitHub Models (modèle collant + refroidissement), puis le GET Pollinations
+// (le plus fiable depuis les IP d'hébergement), puis les POST Pollinations.
+// v5.0 (exigence du concepteur) : jusqu'à ~20 s par moteur est accepté.
 const CHAINE_SECOURS: { nom: string; appeler: (c: CorpsSecours) => Promise<string>; delaiMs: number }[] = [
-  { nom: 'GitHub Models (openai/gpt-4o-mini)', appeler: appelGithubModels, delaiMs: 20000 },
-  { nom: 'Pollinations openai-fast', appeler: (c) => appelPollinations('openai-fast', c), delaiMs: 15000 },
-  { nom: 'Pollinations openai', appeler: (c) => appelPollinations('openai', c), delaiMs: 15000 },
-  { nom: 'Pollinations texte direct', appeler: appelPollinationsGet, delaiMs: 15000 },
+  { nom: 'GitHub Models (rotation multi-modèles)', appeler: appelGithubModels, delaiMs: 20000 },
+  { nom: 'Pollinations texte direct (GET)', appeler: appelPollinationsGet, delaiMs: 15000 },
+  { nom: 'Pollinations openai-fast (POST)', appeler: (c) => appelPollinations('openai-fast', c), delaiMs: 15000 },
+  { nom: 'Pollinations openai (POST)', appeler: (c) => appelPollinations('openai', c), delaiMs: 15000 },
 ];
 
 export function withTimeout<T>(promise: Promise<T>, ms: number, label = 'opération'): Promise<T> {

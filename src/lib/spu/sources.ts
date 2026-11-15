@@ -300,6 +300,10 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   // deux passes sans jamais mettre la réponse en danger.
   for (let passe = 0; passe < 2 && !consultees.length; passe++) {
     if (passe > 0) await new Promise((r) => setTimeout(r, 2000));
+    // v5.0 — chaque source est tentée UNE SEULE fois par requête, même si les
+    // sources précédentes ont échoué (l'ancien découpage par index re-essayait
+    // les sources déjà servies et polluait la liste des sources).
+    const tentees = new Set<string>();
     for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
     // Garde-fou budget : si le temps global de la requête s'épuise, on ne monte
     // plus d'échelon — la meilleure synthèse déjà obtenue est retenue.
@@ -307,9 +311,10 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
     // synthèse) qu'on n'aurait pas le temps de mener jusqu'au bout.
     if (syntheses.length && budgetEpuise(30000)) break;
     if (budgetEpuise(30000)) break; // plus de temps : la suite du flux doit respirer
-    // tente les sources pas encore consultées jusqu'à atteindre la cible
-    const manquantes = SOURCES_SPU.slice(consultees.length, cible);
+    // tente les sources jamais tentées jusqu'à atteindre la cible
+    const manquantes = SOURCES_SPU.filter((s) => !tentees.has(s.nom)).slice(0, cible - consultees.length);
     if (manquantes.length) {
+      manquantes.forEach((s) => tentees.add(s.nom));
       const resultats = await Promise.allSettled(
         manquantes.map((s) => avecCache(question, s.nom, () => s.fn(question), s.delai))
       );
