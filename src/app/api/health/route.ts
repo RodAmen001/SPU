@@ -34,20 +34,30 @@ async function sondePollinations(): Promise<boolean> {
   }
 }
 
-async function sondeGithubModels(): Promise<boolean> {
+async function sondeGithubModels(): Promise<string> {
   const jeton = process.env.GITHUB_MODELS_TOKEN || '';
-  if (!jeton) return false; // moteur non configuré — la sonde le signale comme ko
-  try {
-    const res = await fetch('https://models.github.ai/inference/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
-      signal: AbortSignal.timeout(8000),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  if (!jeton) return 'ko (GITHUB_MODELS_TOKEN non configuré)';
+  const modele = process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini';
+  const details: string[] = [];
+  const hotes = [
+    ['models.github.ai', 'https://models.github.ai/inference/chat/completions', modele],
+    ['azure', 'https://models.inference.ai.azure.com/chat/completions', modele.startsWith('openai/') ? modele.slice(7) : modele],
+  ] as const;
+  for (const [nom, hote, corpsModele] of hotes) {
+    try {
+      const res = await fetch(hote, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: corpsModele, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) return 'ok';
+      details.push(`${nom}: HTTP ${res.status}`);
+    } catch {
+      details.push(`${nom}: réseau`);
+    }
   }
+  return `ko (${details.join(' ; ')})`;
 }
 
 async function sondeDuckDuckGo(): Promise<boolean> {
@@ -69,7 +79,7 @@ export async function GET() {
     const sondes = {
       wikipédia: wiki ? 'ok' : 'ko',
       'ia-pollinations': poll ? 'ok' : 'ko',
-      'ia-github-models': gh ? 'ok' : 'ko',
+      'ia-github-models': gh,
       duckduckgo: ddg ? 'ok' : 'ko',
     };
     data.sources = {
@@ -78,7 +88,7 @@ export async function GET() {
       sondes,
       note: 'Sondes actives : chaque source est testée par une vraie requête (génération réelle pour les IA, identification User-Agent conforme pour Wikipédia). « ko » peut être un incident temporaire.',
     };
-    if (!wiki && !poll && !gh) data.status = 'degraded';
+    if (!wiki && !poll && gh !== 'ok') data.status = 'degraded';
     cache = { t: Date.now(), data };
     return NextResponse.json(data);
   } catch {

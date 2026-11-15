@@ -73,26 +73,44 @@ async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
 /** v4.9 — Moteur « GitHub Models » : inférence incluse dans tout jeton GitHub
  *  (aucune clé supplémentaire à payer). Activé dès que la variable
  *  GITHUB_MODELS_TOKEN est posée sur l'hébergement ; sinon échec immédiat et
- *  passage au moteur suivant — la chaîne reste toujours essayée en entier. */
+ *  passage au moteur suivant — la chaîne reste toujours essayée en entier.
+ *  Deux hôtes sont essayés à la suite (résolution DNS variable selon l'hébergeur). */
+const HOTES_GITHUB_MODELS = [
+  'https://models.github.ai/inference/chat/completions',
+  'https://models.inference.ai.azure.com/chat/completions',
+];
+
 async function appelGithubModels(c: CorpsSecours): Promise<string> {
   const jeton = process.env.GITHUB_MODELS_TOKEN || '';
   if (!jeton) throw new Error('GITHUB_MODELS_TOKEN non configuré');
   const modele = process.env.GITHUB_MODELS_MODELE || 'openai/gpt-4o-mini';
-  const res = await withTimeout(
-    fetch('https://models.github.ai/inference/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
-      signal: AbortSignal.timeout(c.timeoutMs),
-    }),
-    c.timeoutMs,
-    'github-models'
-  );
-  if (!res.ok) throw new Error(`github-models HTTP ${res.status}`);
-  const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const texte = j.choices?.[0]?.message?.content ?? '';
-  if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('github-models indisponible');
-  return texte;
+  const reponseParHote = modele.startsWith('openai/') ? modele.slice('openai/'.length) : modele;
+  let derniere = new Error('aucun hôte essayé');
+  for (const hote of HOTES_GITHUB_MODELS) {
+    // le modèle « openai/gpt-4o-mini » devient « gpt-4o-mini » sur l'hôte Azure historique
+    const corpsModele = hote.includes('azure') ? reponseParHote : modele;
+    try {
+      const res = await withTimeout(
+        fetch(hote, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: corpsModele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
+          signal: AbortSignal.timeout(c.timeoutMs),
+        }),
+        c.timeoutMs,
+        'github-models'
+      );
+      if (!res.ok) throw new Error(`github-models HTTP ${res.status} (${hote.split('/')[2]})`);
+      const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const texte = j.choices?.[0]?.message?.content ?? '';
+      if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error('github-models indisponible');
+      return texte;
+    } catch (e) {
+      derniere = e instanceof Error ? e : new Error(String(e));
+      continue; // hôte suivant
+    }
+  }
+  throw derniere;
 }
 
 // La chaîne : chaque moteur est essayé l'un après l'autre, dans l'ordre —
