@@ -215,6 +215,9 @@ export async function sourceDuckDuckGo(question: string): Promise<string | null>
 // Ajoutée à la demande du concepteur : 5 sources libres et gratuites au total.
 // Utilisée uniquement quand l'escalade de confiance le demande (voir plus bas).
 export async function sourceIaLibre(question: string): Promise<string | null> {
+  // v5.0 — la source IA libre respecte aussi le portail 45 s de Pollinations :
+  // si la fenêtre est occupée par un appel du pipeline (histoire, perspective…),
+  // elle cède la place tout de suite au lieu d'échouer.
   const systeme =
     "Tu es une source d'information consultée parmi d'autres. Donne un éclairage bref (80 mots maximum), nuancé et neutre sur la question posée. Ne prends pas position, ne donne pas de conseil médical, juridique ou financier personnalisé. N'invente aucun fait. Écris en français.";
   const url = `https://text.pollinations.ai/${encodeURIComponent(question.slice(0, 250))}?model=openai-fast&system=${encodeURIComponent(systeme)}`;

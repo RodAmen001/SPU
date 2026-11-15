@@ -104,8 +104,10 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // La parabole-réponse et son interprétation doivent refléter LA SYNTHÈSE des
   // sources. Le premier arbitrage (sur la question, en parallèle) a laissé la
   // parabole sous le seuil ? On ré-arbitre alors les candidates DU CORPUS
-  // directement contre la synthèse.
-  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && !budgetEpuise(14000)) {
+  // directement contre la synthèse. v5.0 : uniquement si la synthèse a une
+  // vraie confiance (≥ 50 %) — inutile de dépenser un appel IA contre un
+  // résumé extractif de repli.
+  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && (resultat.synthese.confiance ?? 0) >= 0.5 && !budgetEpuise(14000)) {
     yield { type: 'status', step: 'reorientation' };
     const reorientee = await reArbitrerSurSynthese(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
     if (reorientee && !reorientee.sousSeuil) match = reorientee;
@@ -116,7 +118,7 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // réelle et traditionnelle (jamais inventée), sourcée et vérifiée via
   // l'encyclopédie, orientée vers la synthèse. En cas d'échec : la parabole du
   // corpus la plus proche reste servie, honnêtement signalée sous le seuil.
-  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && !budgetEpuise(16000)) {
+  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && (resultat.synthese.confiance ?? 0) >= 0.5 && !budgetEpuise(16000)) {
     yield { type: 'status', step: 'enligne' };
     const trouvee = await paraboleEnLigne(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
     if (trouvee) match = trouvee;

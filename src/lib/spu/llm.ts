@@ -33,6 +33,20 @@ export async function recreeZai(): Promise<void> {
 // a son délai propre ; la chaîne s'arrête au premier succès ou au budget épuisé.
 const SECOURS_BASE = 'https://text.pollinations.ai';
 
+// v5.0 — Pollinations gratuit : « 1 réponse toutes les 45 secondes par IP »
+// (402 « Free limit reached » sinon, vérifié en direct). Un portail partagé
+// évite de brûler la fenêtre : un seul appel Pollinations peut réussir par
+// question de toute façon — les suivants sautent directement l'étape.
+let pollinationsFenetreJusqua = 0;
+
+function pollinationsDisponible(): boolean {
+  return Date.now() >= pollinationsFenetreJusqua;
+}
+
+function noterReponsePollinations() {
+  pollinationsFenetreJusqua = Date.now() + 45000;
+}
+
 interface CorpsSecours {
   messages: { role: string; content: string }[];
   timeoutMs: number;
@@ -41,6 +55,7 @@ interface CorpsSecours {
 }
 
 async function appelPollinations(model: string, c: CorpsSecours): Promise<string> {
+  if (!pollinationsDisponible()) throw new Error('pollinations en fenêtre 45 s (quota gratuit)');
   // v5.0 — plus de paramètre `private` : il déclenche désormais une 402
   // (endpoint devenu payant) depuis les IP d'hébergement.
   const res = await withTimeout(
@@ -57,12 +72,14 @@ async function appelPollinations(model: string, c: CorpsSecours): Promise<string
   const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const texte = j.choices?.[0]?.message?.content ?? '';
   if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error(`secours ${model} indisponible`);
+  noterReponsePollinations();
   return texte;
 }
 
 /** Le variant GET simple de Pollinations — le plus fiable depuis les IP
  *  d'hébergement (testé en direct : 200 quasi constant). */
 async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
+  if (!pollinationsDisponible()) throw new Error('pollinations en fenêtre 45 s (quota gratuit)');
   const systeme = c.messages.find((m) => m.role === 'system')?.content || '';
   const question = c.messages.filter((m) => m.role !== 'system').map((m) => m.content).join(' ');
   const url = `${SECOURS_BASE}/${encodeURIComponent(question.slice(0, 500))}?model=openai-fast&system=${encodeURIComponent(systeme.slice(0, 400))}`;
@@ -70,6 +87,7 @@ async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
   if (!res.ok) throw new Error(`secours GET HTTP ${res.status}`);
   const t = (await res.text()).trim();
   if (!t || /^(Free limit|HTTP|Error)/i.test(t)) throw new Error('secours GET indisponible');
+  noterReponsePollinations();
   return t;
 }
 
