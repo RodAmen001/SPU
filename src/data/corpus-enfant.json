@@ -177,8 +177,7 @@
       "Être chaleureux ouvre les portes que la dureté ferme."
     ],
     "sources": [
-      "Ésope, Le Vent du Nord et le Soleil",
-      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+      "Ésope, Le Vent du Nord et le Soleil"
     ],
     "motsCles": [
       "vent",
@@ -206,8 +205,7 @@
       "Les mots sont des promesses qu'on fait aux autres."
     ],
     "sources": [
-      "Ésope, Le Berger menteur (Le Pastour et le Loup)",
-      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+      "Ésope, Le Berger menteur (Le Pastour et le Loup)"
     ],
     "motsCles": [
       "berger",
@@ -389,7 +387,7 @@
     ],
     "sources": [
       "Ésope, Le Corbeau et la Cruche",
-      "https://fr.wikisource.org/wiki/Fables_d%27%C3%89sope"
+      "https://fr.wikisource.org/wiki/De_la_Corneille_et_de_la_Cruche"
     ],
     "motsCles": [
       "corbeau",
@@ -473,6 +471,256 @@
       "contentement",
       "simplicité",
       "maison"
+    ]
+  },
+  {
+    "code": "E016",
+    "texte": "Une petite grenouille vit passer un bœuf dans la prairie. « Qu'il est immense ! » Elle voulut être aussi grosse que lui : elle gonfla son ventre. « Suis-je grosse comme lui ? » demandait-elle à ses petits. « Non, beaucoup moins. » Elle gonfla encore, encore, encore — jusqu'à éclater. Être sa taille, c'est déjà beaucoup quand on sait sauter.",
+    "culture": "Méditerranée",
+    "famille": "F6",
+    "interpretations": [
+      "Vouloir ressembler aux autres jusqu'à se déformer finit par faire mal.",
+      "Sa propre taille suffit pour sa propre vie.",
+      "L'admiration n'a pas besoin de devenir imitation forcée."
+    ],
+    "sources": [
+      "Ésope, Fables ; reprise par La Fontaine, « La grenouille et le bœuf », livre I",
+      "https://fr.wikipedia.org/wiki/La_Grenouille_qui_veut_se_faire_aussi_grosse_que_le_B%C5%93uf"
+    ],
+    "motsCles": [
+      "grenouille",
+      "bœuf",
+      "taille",
+      "démesure",
+      "accepter",
+      "soi",
+      "contentement",
+      "enfant"
+    ]
+  },
+  {
+    "code": "E017",
+    "texte": "Deux coqs se battirent pour être les chefs de la basse-cour. Le perdant alla se cacher tout seul dans un coin sombre ; le vainqueur monta sur le toit, battit des ailes et chanta sa victoire à pleine voix. Une aigle, attirée par tout ce bruit, fondit du ciel et l'emporta. Le coq silencieux sortit alors de son coin, et vécut tranquille avec toutes les poules. À trop chanter ses triomphes, on attire l'aigle.",
+    "culture": "Méditerranée",
+    "famille": "F2",
+    "interpretations": [
+      "Gagner en criant très fort attire les regards dangereux.",
+      "Rester calme après une défaite peut être la vraie victoire.",
+      "L'orgueil fait plus de bruit que de force."
+    ],
+    "sources": [
+      "Ésope, Fables ; reprise par La Fontaine, « Les deux coqs », livre VII",
+      "https://fr.wikipedia.org/wiki/Les_Deux_Coqs"
+    ],
+    "motsCles": [
+      "coqs",
+      "combat",
+      "orgueil",
+      "chante",
+      "aigle",
+      "humilité",
+      "calme",
+      "danger"
+    ]
+  },
+  {
+    "code": "E018",
+    "texte": "Un chien trouva une belle viande et la prit dans sa gueule pour la rapporter chez lui. En traversant un petit pont au-dessus de la rivière, il regarda l'eau : un autre chien portait une viande encore plus belle ! Il ouvrit la gueule pour aboyer et la lui prendre — et sa propre viande tomba dans l'eau et disparut. Il rentra le soir sans rien du tout.",
+    "culture": "Méditerranée",
+    "famille": "F2",
+    "interpretations": [
+      "Courir après une image peut faire perdre la vraie chose qu'on tient déjà.",
+      "Savoir dire merci à ce qu'on a protège de tout perdre.",
+      "Ce que l'eau montre n'est pas ce que l'eau donne."
+    ],
+    "sources": [
+      "Ésope, Fables (le chien qui portait la viande et son ombre)",
+      "https://fr.wikipedia.org/wiki/%C3%89sope"
+    ],
+    "motsCles": [
+      "chien",
+      "viande",
+      "reflet",
+      "avidité",
+      "perdre",
+      "contentement",
+      "image",
+      "prudence"
+    ]
+  },
+  {
+    "code": "E019",
+    "texte": "Une alouette avait niché dans un champ de blé encore vert. Un jour, elle entendit le propriétaire : « Le blé est mûr, j'appellerai mes voisins pour la moisson. » Les petits s'inquiétaient ; la mère dit : « S'il attend les autres, nous avons encore le temps. » Quelques jours après : « Je vais faire venir des ouvriers payés. » « Alors dit la mère, il est vraiment temps de partir : quand quelqu'un fait lui-même son travail, il le fait pour de bon. » Et ils s'envolèrent avant la faux.",
+    "culture": "Méditerranée",
+    "famille": "F9",
+    "interpretations": [
+      "Les paroles ne coupent pas le blé : ce que l'on fait soi-même arrive vraiment.",
+      "Écouter les grands avisés donne le bon moment pour agir.",
+      "Le courage de partir à temps est une leçon d'alouette."
+    ],
+    "sources": [
+      "Ésope, Fables ; reprise par La Fontaine, « L'alouette et ses petits », livre IV",
+      "https://fr.wikipedia.org/wiki/Alouette"
+    ],
+    "motsCles": [
+      "alouette",
+      "blé",
+      "moisson",
+      "agir",
+      "temps",
+      "soi-même",
+      "courage",
+      "préparation"
+    ]
+  },
+  {
+    "code": "E020",
+    "texte": "Un loup maigre rencontra un chien rond et luisant. « Comment fais-tu pour être si bien nourri ? » « Je garde la maison des hommes, et chaque soir j'ai ma pitance. » « Et ce petit creux autour de ton cou ? » « La trace du collier auquel on m'attache le jour. » Le loup s'écarta doucement vers la forêt : « Garde ta gamelle pleine, dit-il au chien ; ma faim est libre, et ma nuit est à moi. »",
+    "culture": "Méditerranée",
+    "famille": "F3",
+    "interpretations": [
+      "La liberté a un prix et la gamelle aussi : choisir en sachant ce qu'on échange.",
+      "Le confort n'est pas le seul bien qui nourrit.",
+      "Un lien qui attache peut coûter plus cher qu'il ne nourrit."
+    ],
+    "sources": [
+      "Ésope, Fables ; reprise par La Fontaine, « Le loup et le chien », livre I",
+      "https://fr.wikipedia.org/wiki/Le_Loup_et_le_Chien"
+    ],
+    "motsCles": [
+      "loup",
+      "chien",
+      "liberté",
+      "collier",
+      "faim",
+      "choix",
+      "courage",
+      "confort"
+    ]
+  },
+  {
+    "code": "E021",
+    "texte": "Un geai trouva des plumes de paon tombées par terre. Il s'en couvrit, quitta ses frères geais et alla se pavaner chez les paons. Les paons reconnurent son cri, ses vraies plumes, et le chassèrent à coups de bec. De retour chez les siens, il fut moqué à son tour. Rien ne coûte plus cher que de déguiser ce que l'on est vraiment.",
+    "culture": "Méditerranée",
+    "famille": "F8",
+    "interpretations": [
+      "Emprunter les plumes d'un autre ne change pas sa voix.",
+      "Être aimé pour ce qu'on n'est pas oblige à garder le déguisement — épuisant.",
+      "Rentrer chez soi vrai vaut mieux que rester ailleurs faux."
+    ],
+    "sources": [
+      "Ésope, Fables ; reprise par La Fontaine, « Le geai paré des plumes du paon », livre IV",
+      "https://fr.wikipedia.org/wiki/Fables_de_La_Fontaine"
+    ],
+    "motsCles": [
+      "geai",
+      "paon",
+      "déguisement",
+      "identité",
+      "vérité",
+      "moquerie",
+      "accepter",
+      "soi"
+    ]
+  },
+  {
+    "code": "E022",
+    "texte": "Un paysan possédait une poule qui donnait chaque matin un œuf d'or. « Pourquoi attendre un œuf par jour, pensa-t-il, quand tout l'or est dedans ? » Il ouvrit la poule — et ne trouva rien : une poule ordinaire, creuse, comme toutes les poules. La patience ramassait l'or matin après matin ; la hâte n'eut plus rien.",
+    "culture": "Méditerranée",
+    "famille": "F1",
+    "interpretations": [
+      "Ce qui donne chaque jour vaut plus que ce qu'on veut prendre d'un coup.",
+      "La hâte peut casser la poule qui nourrit.",
+      "La patience est une façon de garder le trésor vivant."
+    ],
+    "sources": [
+      "Ésope, Fables (la poule aux œufs d'or) ; reprise par La Fontaine, livre V et VI",
+      "https://fr.wikipedia.org/wiki/La_Poule_aux_%C5%93ufs_d%27or"
+    ],
+    "motsCles": [
+      "poule",
+      "œufs d'or",
+      "patience",
+      "hâte",
+      "avidité",
+      "perdre",
+      "quotidien",
+      "contentement"
+    ]
+  },
+  {
+    "code": "E023",
+    "texte": "Un pêcheur prit un poisson qui parlait : « Relâche-moi, et demande ce que tu veux. » Sa femme exigea une chaumière, puis une grande maison, puis un palais, puis d'être reine, puis impératrice — et chaque fois la mer devenait plus sombre et plus enragée. Au bout, elle voulut commander au soleil et à la lune : l'orage arracha tout, et ils rentrèrent dans leur cabane de saules, exactement celle d'où ils étaient partis. Le contentement s'efface à force de tout vouloir.",
+    "culture": "Nordique / Celtique",
+    "famille": "F2",
+    "interpretations": [
+      "Vouloir toujours plus finit par défaire même le petit qu'on avait.",
+      "La mer sombre est le miroir des demandes démesurées.",
+      "Dire merci à ce qu'on a est une richesse qui ne coule pas."
+    ],
+    "sources": [
+      "Frères Grimm, Contes de l'enfance et du foyer (1812), « Le pêcheur et sa femme »",
+      "https://fr.wikipedia.org/wiki/Contes_de_l%27enfance_et_du_foyer"
+    ],
+    "motsCles": [
+      "pêcheur",
+      "femme",
+      "poisson",
+      "avidité",
+      "mer",
+      "orage",
+      "contentement",
+      "gratitude"
+    ]
+  },
+  {
+    "code": "E024",
+    "texte": "Un renard tomba dans un puits sans fond d'échelle. Un bouc, assoiffé, s'approcha : « L'eau est-elle bonne ? » « Excellente, dit le renard, et il y en a pour tout le monde — descends ! » Le bouc descendit, but à sa faim, et voulut remonter. « Tranquille, dit le renard : appuie tes pattes sur la paroi, je monte sur ton dos, je sors — puis je te tire. » Le renard sortit ; le bouc resta au fond. Avant de descendre dans un trou, on regarde d'abord par où l'on remontera.",
+    "culture": "Méditerranée",
+    "famille": "F6",
+    "interpretations": [
+      "Réfléchir avant de descendre épargne de longues nuits au fond du puits.",
+      "Les beaux discours des autres ne remplacent pas un coup d'œil à soi.",
+      "La prudence n'est pas la peur : c'est regarder la sortie avant l'entrée."
+    ],
+    "sources": [
+      "Ésope, Fables (le renard et le bouc dans le puits) ; reprise par La Fontaine, livre III",
+      "https://fr.wikipedia.org/wiki/%C3%89sope"
+    ],
+    "motsCles": [
+      "renard",
+      "bouc",
+      "puits",
+      "prudence",
+      "réfléchir",
+      "sortie",
+      "confiance",
+      "avant"
+    ]
+  },
+  {
+    "code": "E025",
+    "texte": "Un renard affamé vit des raisins mûrs sur une treille trop haute. Il sauta une fois, deux fois, dix fois, sans y arriver jamais. En partant, il dit : « Pas grave : ces raisins sont sûrement trop verts. » Il était plus facile de mépriser les raisins que d'avouer sa fatigue. Dire vrai de ce qu'on n'a pas atteint, c'est déjà grandir un peu.",
+    "culture": "Méditerranée",
+    "famille": "F8",
+    "interpretations": [
+      "Mépriser ce qu'on n'a pas su atteindre console, mais ne fait pas grandir.",
+      "Avouer « je n'ai pas réussi » est plus léger qu'un mensonge à porter.",
+      "Les raisins ne sont pas verts parce que nos jambes sont courtes."
+    ],
+    "sources": [
+      "Ésope, Fables (le renard et les raisins) ; reprise par La Fontaine, livre III",
+      "https://fr.wikipedia.org/wiki/Le_Renard_et_les_Raisins"
+    ],
+    "motsCles": [
+      "renard",
+      "raisins",
+      "dépit",
+      "vérité",
+      "effort",
+      "accepter",
+      "honnêteté",
+      "grandir"
     ]
   }
 ]

@@ -22,7 +22,7 @@ export function VueFonctionnement() {
           Je consulte plusieurs sources d&apos;intelligence et de recherche, je synthétise leurs réponses,
           puis je te propose une <span className="font-medium">parabole réelle et sourcée</span> et une histoire
           écrite pour toi. Une <span className="font-medium">parabole et son interprétation sont choisies pour
-          refléter la synthèse</span> — et si aucune des 65 paraboles du corpus ne convient efficacement,
+          refléter la synthèse</span> — et si aucune des 100 paraboles du corpus ne convient efficacement,
           je vais chercher en ligne une parabole <span className="font-medium">réelle et traditionnelle</span> (jamais
           inventée), avec sa source vérifiée par une encyclopédie et une interprétation tournée vers ta
           synthèse. Une miroir narratif — jamais une vérité absolue.
@@ -30,7 +30,7 @@ export function VueFonctionnement() {
         <div className="flex flex-wrap gap-2 mt-4">
           <Badge variant="outline" className="rounded-full">🎭 10 voix locales</Badge>
           <Badge variant="outline" className="rounded-full">🎵 51 musiques libres, variées</Badge>
-          <Badge variant="outline" className="rounded-full">📖 65 paraboles sourcées</Badge>
+          <Badge variant="outline" className="rounded-full">📖 100 paraboles sourcées</Badge>
           <Badge variant="outline" className="rounded-full">🔒 sans clé API</Badge>
         </div>
       </Card>

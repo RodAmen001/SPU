@@ -25,34 +25,57 @@ export async function recreeZai(): Promise<void> {
   _zai = null;
 }
 
-// ── Moteur de secours gratuit, sans clé ni configuration (Pollinations) ──
+// ── Moteurs de secours gratuits, sans clé ni configuration ──
 // Permet au SPU de répondre même HORS Z.AI (hébergement externe, serveur
-// personnel, conteneur) : si le SDK z-ai est absent ou rejeté, la synthèse
-// passe par ce moteur communautaire libre. Déjà éprouvé par SPU Pocket.
+// personnel, conteneur). v4.9 (exigence du concepteur) : si Pollinations ne
+// répond pas ou est inaccessible, on essaie AUTOMATIQUEMENT le moteur suivant —
+// plusieurs modèles d'un même service, puis un appel texte direct. Chaque moteur
+// a son délai propre ; la chaîne s'arrête au premier succès ou au budget épuisé.
 const SECOURS_BASE = 'https://text.pollinations.ai';
 
-async function appelSecours(
-  messages: { role: string; content: string }[],
-  timeoutMs: number,
-  temperature: number,
-  maxTokens: number,
-): Promise<string> {
+interface CorpsSecours {
+  messages: { role: string; content: string }[];
+  timeoutMs: number;
+  temperature: number;
+  maxTokens: number;
+}
+
+async function appelPollinations(model: string, c: CorpsSecours): Promise<string> {
   const res = await withTimeout(
     fetch(`${SECOURS_BASE}/openai`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'openai', messages, temperature, max_tokens: maxTokens, private: true }),
-      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({ model, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens, private: true }),
+      signal: AbortSignal.timeout(c.timeoutMs),
     }),
-    timeoutMs,
+    c.timeoutMs,
     'secours',
   );
-  if (!res.ok) throw new Error(`secours HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`secours ${model} HTTP ${res.status}`);
   const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const texte = j.choices?.[0]?.message?.content ?? '';
-  if (!texte) throw new Error('secours réponse vide');
+  if (!texte || /^(Free limit|HTTP|Error)/i.test(texte)) throw new Error(`secours ${model} indisponible`);
   return texte;
 }
+
+/** Dernier repli : l'API GET simple de Pollinations (chemin différent du POST). */
+async function appelPollinationsGet(c: CorpsSecours): Promise<string> {
+  const systeme = c.messages.find((m) => m.role === 'system')?.content || '';
+  const question = c.messages.filter((m) => m.role !== 'system').map((m) => m.content).join(' ');
+  const url = `${SECOURS_BASE}/${encodeURIComponent(question.slice(0, 500))}?model=openai-fast&system=${encodeURIComponent(systeme.slice(0, 400))}&private=true`;
+  const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(c.timeoutMs) }), c.timeoutMs, 'secours-get');
+  if (!res.ok) throw new Error(`secours GET HTTP ${res.status}`);
+  const t = (await res.text()).trim();
+  if (!t || /^(Free limit|HTTP|Error)/i.test(t)) throw new Error('secours GET indisponible');
+  return t;
+}
+
+// La chaîne : chaque moteur est essayé l'un après l'autre, en ~15 s maximum chacun.
+const CHAINE_SECOURS: { nom: string; appeler: (c: CorpsSecours) => Promise<string>; delaiMs: number }[] = [
+  { nom: 'Pollinations openai-fast', appeler: (c) => appelPollinations('openai-fast', c), delaiMs: 15000 },
+  { nom: 'Pollinations openai', appeler: (c) => appelPollinations('openai', c), delaiMs: 15000 },
+  { nom: 'Pollinations texte direct', appeler: appelPollinationsGet, delaiMs: 15000 },
+];
 
 export function withTimeout<T>(promise: Promise<T>, ms: number, label = 'opération'): Promise<T> {
   return Promise.race([
@@ -110,13 +133,18 @@ export async function llmChat(
       throw e;
     }
   }
-  // ── Secours gratuit (aucune clé requise) : le SPU répond partout ──
-  if (!budgetEpuise(3000)) {
+  // ── Chaîne de secours gratuite (aucune clé requise) : le SPU répond partout.
+  // v4.9 : plusieurs moteurs essayés à la suite — l'échec de l'un bascule sur
+  // le suivant, jusqu'à ~20 s de patience acceptées par le concepteur.
+  for (const moteur of CHAINE_SECOURS) {
+    if (budgetEpuise(3000)) break;
+    const delaiSecours = delaiEffectif(Math.min(moteur.delaiMs, timeoutMs + 20000), 2000);
+    if (!delaiSecours) break;
     try {
-      const delaiSecours = delaiEffectif(timeoutMs + 20000, 2000);
-      if (delaiSecours) return await appelSecours(messages, delaiSecours, temperature, maxTokens);
-    } catch {
-      /* le secours aussi a échoué : on remonte l'erreur d'origine */
+      return await moteur.appeler({ messages, timeoutMs: delaiSecours, temperature, maxTokens });
+    } catch (e) {
+      derniereErreur = e;
+      continue;
     }
   }
   throw derniereErreur;

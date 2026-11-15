@@ -88,3 +88,6 @@ apk-spu/build/
 scripts/sauvegarde/
 *.ZNUYdR
 *.tmp.zip
+
+# environnement local (v4.9 — hygiène : le chemin BD est déjà défini dans le Dockerfile)
+.env

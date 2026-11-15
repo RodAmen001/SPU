@@ -4,9 +4,10 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpenText, Sparkles, Loader2, Quote, FlaskConical, Eye, Phone, AlertCircle, ChevronDown } from 'lucide-react';
+import { BookOpenText, Sparkles, Loader2, Quote, FlaskConical, Eye, Phone, AlertCircle, ChevronDown, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReponseVue } from '@/lib/spu/store';
+import { BANNIERE_SOURCES_ECHOUEES, NOTE_SOUS_SEUIL } from '@/lib/spu/constants';
 
 const ETAPES_LISIBILES: Record<string, string> = {
   'détresse': 'Je prends soin de toi d\'abord…',
@@ -127,6 +128,15 @@ export function VueReponse({
 
   return (
     <div className="space-y-5">
+      {/* v4.9 — bannière honnête : si les sources ont échoué, on le dit clairement */}
+      {reponse.parabole?.degrade && (
+        <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4 apparu" role="alert">
+          <div className="flex items-start gap-2.5">
+            <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" aria-hidden />
+            <p className="text-[13px] leading-relaxed text-amber-800 dark:text-amber-200">{BANNIERE_SOURCES_ECHOUEES}</p>
+          </div>
+        </div>
+      )}
       {modeEtape && (
         <div className="flex items-center gap-2 text-sm text-[--secondary] font-medium" aria-label="étape en cours">
           <Sparkles className="h-4 w-4" aria-hidden /> {modeEtape}
@@ -174,10 +184,8 @@ export function VueReponse({
               sa source est vérifiable ci-dessous.
             </p>
           )}
-          {reponse.parabole.sousSeuil && !reponse.parabole.enLigne && (
-            <p className="text-xs text-[--muted-foreground] mt-3 italic">
-              Parabole la plus proche du corpus pour ta question — une recherche de correspondances plus fines est en cours dans mon corpus.
-            </p>
+          {reponse.parabole.sousSeuil && !reponse.parabole.enLigne && !reponse.parabole.degrade && (
+            <p className="text-xs text-[--muted-foreground] mt-3 italic">{NOTE_SOUS_SEUIL}</p>
           )}
           {reponse.parabole.sources.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[--border]/60">

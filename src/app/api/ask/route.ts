@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
               id: e.id, code: e.code, texte: e.enonce, culture: e.culture, famille: e.famille,
               interpretations: [e.interpretation], sources: e.sources, score: e.score,
               interpretationChoisie: e.interpretation, sousSeuil: e.sousSeuil,
+              degrade: e.degrade || false,
             };
           if (e.type === 'perspective') resultat.perspective = e.text;
           if (e.type === 'erreur') resultat.erreur = e.message;

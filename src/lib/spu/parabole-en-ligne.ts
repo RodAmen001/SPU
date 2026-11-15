@@ -9,6 +9,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { llmChat, extractJson, withTimeout } from './llm';
+import { UA_SPU } from './constants';
 import type { ParaboleMatch } from './matching';
 
 interface CandidatWeb {
@@ -45,19 +46,30 @@ Réponds UNIQUEMENT avec un JSON exact :
  "recherche": "2 à 4 mots-clés simples pour vérifier cette parabole dans une encyclopédie"}`;
 
 /** Vérifie la parabole via la recherche Wikipédia (FR, puis EN en repli) et
- *  renvoie l'URL de l'article le plus pertinent — ou null si rien de crédible. */
+ *  renvoie l'URL de l'article le plus pertinent — ou null si rien de crédible.
+ *  v4.9 : requêtes identifiées (User-Agent conforme à la politique Wikimedia,
+ *  sans lequel les serveurs d'encyclopédie refusent les IP d'hébergement) et
+ *  vérification de pertinence minimale du titre renvoyé. */
 async function verifierSurWikipedia(recherche: string, titre: string): Promise<string | null> {
+  const enTetes = { 'User-Agent': UA_SPU, 'Api-User-Agent': UA_SPU };
+  const normaliser = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/gi, ' ');
+  const motsCles = normaliser(recherche).split(/\s+/).filter((m) => m.length > 3);
   for (const mots of [`${recherche} parabole`, recherche, titre]) {
     const q = mots.trim().slice(0, 120);
     if (!q) continue;
     for (const langue of ['fr', 'en']) {
       try {
         const url = `https://${langue}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=1&format=json`;
-        const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(7000) }), 7000, 'wikipedia');
+        const res = await withTimeout(fetch(url, { headers: enTetes, signal: AbortSignal.timeout(7000) }), 7000, 'wikipedia');
         if (!res.ok) continue;
         const j = (await res.json()) as { query?: { search?: { title?: string }[] } };
         const hit = j.query?.search?.[0]?.title;
-        if (hit) return `https://${langue}.wikipedia.org/wiki/${encodeURIComponent(hit.replace(/ /g, '_'))}`;
+        if (!hit) continue;
+        // pertinence minimale : au moins un mot-clé significatif doit figurer dans le titre
+        const titreNormalise = normaliser(hit);
+        if (motsCles.length && !motsCles.some((m) => titreNormalise.includes(m))) continue;
+        return `https://${langue}.wikipedia.org/wiki/${encodeURIComponent(hit.replace(/ /g, '_'))}`;
       } catch {
         /* encyclopédie joignable plus tard : la source d'œuvre reste citée */
       }

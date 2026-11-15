@@ -1,7 +1,10 @@
 // Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
 
 /** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
-export const VERSION_SPU = '4.8';
+export const VERSION_SPU = '4.9';
+
+// v4.9 — Identité réseau du SPU (politique Wikimedia : User-Agent descriptif + contact)
+export const UA_SPU = 'SPU/4.9 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',
@@ -17,7 +20,7 @@ export const FAMILLES: Record<string, string> = {
 };
 
 // 21.4 — Message d'accueil
-export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v4.7.
+export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v4.9.
 
 Je suis un orchestrateur narratif. Je consulte plusieurs sources d'intelligence artificielle et de recherche, je synthétise leurs réponses, puis je te propose une parabole réelle et une histoire personnalisée.
 
@@ -32,6 +35,11 @@ Quel mode choisis-tu ? (Si tu ne précises pas, Oracle est sélectionné par dé
 // 21.5 — Message d'erreur (toutes sources indisponibles)
 export const MESSAGE_ERREUR_SOURCES = `Je n'ai pas pu joindre mes sources d'intelligence artificielle et de recherche. Cela peut être temporaire. Réessaie dans quelques instants.
 Si le problème persiste, tu peux toujours consulter les paraboles du corpus local, qui reste accessible hors-ligne.`;
+
+// v4.9 — Honnêteté en cas de panne (exigence du bilan de test) : l'utilisateur
+// doit savoir quand les sources ont échoué, jamais croire à une recherche fictive.
+export const NOTE_SOUS_SEUIL = `Parabole la plus proche de mon corpus pour ta question — mes sources n'ont pas permis d'affiner davantage ce choix aujourd'hui.`;
+export const BANNIERE_SOURCES_ECHOUEES = `Je n'ai pas pu joindre mes sources d'intelligence et de recherche : la synthèse est donc absente, et cette parabole n'a pas pu être orientée vers elle. Réessaie dans quelques instants — la parabole reste, elle, réelle et sourcée.`;
 
 // 21.6 — Message de détresse (modèle imposé)
 export const MESSAGE_DEDETRESSE = `Ce que tu traverses est trop grave pour une parabole. Je ne suis pas un professionnel, mais je peux te donner des contacts qui peuvent vraiment t'aider.

@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
           interpretations: [e.interpretation], sources: e.sources, score: e.score,
           interpretationChoisie: e.interpretation, sousSeuil: e.sousSeuil,
           enLigne: (e as { enLigne?: boolean }).enLigne || false,
+          degrade: (e as { degrade?: boolean }).degrade || false,
         };
       if (e.type === 'perspective') resultat.perspective = e.text;
       if (e.type === 'erreur') resultat.erreur = e.message;
@@ -113,12 +114,14 @@ export async function POST(req: NextRequest) {
       reponse: resultat.synthese?.texte || '',
       sourcesUtilisees: resultat.synthese?.sources || [],
       confiance: resultat.synthese?.confiance ?? null,
+      sourcesEchouees: resultat.sourcesEchouees || false, // v4.9 : panne des sources annoncée honnêtement
       parabole: resultat.parabole
         ? {
             code: resultat.parabole.code,
             culture: resultat.parabole.culture,
             texte: resultat.parabole.texte,
             interpretation: resultat.parabole.interpretationChoisie,
+            degrade: (resultat.parabole as { degrade?: boolean }).degrade || false,
           }
         : null,
       histoire: resultat.histoire?.texte || null,

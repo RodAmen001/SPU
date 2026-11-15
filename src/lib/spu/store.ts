@@ -78,6 +78,7 @@ export interface ParaboleVue {
   score: number;
   sousSeuil: boolean;
   enLigne?: boolean; // v4.8 : parabole réelle retrouvée en ligne (hors corpus)
+  degrade?: boolean; // v4.9 : sources d'intelligence en échec — parabole servie sans synthèse
 }
 
 export interface ReponseVue {

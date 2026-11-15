@@ -26,6 +26,7 @@ export type EvenementSSE =
       score: number;
       sousSeuil: boolean;
       enLigne?: boolean;
+      degrade?: boolean; // v4.9 : sources en échec — annoncé à l'interface
     }
   | { type: 'histoire'; chunk: string }
   | { type: 'perspective'; text: string };
@@ -43,6 +44,7 @@ export interface ResultatFlux {
   histoire: HistoireGeneree | null;
   perspective: string | null;
   erreur: string | null;
+  sourcesEchouees?: boolean; // v4.9 : aucune source n'a répondu (mode dégradé)
 }
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -121,6 +123,9 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   }
 
   resultat.parabole = match;
+  // v4.9 — la panne des sources est annoncée à l'interface (bannière honnête),
+  // la parabole continue d'être servie : jamais de réponse masquée.
+  resultat.sourcesEchouees = modeDegrade;
   yield {
     type: 'parabole',
     id: match.id,
@@ -133,6 +138,7 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     score: match.score,
     sousSeuil: match.sousSeuil || modeDegrade,
     enLigne: match.enLigne || false,
+    degrade: modeDegrade,
   };
 
   yield { type: 'status', step: 'histoire' };

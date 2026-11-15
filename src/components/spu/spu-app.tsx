@@ -183,7 +183,7 @@ const MENU: { vue: Vue; label: string; labelCourt: string; icone: React.ReactNod
   { vue: 'fonctionnement', label: 'Comment fonctionne le SPU', labelCourt: 'Fonctionnement', icone: <Compass className="h-4 w-4" aria-hidden /> },
   { vue: 'nouveautes', label: 'Quoi de neuf', labelCourt: 'Quoi de neuf', icone: <Newspaper className="h-4 w-4" aria-hidden /> },
   { vue: 'journal', label: 'Journal de bord', labelCourt: 'Journal', icone: <NotebookPen className="h-4 w-4" aria-hidden /> },
-  { vue: 'corpus', label: 'Le corpus (50 + 15)', labelCourt: 'Corpus', icone: <Library className="h-4 w-4" aria-hidden /> },
+  { vue: 'corpus', label: 'Le corpus (100)', labelCourt: 'Corpus', icone: <Library className="h-4 w-4" aria-hidden /> },
   { vue: 'transparence', label: 'Transparence', labelCourt: 'Transparence', icone: <Eye className="h-4 w-4" aria-hidden /> },
   { vue: 'confidentialite', label: 'Confidentialité & RGPD', labelCourt: 'RGPD', icone: <ShieldCheck className="h-4 w-4" aria-hidden /> },
   { vue: 'soutien', label: 'Soutenir le concepteur', labelCourt: 'Soutenir', icone: <HeartHandshake className="h-4 w-4" aria-hidden /> },
@@ -358,70 +358,113 @@ function EnTete({
   );
 }
 
-// ── Accueil ───────────────────────────────────────────────────────────────────
+// ── Accueil (v4.9 — page « vivante » : couleurs, gradients, modes colorés) ────
+// Exigence du concepteur : une page d'accueil qui vit — des couleurs chaleureuses
+// qui annoncent l'objet même de l'application, sans perdre la sobriété du ton.
+const COULEURS_MODES: Record<string, { carte: string; pastille: string; survol: string }> = {
+  oracle: {
+    carte: 'from-amber-500/15 via-orange-500/10 to-transparent',
+    pastille: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 group-hover:bg-amber-500 group-hover:text-white',
+    survol: 'hover:border-amber-500/60 hover:shadow-amber-500/15',
+  },
+  mentor: {
+    carte: 'from-emerald-500/15 via-teal-500/10 to-transparent',
+    pastille: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 group-hover:bg-emerald-500 group-hover:text-white',
+    survol: 'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
+  },
+  deep: {
+    carte: 'from-violet-500/15 via-indigo-500/10 to-transparent',
+    pastille: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 group-hover:bg-violet-500 group-hover:text-white',
+    survol: 'hover:border-violet-500/60 hover:shadow-violet-500/15',
+  },
+  enfant: {
+    carte: 'from-rose-500/15 via-pink-500/10 to-transparent',
+    pastille: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 group-hover:bg-rose-500 group-hover:text-white',
+    survol: 'hover:border-rose-500/60 hover:shadow-rose-500/15',
+  },
+};
+
+const BADGES_ACCUEIL: { texte: string; teinte: string }[] = [
+  { texte: '🎭 10 voix locales', teinte: 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-200' },
+  { texte: '🔊 réponse entièrement lue', teinte: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200' },
+  { texte: '🎵 51 musiques libres, variées', teinte: 'border-violet-500/50 bg-violet-500/10 text-violet-800 dark:text-violet-200' },
+  { texte: '📚 100 paraboles réelles et sourcées', teinte: 'border-sky-500/50 bg-sky-500/10 text-sky-800 dark:text-sky-200' },
+  { texte: '🌍 du monde entier', teinte: 'border-indigo-500/50 bg-indigo-500/10 text-indigo-800 dark:text-indigo-200' },
+  { texte: '🔒 sans clé API', teinte: 'border-[--border] bg-[--muted]/40 text-[--muted-foreground]' },
+];
+
 function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: Vue) => void }) {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
-      <div className="text-center mb-12">
-        <p className="text-sm tracking-[0.3em] text-[--muted-foreground] uppercase mb-4">Version {VERSION_SPU}</p>
-        <h1 className="text-4xl sm:text-6xl font-serif font-bold leading-tight mb-5 halo-titre">
-          Pose ta question.<br />
-          <span className="text-[--primary]">Ferme les yeux.<br />Écoute la parabole.</span>
-        </h1>
-        <p className="text-[15px] sm:text-base text-[--muted-foreground] leading-relaxed max-w-xl mx-auto">
-          Je consulte plusieurs sources d&apos;intelligence et de recherche, je synthétise leurs réponses,
-          puis je te propose une <span className="text-[--foreground] font-medium">parabole réelle et sourcée</span> et une
-          histoire écrite pour toi. Et <span className="text-[--foreground] font-medium">je te lis tout</span> —
-          tu n&apos;as rien à lire, seulement à écouter. Un miroir narratif, jamais une vérité absolue.
-        </p>
-        <div className="flex flex-wrap justify-center gap-2 mt-6">
-          <Badge variant="outline" className="rounded-full">🎭 10 voix locales</Badge>
-          <Badge variant="outline" className="rounded-full">🔊 réponse entièrement lue</Badge>
-          <Badge variant="outline" className="rounded-full">🎵 51 musiques libres, variées</Badge>
-          <Badge variant="outline" className="rounded-full">📚 65 paraboles sourcées</Badge>
-          <Badge variant="outline" className="rounded-full">🔒 sans clé API</Badge>
+    <div className="max-w-3xl mx-auto px-4 py-8 sm:py-14">
+      {/* — Héros « vivant » : gradient, orbes de couleur floutées, halo du titre — */}
+      <div className="relative overflow-hidden rounded-3xl border border-[--border] bg-gradient-to-br from-[--primary]/10 via-[--accent]/15 to-[--secondary]/10 px-6 py-10 sm:px-12 sm:py-14 mb-10">
+        <span className="pointer-events-none absolute -top-12 -right-8 h-44 w-44 rounded-full bg-amber-400/20 blur-3xl animate-pulse" aria-hidden />
+        <span className="pointer-events-none absolute -bottom-14 -left-10 h-48 w-48 rounded-full bg-emerald-400/20 blur-3xl" aria-hidden />
+        <span className="pointer-events-none absolute top-1/4 left-1/2 h-40 w-40 rounded-full bg-violet-400/15 blur-3xl" aria-hidden />
+        <div className="relative text-center">
+          <p className="inline-flex items-center gap-2 rounded-full border border-[--accent]/50 bg-[--accent]/10 px-4 py-1.5 text-xs tracking-[0.22em] text-[--primary] uppercase mb-5">
+            <Leaf className="h-3.5 w-3.5" aria-hidden /> Version {VERSION_SPU} · Un mentor, pas un maître
+          </p>
+          <h1 className="text-4xl sm:text-6xl font-serif font-bold leading-tight mb-5 halo-titre">
+            Pose ta question.<br />
+            <span className="text-[--primary]">Ferme les yeux.<br />Écoute la parabole.</span>
+          </h1>
+          <p className="text-[15px] sm:text-base text-[--muted-foreground] leading-relaxed max-w-xl mx-auto">
+            Je consulte plusieurs sources d&apos;intelligence et de recherche, je synthétise leurs réponses,
+            puis je te propose une <span className="text-[--foreground] font-medium">parabole réelle et sourcée</span> et une
+            histoire écrite pour toi. Et <span className="text-[--foreground] font-medium">je te lis tout</span> —
+            tu n&apos;as rien à lire, seulement à écouter. Un miroir narratif, jamais une vérité absolue.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 mt-6">
+            {BADGES_ACCUEIL.map((b) => (
+              <Badge key={b.texte} variant="outline" className={`rounded-full ${b.teinte}`}>{b.texte}</Badge>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-10">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => choisir(m.id)}
-            className="group text-left rounded-2xl border border-[--border] bg-[--card] p-6 transition-all hover:border-[--primary]/60 hover:shadow-xl hover:shadow-[--primary]/5 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[--primary] min-h-[44px]"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <span className="h-11 w-11 rounded-xl bg-[--primary]/10 text-[--primary] flex items-center justify-center group-hover:bg-[--primary] group-hover:text-[--primary-foreground] transition-colors" aria-hidden>
-                {m.icone}
-              </span>
-              <h2 className="text-lg font-semibold">{m.titre}</h2>
-              {m.id === 'enfant' && <Badge className="ml-auto text-xs bg-[--secondary]/20 text-[--secondary] hover:bg-[--secondary]/20">espace protégé</Badge>}
-            </div>
-            <p className="text-sm text-[--muted-foreground] leading-relaxed">{m.description}</p>
-            <p className="text-xs text-[--muted-foreground]/80 mt-2 flex items-center gap-1">
-              <Music4 className="h-3 w-3" aria-hidden /> musique {m.musique} — variée à chaque conversation
-            </p>
-          </button>
-        ))}
+        {MODES.map((m) => {
+          const c = COULEURS_MODES[m.id] || COULEURS_MODES.oracle;
+          return (
+            <button
+              key={m.id}
+              onClick={() => choisir(m.id)}
+              className={`group text-left rounded-2xl border border-[--border] bg-gradient-to-br ${c.carte} p-6 transition-all ${c.survol} hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[--primary] min-h-[44px]`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`h-11 w-11 rounded-xl flex items-center justify-center transition-colors ${c.pastille}`} aria-hidden>
+                  {m.icone}
+                </span>
+                <h2 className="text-lg font-semibold">{m.titre}</h2>
+                {m.id === 'enfant' && <Badge className="ml-auto text-xs bg-rose-500/20 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20">espace protégé</Badge>}
+              </div>
+              <p className="text-sm text-[--muted-foreground] leading-relaxed">{m.description}</p>
+              <p className="text-xs text-[--muted-foreground]/80 mt-2 flex items-center gap-1">
+                <Music4 className="h-3 w-3" aria-hidden /> musique {m.musique} — variée à chaque conversation
+              </p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 mb-3">
-        <Button variant="outline" size="sm" onClick={() => aller('fonctionnement')} className="rounded-full">
+        <Button size="sm" onClick={() => aller('fonctionnement')} className="rounded-full bg-[--primary] hover:bg-[--primary]/85">
           <Compass className="h-4 w-4" aria-hidden /> Comment fonctionne le SPU
         </Button>
-        <Button variant="outline" size="sm" onClick={() => aller('nouveautes')} className="rounded-full">
+        <Button variant="outline" size="sm" onClick={() => aller('nouveautes')} className="rounded-full border-[--accent]/60 bg-[--accent]/10 hover:bg-[--accent]/20">
           <Newspaper className="h-4 w-4" aria-hidden /> Quoi de neuf
         </Button>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         {([
           ['journal', 'Journal de bord', <NotebookPen key="a" className="h-4 w-4" aria-hidden />],
-          ['corpus', 'Le corpus (50 + 15)', <Library key="b" className="h-4 w-4" aria-hidden />],
+          ['corpus', 'Le corpus (100)', <Library key="b" className="h-4 w-4" aria-hidden />],
           ['transparence', 'Transparence', <Eye key="c" className="h-4 w-4" aria-hidden />],
           ['confidentialite', 'Confidentialité & RGPD', <ShieldCheck key="d" className="h-4 w-4" aria-hidden />],
           ['soutien', 'Soutenir le concepteur', <HeartHandshake key="e" className="h-4 w-4" aria-hidden />],
         ] as [Vue, string, React.ReactNode][]).map(([v, label, icone]) => (
-          <Button key={v} variant="ghost" size="sm" onClick={() => aller(v)} className="rounded-full text-[--muted-foreground]">
+          <Button key={v} variant="ghost" size="sm" onClick={() => aller(v)} className="rounded-full text-[--muted-foreground] hover:text-[--primary]">
             {icone} {label}
           </Button>
         ))}

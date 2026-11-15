@@ -15,10 +15,25 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v4.9',
+    date: '15/11/2026',
+    titre: "Le SPU recouvre ses sources : corpus 100, IA en chaîne, accueil vivant",
+    actuelle: true,
+    points: [
+      'Corpus porté à 100 paraboles réelles et sourcées (75 adultes + 25 enfants) : Ésope, La Fontaine, Pancatantra, Talmud, Coran, zen, soufisme, Vedanta, Tolstoï, traditions cherokee et ouest-africaines — chaque lien de source vérifié un par un.',
+      "Sources d'intelligence rétablies en production : Wikipédia est de nouveau consultée en DIRECT (API publique, identification User-Agent conforme à la politique Wikimedia) — fin de la dépendance au lecteur SDK absent de l'hébergement.",
+      "Priorité aux intelligences réflexives (exigence du concepteur) : les IA sont consultées au premier abord, avec jusqu'à ~20 secondes de patience acceptée, avant la recherche web.",
+      "Chaîne de secours multi-moteurs : si un moteur d'IA ne répond pas ou est inaccessible, le suivant est essayé automatiquement (Pollinations openai-fast, openai, puis appel texte direct) — la synthèse ne dépend plus d'un seul service.",
+      "Honnêteté totale en cas de panne : si aucune source ne répond, une bannière claire l'annonce (« je n'ai pas pu joindre mes sources ») au lieu d'une formule trompeuse ; la parabole reste réelle et sourcée, servie avec la note honnête « la plus proche ».",
+      "Sonde de santé réelle : /api/health teste désormais chaque source en direct (Wikipédia, IA libre, DuckDuckGo) — une panne devient visible le jour où elle arrive, plus jamais invisible des semaines.",
+      'Vérification renforcée du repli en ligne : l\'URL d\'encyclopédie n\'est citée que si le titre trouvé correspond vraiment à la parabole retrouvée.',
+      "Page d'accueil « vivante » : couleurs, gradients, cartes de modes colorées (ambre pour l'Oracle, émeraude pour le Mentor, violet pour Deep, rose pour l'Enfant) — l'objet même de l'application transparaît dès l'écran d'entrée.",
+    ],
+  },
+  {
     version: 'v4.8',
     date: '14/11/2026',
     titre: "Le SPU s'ouvre : menu complet, narration offerte par défaut, musiques variées",
-    actuelle: true,
     points: [
       'Barre de menu complète : Comment fonctionne le SPU, Quoi de neuf, Journal de bord, Corpus, Transparence, Confidentialité & RGPD, Soutenir le concepteur — ergonomie repensée sur ordinateur comme sur téléphone.',
       'Narration complète ACTIVÉE PAR DÉFAUT : toute la réponse (parabole, interprétation, histoire, perspective) est lue comme un théâtre audio pour offrir la détente de ne rien lire — un bouton du menu permet de la désactiver ou de la réactiver à tout moment.',

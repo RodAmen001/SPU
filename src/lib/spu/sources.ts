@@ -1,17 +1,21 @@
 // PHASE 1 — Orchestration multi-IA (3.2) + PHASE 2 — Synthèse (3.3)
 // Sources (sans clés API) :
-//   1. Recherche Web (web_search du SDK)
-//   2. Intelligence réflexive (LLM intégré)
-//   3. Encyclopédie (Wikipedia via page_reader du SDK — accès direct 429 en sandbox)
+//   1. Intelligence réflexive (LLM intégré — SDK + chaîne de secours multi-moteurs)
+//   2. IA libre (Pollinations, sans clé)
+//   3. Encyclopédie (Wikipédia DIRECTE, API publique + User-Agent conforme — v4.9 ;
+//      le lecteur SDK reste en repli dans l'environnement de développement)
 //   4. DuckDuckGo Instant Answer API (accès direct)
-// Règles : parallélisation Promise.allSettled, timeout 8 s/source, cache 24 h par hash,
-// rate limiting 20 req/min/IP, aucune donnée personnelle transmise.
+//   5. Recherche Web (web_search du SDK — nécessite une configuration locale)
+// v4.9 (exigence du concepteur) : les intelligences RÉFLEXIVES sont consultées AU
+// PREMIER ABORD, avec jusqu'à ~20 s de patience ; chaque source a son propre délai.
+// Règles : cache 24 h par hash, rate limiting 20 req/min/IP, aucune donnée
+// personnelle transmise.
 
 import { createHash } from 'crypto';
 import { db } from '@/lib/db';
 import { llmChat, getZai, withTimeout, extractJson } from './llm';
 import { budgetEpuise } from './budget';
-import { PROMPT_SYNTHESE, TIMEOUT_SOURCE_MS, CACHE_TTL_MS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, MESSAGE_ERREUR_SOURCES } from './constants';
+import { PROMPT_SYNTHESE, TIMEOUT_SOURCE_MS, CACHE_TTL_MS, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, MESSAGE_ERREUR_SOURCES, UA_SPU } from './constants';
 
 // ── Rate limiting (7.3 : 20 req/min/IP) ──────────────────────────────────────
 const hits = new Map<string, number[]>();
@@ -76,7 +80,11 @@ export async function sourceRechercheWeb(question: string): Promise<string | nul
     .join('\n');
 }
 
-// ── Source 2 : Intelligence réflexive (LLM intégré) ──────────────────────────
+// ── Source 1 : Intelligence réflexive (LLM intégré) ──────────────────────────
+// v4.9 — exigence du concepteur : c'est LA source prioritaire. Le concepteur
+// accepte jusqu'à ~20 s : le LLM dispose d'un délai dédié plus long que les
+// autres sources, et la chaîne de secours multi-moteurs de llm.ts prend le relais
+// dès qu'un moteur hésite.
 export async function sourceLlmReflexif(question: string): Promise<string | null> {
   return llmChat(
     [
@@ -87,11 +95,14 @@ export async function sourceLlmReflexif(question: string): Promise<string | null
       },
       { role: 'user', content: question.slice(0, 1500) },
     ],
-    { timeoutMs: TIMEOUT_SOURCE_MS + 4000, temperature: 0.6, maxTokens: 220 }
+    { timeoutMs: 22000, temperature: 0.6, maxTokens: 220 }
   );
 }
 
-// ── Source 3 : Encyclopédie (Wikipedia via SDK page_reader) ──────────────────
+// ── Source 3 : Encyclopédie (Wikipédia DIRECTE — v4.9) ───────────────────────
+// L'API publique de Wikipédia répond sans clé dès que la requête s'identifie
+// honnêtement (politique Wikimedia sur le User-Agent : nom + contact). C'est la
+// fin de la dépendance au lecteur SDK, absent de l'hébergement.
 function htmlVersTexte(html: string, maxLen = 1200): string {
   const sansBalises = html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -106,21 +117,58 @@ function htmlVersTexte(html: string, maxLen = 1200): string {
   return sansBalises.slice(0, maxLen);
 }
 
+const EN_TETES_WIKI = { 'User-Agent': UA_SPU, 'Api-User-Agent': UA_SPU };
+
+async function resumeWikipediaDirect(titre: string, langue: 'fr' | 'en'): Promise<string | null> {
+  const url = `https://${langue}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(titre.replace(/ /g, '_'))}`;
+  const res = await withTimeout(
+    fetch(url, { headers: EN_TETES_WIKI, signal: AbortSignal.timeout(TIMEOUT_SOURCE_MS) }),
+    TIMEOUT_SOURCE_MS,
+    'wikipedia-direct'
+  );
+  if (!res.ok) return null;
+  const j = (await res.json()) as { title?: string; extract?: string };
+  if (!j.extract || j.extract.length < 60) return null;
+  return `Wikipédia — ${j.title || titre} : ${j.extract.slice(0, 1100)}`;
+}
+
 export async function sourceEncyclopedie(question: string): Promise<string | null> {
-  // 1) cherche la page Wikipedia la plus pertinente via web_search
-  const zai = await getZai();
-  const res = await zai.functions.invoke('web_search', {
-    query: `wikipédia ${question.slice(0, 200)}`.slice(0, 300),
-    num: 5,
-  });
-  const brut = res as unknown as { results?: ResultatRecherche[] } | ResultatRecherche[];
-  const arr: ResultatRecherche[] = Array.isArray(brut) ? brut : brut?.results || [];
-  const wiki = arr.find((r) => /wikipedia\.org\/wiki\//.test(r.url || ''));
-  if (!wiki?.url) return null;
-  // 2) lit la page via page_reader
-  const page = await zai.functions.invoke('page_reader', { url: wiki.url });
-  const texte = htmlVersTexte(page?.data?.html || '');
-  return texte.length > 80 ? `Wikipédia — ${page?.data?.title || ''} : ${texte}` : null;
+  // 1) cherche la page la plus pertinente via l'API de recherche publique
+  for (const langue of ['fr', 'en'] as const) {
+    try {
+      const recherche = `https://${langue}.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&srsearch=${encodeURIComponent(question.slice(0, 250))}`;
+      const res = await withTimeout(
+        fetch(recherche, { headers: EN_TETES_WIKI, signal: AbortSignal.timeout(TIMEOUT_SOURCE_MS) }),
+        TIMEOUT_SOURCE_MS,
+        'wikipedia-recherche'
+      );
+      if (!res.ok) continue;
+      const j = (await res.json()) as { query?: { search?: { title?: string }[] } };
+      const titre = j.query?.search?.[0]?.title;
+      if (!titre) continue;
+      const resume = await resumeWikipediaDirect(titre, langue);
+      if (resume) return resume;
+    } catch {
+      /* langue suivante */
+    }
+  }
+  // 2) repli développement : lecteur SDK (web_search + page_reader)
+  try {
+    const zai = await getZai();
+    const res = await zai.functions.invoke('web_search', {
+      query: `wikipédia ${question.slice(0, 200)}`.slice(0, 300),
+      num: 5,
+    });
+    const brut = res as unknown as { results?: ResultatRecherche[] } | ResultatRecherche[];
+    const arr: ResultatRecherche[] = Array.isArray(brut) ? brut : brut?.results || [];
+    const wiki = arr.find((r) => /wikipedia\.org\/wiki\//.test(r.url || ''));
+    if (!wiki?.url) return null;
+    const page = await zai.functions.invoke('page_reader', { url: wiki.url });
+    const texte = htmlVersTexte(page?.data?.html || '');
+    return texte.length > 80 ? `Wikipédia — ${page?.data?.title || ''} : ${texte}` : null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Source 4 : DuckDuckGo Instant Answer ─────────────────────────────────────
@@ -141,8 +189,8 @@ export async function sourceDuckDuckGo(question: string): Promise<string | null>
 export async function sourceIaLibre(question: string): Promise<string | null> {
   const systeme =
     "Tu es une source d'information consultée parmi d'autres. Donne un éclairage bref (80 mots maximum), nuancé et neutre sur la question posée. Ne prends pas position, ne donne pas de conseil médical, juridique ou financier personnalisé. N'invente aucun fait. Écris en français.";
-  const url = `https://text.pollinations.ai/${encodeURIComponent(question.slice(0, 250))}?model=openai&system=${encodeURIComponent(systeme)}`;
-  const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(TIMEOUT_SOURCE_MS) }), TIMEOUT_SOURCE_MS, 'ia-libre');
+  const url = `https://text.pollinations.ai/${encodeURIComponent(question.slice(0, 250))}?model=openai-fast&system=${encodeURIComponent(systeme)}`;
+  const res = await withTimeout(fetch(url, { signal: AbortSignal.timeout(10000) }), 10000, 'ia-libre');
   if (!res.ok) return null;
   const t = (await res.text()).trim();
   if (!t || t.length < 30 || /^(Free limit|HTTP|Error)/i.test(t)) return null;
@@ -155,14 +203,14 @@ export interface SourceResultat {
   texte: string;
 }
 
-async function avecCache(question: string, nom: string, fn: () => Promise<string | null>): Promise<SourceResultat | null> {
+async function avecCache(question: string, nom: string, fn: () => Promise<string | null>, delaiMs = TIMEOUT_SOURCE_MS): Promise<SourceResultat | null> {
   const hash = hashQuestion(question);
   try {
     const enCache = await lireCache(hash, nom);
     if (enCache) return { nom, texte: enCache };
   } catch { /* ignore */ }
   try {
-    const texte = await withTimeout(fn(), TIMEOUT_SOURCE_MS, nom);
+    const texte = await withTimeout(fn(), delaiMs, nom);
     if (texte && texte.trim().length > 20) {
       ecrireCache(hash, nom, texte).catch(() => {});
       return { nom, texte };
@@ -185,12 +233,15 @@ export interface ResultatOrchestration {
 }
 
 // ── Les 5 sources libres et gratuites du SPU ─────────────────────────────────
-const SOURCES_SPU: { nom: string; fn: (q: string) => Promise<string | null> }[] = [
-  { nom: 'Recherche Web', fn: sourceRechercheWeb },
-  { nom: 'Intelligence réflexive', fn: sourceLlmReflexif },
-  { nom: 'Encyclopédie', fn: sourceEncyclopedie },
-  { nom: 'DuckDuckGo', fn: sourceDuckDuckGo },
-  { nom: 'IA libre', fn: sourceIaLibre },
+// v4.9 — ordre révisé : les intelligences RÉFLEXIVES d'abord (exigence du
+// concepteur), la recherche web par SDK en dernier (elle exige une configuration
+// locale absente de l'hébergement). Chaque source a son délai propre.
+const SOURCES_SPU: { nom: string; delai: number; fn: (q: string) => Promise<string | null> }[] = [
+  { nom: 'Intelligence réflexive', delai: 22000, fn: sourceLlmReflexif },
+  { nom: 'IA libre', delai: 12000, fn: sourceIaLibre },
+  { nom: 'Encyclopédie', delai: 10000, fn: sourceEncyclopedie },
+  { nom: 'DuckDuckGo', delai: TIMEOUT_SOURCE_MS, fn: sourceDuckDuckGo },
+  { nom: 'Recherche Web', delai: TIMEOUT_SOURCE_MS, fn: sourceRechercheWeb },
 ];
 
 export const SEUIL_CONFIANCE_SOURCES = 0.5; // 50 % — critère d'escalade du concepteur
@@ -221,7 +272,7 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
     const manquantes = SOURCES_SPU.slice(consultees.length, cible);
     if (manquantes.length) {
       const resultats = await Promise.allSettled(
-        manquantes.map((s) => avecCache(question, s.nom, () => s.fn(question)))
+        manquantes.map((s) => avecCache(question, s.nom, () => s.fn(question), s.delai))
       );
       for (const r of resultats) {
         if (r.status === 'fulfilled' && r.value) consultees.push(r.value);
