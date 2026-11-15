@@ -47,7 +47,10 @@ const MOTS_VIDES = new Set([
 
 /** 1 à 3 mots porteurs de sens de LA question — pour tisser le repli local. */
 function motsDeLaQuestion(question: string): string[] {
-  const n = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ');
+  // v5.0 : sépare d'abord les élisions (« n'arrive » → « n arrive ») pour ne pas
+  // recoller des fragments comme « narrive ».
+  const elide = question.toLowerCase().replace(/[’']/g, ' ');
+  const n = elide.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ');
   return n.split(/\s+/).filter((m) => m.length > 4 && !MOTS_VIDES.has(m)).slice(0, 3);
 }
 

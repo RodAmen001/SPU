@@ -114,7 +114,10 @@ export async function POST(req: NextRequest) {
       reponse: resultat.synthese?.texte || '',
       sourcesUtilisees: resultat.synthese?.sources || [],
       confiance: resultat.synthese?.confiance ?? null,
-      sourcesEchouees: resultat.sourcesEchouees || false, // v4.9 : panne des sources annoncée honnêtement
+      // v5.0 : le drapeau honnête dérive aussi de la parabole (l'accumulateur
+      // local ne porte pas sourcesEchouees) — cohérence entre les deux signaux.
+      sourcesEchouees:
+        (resultat.parabole as { degrade?: boolean } | null)?.degrade || resultat.sourcesEchouees || false,
       parabole: resultat.parabole
         ? {
             code: resultat.parabole.code,

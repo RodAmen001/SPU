@@ -293,12 +293,20 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   // (2 sources, puis toutes) — les niveaux intermédiaires ne font que collecter.
   const paliersSynthese = new Set([2, SOURCES_SPU.length]);
 
-  for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
+  // v5.0 — RÉESSAI (exigence du concepteur : « à tout prix ») : les moteurs
+  // gratuits flottent avec les quotas des IP partagées — si le premier balayage
+  // ne ramène AUCUNE source, on souffle 2 s et on re-balaie une seconde fois.
+  // Une passe entière n'a jamais coûté plus de ~15 s ; le budget (90 s) absorbe
+  // deux passes sans jamais mettre la réponse en danger.
+  for (let passe = 0; passe < 2 && !consultees.length; passe++) {
+    if (passe > 0) await new Promise((r) => setTimeout(r, 2000));
+    for (let cible = 2; cible <= SOURCES_SPU.length; cible++) {
     // Garde-fou budget : si le temps global de la requête s'épuise, on ne monte
     // plus d'échelon — la meilleure synthèse déjà obtenue est retenue.
     // v4.7 : seuil relevé à 30 s — inutile d'entamer un palier (source + nouvelle
     // synthèse) qu'on n'aurait pas le temps de mener jusqu'au bout.
     if (syntheses.length && budgetEpuise(30000)) break;
+    if (budgetEpuise(30000)) break; // plus de temps : la suite du flux doit respirer
     // tente les sources pas encore consultées jusqu'à atteindre la cible
     const manquantes = SOURCES_SPU.slice(consultees.length, cible);
     if (manquantes.length) {
@@ -331,6 +339,7 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
 
     // critère d'arrêt : confiance ≥ 50 % pour ce niveau de sources
     if (synthese.confiance >= SEUIL_CONFIANCE_SOURCES) break;
+    }
   }
 
   // v5.0 — aucune synthèse LLM n'a abouti MAIS au moins une source a répondu :
