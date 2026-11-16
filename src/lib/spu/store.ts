@@ -11,6 +11,9 @@ interface EtatSpu {
   audioActive: boolean;
   volume: number;
   ttsActive: boolean;
+  // v6.4 — cadre musique ADJACENT (jamais une page qui quitte la conversation) :
+  // colonne sur grand écran, petit rectangle épinglé en haut sur smartphone.
+  cadreMusiqueOuvert: boolean;
   // Réglages des voix du théâtre sonore (paramétrables par l'utilisateur)
   voixNarrateur: string;
   voixPersonnages: string[];
@@ -22,6 +25,7 @@ interface EtatSpu {
   setAudioActive: (v: boolean) => void;
   setVolume: (v: number) => void;
   setTtsActive: (v: boolean) => void;
+  setCadreMusiqueOuvert: (v: boolean) => void;
   setVoixNarrateur: (id: string) => void;
   setVoixPersonnages: (ids: string[]) => void;
   setDebitVoix: (v: number) => void;
@@ -40,6 +44,8 @@ export const useSpuStore = create<EtatSpu>()(
       // dédié de la barre de menu. La migration persistante (version 2)
       // réactive la narration pour les utilisateurs d'une version antérieure.
       ttsActive: true,
+      // v6.4 — le cadre musique suit la conversation : visible par défaut
+      cadreMusiqueOuvert: true,
       voixNarrateur: VOIX_PAR_DEFAUT.narrateur,
       voixPersonnages: [...VOIX_PAR_DEFAUT.personnages],
       debitVoix: 1,
@@ -49,6 +55,7 @@ export const useSpuStore = create<EtatSpu>()(
       setAudioActive: (v) => set({ audioActive: v }),
       setVolume: (v) => set({ volume: v }),
       setTtsActive: (v) => set({ ttsActive: v }),
+      setCadreMusiqueOuvert: (v) => set({ cadreMusiqueOuvert: v }),
       setVoixNarrateur: (id) => set({ voixNarrateur: id }),
       setVoixPersonnages: (ids) => set({ voixPersonnages: ids.slice(0, 4) }),
       setDebitVoix: (v) => set({ debitVoix: Math.max(0.6, Math.min(1.4, v)) }),
@@ -58,11 +65,15 @@ export const useSpuStore = create<EtatSpu>()(
     }),
     {
       name: 'spu-v4',
-      version: 2,
+      version: 3,
       // Migration v1 → v2 : narration complète activée par défaut (exigence
-      // v4.8) — l'utilisateur la désactive s'il le souhaite, mais elle est
-      // proposée active à tous, y compris ceux d'une ancienne version.
-      migrate: (etat) => ({ ...(etat as object), ttsActive: true }) as never,
+      // v4.8). v2 → v3 : le cadre musique adjacent est OUVERT par défaut pour
+      // tous (les états antérieurs ne connaissaient pas ce champ).
+      migrate: (etat) => ({
+        ...(etat as object),
+        ttsActive: true,
+        cadreMusiqueOuvert: (etat as { cadreMusiqueOuvert?: boolean }).cadreMusiqueOuvert ?? true,
+      }) as never,
     }
   )
 );

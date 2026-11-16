@@ -29,6 +29,7 @@ import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
 import { ttsStop, ttsParler, profilParId, prechaufferNeurales } from '@/lib/spu/tts';
 import { VueReponse, EtapesEnDirect } from './reponse-view';
 import { TheatreBoost } from './theatre-boost';
+import { CadreMusique } from './cadre-musique';
 import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fil-discussion';
 import { VueEnfant } from './child-view';
 import { VueJournal } from './journal-view';
@@ -61,11 +62,18 @@ let _uid = 0;
 const uid = () => `m${Date.now()}-${_uid++}`;
 
 export function SpuApp() {
-  const { sessionId, audioActive, setAudioActive, volume, setVolume, ttsActive, setTtsActive } = useSpuStore();
+  const storeSpu = useSpuStore();
+  const { sessionId, audioActive, setAudioActive, volume, setVolume, ttsActive, setTtsActive, setCadreMusiqueOuvert } = storeSpu;
+  const cadreMusiqueOuvert = storeSpu.cadreMusiqueOuvert ?? true; // états antérieurs : ouvert par défaut
   const [vue, setVue] = useState<Vue>('accueil');
+  const [historique, setHistorique] = useState<Vue[]>([]);
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [quitterOuvert, setQuitterOuvert] = useState(false);
   const [adieu, setAdieu] = useState(false);
+
+  // v6.4 — les vues de CONVERSATION (l'arrière-plan où le cadre musique adjacent
+  // s'affiche : colonne à droite sur grand écran, rectangle épinglé sur mobile)
+  const vueConversation = vue === 'oracle' || vue === 'mentor' || vue === 'oracle-inverse' || vue === 'enfant';
 
   // v5.0 — Musique de fond sur TOUTES les pages (exigence du concepteur :
   // « pas de page sans musique ») : les quatre modes gardent leur ambiance,
@@ -113,16 +121,30 @@ export function SpuApp() {
     try { window.close(); } catch { /* l'écran d'adieu reste affiché */ }
   };
 
+  // v6.4 — RETOUR EN ARRIÈRE (exigence du concepteur) : le bouton du haut revient
+  // à la page PRÉCÉDENTE (historique interne), pas forcément à l'accueil.
   const naviguer = (v: Vue) => {
     setMenuOuvert(false);
+    if (v !== vue) setHistorique((h) => [...h.slice(-19), vue]);
     setVue(v);
+  };
+
+  const retourArriere = () => {
+    setMenuOuvert(false);
+    const precedent = historique[historique.length - 1];
+    if (precedent) {
+      setVue(precedent);
+      setHistorique((h) => h.slice(0, -1));
+    } else {
+      setVue('accueil'); // rien devant : l'accueil reste le repli naturel
+    }
   };
 
   return (
     <div className="fond-spu min-h-screen flex flex-col text-[--foreground]">
       <EnTete
         vue={vue}
-        retour={() => naviguer('accueil')}
+        retour={retourArriere}
         audioActive={audioActive}
         basculeAudio={basculeAudio}
         volume={volume}
@@ -135,19 +157,42 @@ export function SpuApp() {
         naviguer={naviguer}
       />
       <main className="flex-1">
-        {vue === 'accueil' && <VueAccueil choisir={naviguer} aller={naviguer} />}
-        {vue === 'oracle' && <FluxOracle />}
-        {vue === 'mentor' && <FluxMentor />}
-        {vue === 'oracle-inverse' && <FluxOracleInverse />}
-        {vue === 'enfant' && <VueEnfant surRetour={() => naviguer('accueil')} />}
-        {vue === 'journal' && <div className="py-8 px-4"><VueJournal /></div>}
-        {vue === 'corpus' && <div className="py-8 px-4"><VueCorpus /></div>}
-        {vue === 'musiques' && <div className="py-8 px-4"><VueMusiques /></div>}
-        {vue === 'transparence' && <div className="py-8 px-4"><VueTransparence /></div>}
-        {vue === 'confidentialite' && <div className="py-8 px-4"><VueConfidentialite /></div>}
-        {vue === 'fonctionnement' && <div className="py-8 px-4"><VueFonctionnement /></div>}
-        {vue === 'nouveautes' && <div className="py-8 px-4"><VueNouveautes /></div>}
-        {vue === 'soutien' && <div className="py-8 px-4"><VueSoutien /></div>}
+        {/* v6.4 — SMARTPHONE : le cadre musique est un PETIT RECTANGLE épinglé en
+            haut, indépendant (à l'intérieur d'aucun autre cadre), qui n'empêche
+            pas les autres textes — noter, rejouer ou passer ne quitte jamais la
+            conversation. */}
+        {vueConversation && cadreMusiqueOuvert && (
+          <div className="lg:hidden sticky top-14 z-10 px-2 pt-2">
+            <div className="max-w-md mx-auto">
+              <CadreMusique variante="compacte" />
+            </div>
+          </div>
+        )}
+        <div className="flex w-full items-start justify-center">
+          <div className="flex-1 min-w-0">
+            {vue === 'accueil' && <VueAccueil choisir={naviguer} aller={naviguer} />}
+            {vue === 'oracle' && <FluxOracle />}
+            {vue === 'mentor' && <FluxMentor />}
+            {vue === 'oracle-inverse' && <FluxOracleInverse />}
+            {vue === 'enfant' && <VueEnfant surRetour={() => naviguer('accueil')} />}
+            {vue === 'journal' && <div className="py-8 px-4"><VueJournal /></div>}
+            {vue === 'corpus' && <div className="py-8 px-4"><VueCorpus /></div>}
+            {vue === 'musiques' && <div className="py-8 px-4"><VueMusiques /></div>}
+            {vue === 'transparence' && <div className="py-8 px-4"><VueTransparence /></div>}
+            {vue === 'confidentialite' && <div className="py-8 px-4"><VueConfidentialite /></div>}
+            {vue === 'fonctionnement' && <div className="py-8 px-4"><VueFonctionnement /></div>}
+            {vue === 'nouveautes' && <div className="py-8 px-4"><VueNouveautes /></div>}
+            {vue === 'soutien' && <div className="py-8 px-4"><VueSoutien /></div>}
+          </div>
+          {/* v6.4 — GRAND ÉCRAN : le cadre musique occupe la place libre À CÔTÉ du
+              fil (il y a de la grande place à gauche comme à droite) — la
+              conversation reste affichée et animée pendant qu'on note. */}
+          {vueConversation && cadreMusiqueOuvert && (
+            <aside className="hidden lg:block w-64 shrink-0 sticky top-16 p-3">
+              <CadreMusique variante="panneau" />
+            </aside>
+          )}
+        </div>
       </main>
       <PiedDePage aller={naviguer} />
 
@@ -291,13 +336,15 @@ function EnTete({
   onQuitter: () => void; menuOuvert: boolean; setMenuOuvert: (v: boolean) => void;
   naviguer: (v: Vue) => void;
 }) {
+  const { cadreMusiqueOuvert: cadreBrut, setCadreMusiqueOuvert } = useSpuStore();
+  const cadreMusiqueOuvert = cadreBrut ?? true; // états antérieurs : ouvert par défaut
   const modeActuel = MODES.find((m) => m.id === vue);
   return (
     <header className="sticky top-0 z-20 backdrop-blur-md bg-[--background]/85 border-b border-[--border]/70 shadow-sm">
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-2 sm:gap-3">
         {vue !== 'accueil' ? (
-          <Button variant="ghost" size="sm" onClick={retour} className="rounded-full" aria-label="retour à l'accueil">
-            <ArrowLeft className="h-4 w-4 mr-1" aria-hidden /> Accueil
+          <Button variant="ghost" size="sm" onClick={retour} className="rounded-full" aria-label="revenir à la page précédente" title="Retour en arrière — vers la page précédente">
+            <ArrowLeft className="h-4 w-4 mr-1" aria-hidden /> Retour
           </Button>
         ) : (
           <div className="flex items-center gap-2 font-semibold">
@@ -331,10 +378,11 @@ function EnTete({
           {/* Musique de fond + MUSIQUE SUIVANTE (v6.1) + CADRE MUSIQUE (v6.3) */}
           <div className="flex items-center gap-1.5" title="Musique de fond — 100 musiques libres, variées à chaque conversation">
             <button
-              onClick={() => naviguer('musiques')}
+              onClick={() => setCadreMusiqueOuvert(!cadreMusiqueOuvert)}
               className="flex items-center"
-              title="Cadre musique — noter la piste, la rejouer ou la passer"
-              aria-label="ouvrir le cadre musique"
+              title={cadreMusiqueOuvert ? 'Fermer le cadre musique (notation, rejouer, suivant)' : 'Ouvrir le cadre musique — à côté du fil, sans quitter la conversation'}
+              aria-label="cadre musique"
+              aria-pressed={cadreMusiqueOuvert}
             >
               <Music4 className={`h-4 w-4 ${audioActive ? 'text-[--primary]' : 'text-[--muted-foreground]'}`} aria-hidden />
             </button>

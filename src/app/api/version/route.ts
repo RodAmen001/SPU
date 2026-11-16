@@ -18,6 +18,7 @@ export async function GET() {
       nouveautes: [
         'v1.3 — corpus porté à 100 textes (75 paraboles + 25 fables, même base que le serveur) et ORACLE INVERSÉ hors ligne : une parabole nue, ta lecture analysée (appréciation, bonne interprétation, éclairages, orientation)',
         'v1.2 — mode nomade : pose tes questions sans aucun serveur, réponse directe 🌤️',
+        'Web v6.4 — noter la musique sans quitter ta conversation (cadre adjacent + retour en arrière) ; le BOOST gravé en un seul MP3 serveur avec voix distinctes garanties, didascalies parlées et revue IA du rendu',
         'Web v6.3 — lecture qui démarre sans attendre (voix préchauffées), cadre musique pour noter chaque piste (note globale remontée au SPU), BOOST joué comme une scène réelle : voix préparées à l\'avance, conteur qui annonce chaque personnage',
         'Web v6.2 — le théâtre BOOST est toujours proposé après la 3ᵉ question du Mentor (préparé en coulisses, joué seulement si tu le décides)',
         'Web v6.1 — narration continue sans silences, bouton « Musique suivante » toujours visible, mode Enfant en fil continu (jamais de nouvelle discussion obligatoire)',

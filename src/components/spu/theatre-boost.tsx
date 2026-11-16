@@ -1,15 +1,15 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// SPU v6.3 — LE THÉÂTRE BOOST (composant client)
-// Joue le scénario BOOST reçu du serveur : chaque réplique est parlée par la
-// voix DU personnage (12 timbres distincts, moteur Piper via /api/tts), avec
-// musique de fond spécialement boostante. En mode Enfant, la bande dessinée
-// défile au fur et à mesure que le théâtre audio avance.
-// v6.3 — SCÈNE RÉELLE : TOUTES les voix sont générées AVANT la première réplique
-// (barre de progression « Préparation des voix… n/m », 4 générations en
-// parallèle) puis la lecture enchaîne SANS AUCUNE latence — plus jamais
-// d'attente entre deux prises de parole. Et comme au théâtre, LE CONTEUR
-// ANNONCE l'ouverture de chaque scène et CHAQUE personnage qui prend la parole
-// pour la première fois (« Thomas, l'ami. ») — jamais de voix mystérieuse.
+// SPU v6.4 — LE THÉÂTRE BOOST (composant client)
+// v6.4 — LE MP3 COMPLET DU SERVEUR : dès que le scénario arrive, le SPU le
+// convertit EN ARRIÈRE-PLAN en un SEUL MP3 (voix distinctes garanties, une
+// génération Piper à la fois — plus jamais la course à quatre générations qui
+// faisait tout échouer et laissait une voix unique et monotone). La partition
+// complète : titre de scène + DIDASCALIES PARLÉES (« Léo marche dans la ville,
+// les yeux plissés. » — l'annonce de la condition, AVANT la prise de parole) +
+// présentation de chaque personnage + répliques. Une revue IA (transcription
+// ASR + correction) vérifie le rendu. Le client joue ce MP3 et synchronise la
+// bande dessinée via le manifest ; si le serveur n'y arrive pas, repli sur la
+// génération client avec profils de voix distincts.
 // v6.1 — le BOOST est une PROPOSITION : jamais de lancement automatique.
 // ═════════════════════════════════════════════════════════════════════════════
 'use client';
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Square, Zap } from 'lucide-react';
 import type { ScenarioBoost, SceneBoost, LigneTheatre } from '@/lib/spu/boost';
 import { getMoteurAudio } from '@/lib/spu/audio-engine';
+import { profilParId } from '@/lib/spu/tts';
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -27,13 +28,31 @@ interface Props {
   enfant?: boolean; // bande dessinée défilante synchronisée
 }
 
-// Une entrée de la file de lecture : réplique du scénario OU annonce du conteur.
+interface SegmentManifestClient {
+  type: 'scene' | 'didascalie' | 'annonce' | 'ligne';
+  s: number;
+  i: number;
+  perso: string;
+  voix: string;
+  texte: string;
+  planIndex: number;
+  debut: number;
+  duree: number;
+}
+
+interface RevueClient {
+  score: number;
+  couverture: number;
+  corrections: number;
+}
+
+// Une entrée de la file de lecture du REPLI client : réplique OU conteur/narrateur.
 interface EntreeFile {
   ligne: LigneTheatre;
-  s: number; // index de scène (pour la bande dessinée)
-  i: number; // index de réplique dans la scène (-1 pour une annonce d'ouverture)
+  s: number;
+  i: number;
   sc: SceneBoost;
-  annonce?: boolean; // réplique du conteur (ouverture de scène / présentation)
+  annonce?: boolean; // réplique du conteur ou du narrateur (ouverture, didascalie, présentation)
 }
 
 export function TheatreBoost({ scenario, enfant }: Props) {
@@ -41,11 +60,17 @@ export function TheatreBoost({ scenario, enfant }: Props) {
   const [ligneIdx, setLigneIdx] = useState(-1);
   const [demarre, setDemarre] = useState(false);
   const [enLecture, setEnLecture] = useState(false);
-  const [preparation, setPreparation] = useState<{ fait: number; total: number } | null>(null);
+  const [conversion, setConversion] = useState<{ fait: number; total: number; phase: string } | null>(null);
+  const [conversionEchec, setConversionEchec] = useState(false);
+  const [mp3Url, setMp3Url] = useState<string | null>(null);
+  const [manifest, setManifest] = useState<SegmentManifestClient[] | null>(null);
+  const [revue, setRevue] = useState<RevueClient | null>(null);
+  const [preparation, setPreparation] = useState<{ fait: number; total: number } | null>(null); // repli client
   const [termine, setTermine] = useState(false);
   const annuler = useRef(false);
   const controlePrep = useRef<AbortController | null>(null);
-  const blobsPrepares = useRef<(Blob | null)[] | null>(null); // cache : rejouer = zéro préparation
+  const audioMp3Ref = useRef<HTMLAudioElement | null>(null);
+  const blobsPrepares = useRef<(Blob | null)[] | null>(null);
   const bandeRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const ligneRef = useRef<HTMLDivElement | null>(null);
@@ -57,25 +82,96 @@ export function TheatreBoost({ scenario, enfant }: Props) {
   }, []);
 
   const arreterMusique = useCallback(() => {
-    // on rend la main à l'ambiance du mode courant (l'écran d'où vient le BOOST)
     getMoteurAudio().couper();
   }, []);
 
-  // ── Construction de la file de lecture (v6.3 — SCÈNE RÉELLE) ──
-  // Le conteur ouvre chaque scène par son titre, puis présente CHAQUE personnage
-  // au moment où il prend la parole pour la première fois : « Thomas, l'ami. »
+  // ── CONVERSION SERVEUR DÈS L'ARRIVÉE DU SCÉNARIO (arrière-plan) ──
+  // Le MP3 complet du théâtre se grave pendant que la personne lit la réponse ;
+  // quand elle clique « Lancer », l'audio est déjà prêt (ou presque).
+  useEffect(() => {
+    let vivant = true;
+    const controle = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch('/api/boost/audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario }),
+          signal: controle.signal,
+        });
+        if (!res.ok) throw new Error('conversion indisponible');
+        const premier = await res.json();
+        if (!vivant) return;
+        if (premier.etat === 'pret') {
+          setMp3Url(premier.mp3);
+          setManifest(premier.manifest);
+          setRevue(premier.revue || null);
+          return;
+        }
+        if (premier.etat === 'echec') {
+          setConversionEchec(true);
+          return;
+        }
+        setConversion({ fait: premier.fait, total: premier.total, phase: premier.phase });
+        for (;;) {
+          await pause(2500);
+          if (!vivant) return;
+          const e = await fetch(`/api/boost/audio?id=${premier.id}`).then((r) => (r.ok ? r.json() : null));
+          if (!vivant) return;
+          if (!e) continue;
+          if (e.etat === 'pret') {
+            setMp3Url(e.mp3);
+            setManifest(e.manifest);
+            setRevue(e.revue || null);
+            setConversion(null);
+            return;
+          }
+          if (e.etat === 'echec') {
+            setConversionEchec(true);
+            setConversion(null);
+            return;
+          }
+          setConversion({ fait: e.fait, total: e.total, phase: e.phase });
+        }
+      } catch {
+        if (vivant) {
+          setConversionEchec(true);
+          setConversion(null);
+        }
+      }
+    })();
+    return () => {
+      vivant = false;
+      try {
+        controle.abort();
+      } catch {
+        /* déjà fermé */
+      }
+    };
+  }, [scenario]);
+
+  // ── File du REPLI client (même partition que le serveur) : titre de scène +
+  // didascalie PARLÉE + présentation du personnage + réplique.
   const construireFile = useCallback((): EntreeFile[] => {
     const cont = scenario.personnages.find((p) => p.voix === 'conteur' || /conteur|narrat/i.test(p.nom));
     const voixConteur = cont?.voix || 'narrateur';
     const roleDe = new Map(scenario.personnages.map((p) => [p.nom.toLowerCase(), p.role]));
     const dejaPresents = new Set<string>();
     const file: EntreeFile[] = [];
+    const nettoyer = (t: string) => t.replace(/[«»()]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[,.…]+$/, '');
     scenario.scenes.forEach((sc, s) => {
       file.push({
-        ligne: { perso: 'Le Conteur', voix: voixConteur, texte: `${sc.titre}.` },
+        ligne: { perso: 'Le Conteur', voix: voixConteur, texte: `${nettoyer(sc.titre)}.` },
         s, i: -1, sc, annonce: true,
       });
       sc.lignes.forEach((l, i) => {
+        const didascalie = (l.didascalie || '').trim();
+        if (didascalie) {
+          file.push({
+            ligne: { perso: 'Le Narrateur', voix: 'narrateur', texte: `${nettoyer(didascalie)}.` },
+            s, i, sc, annonce: true,
+          });
+        }
         const cle = l.perso.toLowerCase();
         const conteurLuiMeme = l.voix === 'narrateur' || l.voix === voixConteur;
         if (!dejaPresents.has(cle) && !conteurLuiMeme) {
@@ -90,19 +186,53 @@ export function TheatreBoost({ scenario, enfant }: Props) {
     return file;
   }, [scenario]);
 
-  // lecture complète — v6.3 : PRÉPARATION TOTALE puis lecture sans blancs
-  const jouer = useCallback(async () => {
-    if (enLecture) return;
-    annuler.current = false;
-    setDemarre(true);
-    setEnLecture(true);
-    setTermine(false);
-    lancerMusiqueBoost();
-    const file = construireFile();
+  // ── LECTURE A : le MP3 complet du serveur (voix distinctes garanties) ──
+  const jouerMp3Serveur = useCallback(
+    () =>
+      new Promise<void>((resoudre) => {
+        const audio = new Audio(mp3Url!);
+        audioMp3Ref.current = audio;
+        let sceneJouee = -1;
+        const synchroniser = () => {
+          if (!manifest) return;
+          const t = audio.currentTime;
+          let courant = manifest[0];
+          for (const m of manifest) {
+            if (m.debut <= t + 0.05) courant = m;
+            else break;
+          }
+          if (courant) {
+            setSceneIdx(courant.s);
+            setLigneIdx(courant.i);
+            if (courant.s !== sceneJouee) {
+              sceneJouee = courant.s;
+              try {
+                getMoteurAudio().ajusterScene(scenario.scenes[courant.s]?.musique || 'douce');
+              } catch {
+                /* jamais critique */
+              }
+            }
+          }
+        };
+        audio.addEventListener('timeupdate', synchroniser);
+        const finir = () => {
+          audio.removeEventListener('timeupdate', synchroniser);
+          if (audioMp3Ref.current === audio) audioMp3Ref.current = null;
+          resoudre();
+        };
+        audio.onended = finir;
+        audio.onerror = finir;
+        audio.addEventListener('pause', () => {
+          if (annuler.current) finir(); // Arrêter : on résout sans attendre la fin
+        });
+        audio.play().catch(finir);
+      }),
+    [mp3Url, manifest, scenario]
+  );
 
-    // 1) PRÉPARATION COMPLÈTE : toutes les voix sont générées AVANT la première
-    //    réplique (4 générations Piper en parallèle, barre de progression).
-    //    Cache : rejouer le théâtre ne régénère rien.
+  // ── LECTURE B (repli client) : préparation totale puis lecture sans blancs ──
+  const jouerFileClient = useCallback(async () => {
+    const file = construireFile();
     let blobs = blobsPrepares.current;
     if (!blobs || blobs.length !== file.length || blobs.every((b) => b === null)) {
       blobs = new Array(file.length).fill(null);
@@ -123,64 +253,71 @@ export function TheatreBoost({ scenario, enfant }: Props) {
             });
             blobs![k] = res.ok ? await res.blob() : null;
           } catch {
-            blobs![k] = null; // Piper indisponible pour cette réplique → repli navigateur
+            blobs![k] = null;
           }
           fait++;
           if (!annuler.current) setPreparation({ fait, total: file.length });
         }
       };
-      await Promise.all([ouvrier(), ouvrier(), ouvrier(), ouvrier()]);
+      // trois générations en parallèle (le repli reste raisonnable) — la voie
+      // PRINCIPALE reste l'assemblage serveur, une voix à la fois
+      await Promise.all([ouvrier(), ouvrier(), ouvrier()]);
       controlePrep.current = null;
       if (annuler.current) {
         setPreparation(null);
-        return;
+        throw new Error('annulé');
       }
       blobsPrepares.current = blobs;
     }
     setPreparation(null);
 
-    // 2) LECTURE : chaque son est DÉJÀ prêt — zéro latence entre les répliques,
-    //    de courtes respirations calibrées comme au théâtre.
+    let scenePrecedente = -1;
+    for (let k = 0; k < file.length; k++) {
+      if (annuler.current) throw new Error('annulé');
+      const e = file[k];
+      if (e.s !== scenePrecedente) {
+        scenePrecedente = e.s;
+        setSceneIdx(e.s);
+        setLigneIdx(-1);
+        try {
+          getMoteurAudio().ajusterScene(e.sc.musique);
+        } catch {
+          /* jamais critique */
+        }
+        await pause(420);
+      }
+      setLigneIdx(e.i);
+      const blob = blobs![k];
+      if (blob) await jouerBlob(blob);
+      else await repliNavigateur(e.ligne.texte, e.ligne.voix);
+      const suivantMemeLocuteur = file[k + 1] && !file[k + 1].annonce && file[k + 1].ligne.perso === e.ligne.perso;
+      await pause(e.annonce ? 130 : suivantMemeLocuteur ? 110 : 170);
+    }
+  }, [construireFile]);
+
+  const jouer = useCallback(async () => {
+    if (enLecture) return;
+    annuler.current = false;
+    setDemarre(true);
+    setEnLecture(true);
+    setTermine(false);
+    lancerMusiqueBoost();
     try {
-      let scenePrecedente = -1;
-      for (let k = 0; k < file.length; k++) {
-        if (annuler.current) return;
-        const e = file[k];
-        if (e.s !== scenePrecedente) {
-          scenePrecedente = e.s;
-          setSceneIdx(e.s);
-          setLigneIdx(-1);
-          try {
-            getMoteurAudio().ajusterScene(e.sc.musique);
-          } catch { /* jamais critique */ }
-          await pause(420); // courte respiration de changement de scène (l'annonce suit aussitôt)
-        }
-        if (e.annonce) {
-          setLigneIdx(e.i);
-          const blob = blobs![k];
-          if (blob) await jouerBlob(blob);
-          else await repliNavigateur(e.ligne.texte);
-          await pause(130); // l'annonce s'efface, la réplique part aussitôt
-        } else {
-          setLigneIdx(e.i);
-          const blob = blobs![k];
-          if (blob) await jouerBlob(blob);
-          else await repliNavigateur(e.ligne.texte);
-          const suivantMemeLocuteur = file[k + 1] && !file[k + 1].annonce && file[k + 1].ligne.perso === e.ligne.perso;
-          await pause(suivantMemeLocuteur ? 110 : 170); // respiration naturelle entre les prises de parole
-        }
+      if (mp3Url && manifest?.length) {
+        await jouerMp3Serveur();
+      } else {
+        await jouerFileClient();
       }
       setTermine(true);
+    } catch {
+      /* annulé par la personne */
     } finally {
       setSceneIdx(-1);
       setLigneIdx(-1);
       setEnLecture(false);
       arreterMusique();
     }
-  }, [scenario, enLecture, lancerMusiqueBoost, arreterMusique, construireFile]);
-
-  // v6.1 — JAMAIS de lancement automatique : le BOOST attend le choix de la
-  // personne (« Lancer le théâtre »), juste après la réponse ou plus tard.
+  }, [enLecture, mp3Url, manifest, jouerMp3Serveur, jouerFileClient, lancerMusiqueBoost, arreterMusique]);
 
   // bande dessinée : suivi de la scène et de la réplique en cours
   useEffect(() => {
@@ -190,8 +327,21 @@ export function TheatreBoost({ scenario, enfant }: Props) {
 
   const stopper = () => {
     annuler.current = true;
-    try { controlePrep.current?.abort(); } catch { /* déjà arrêté */ }
-    try { audioCourant?.pause(); } catch { /* déjà arrêté */ }
+    try {
+      controlePrep.current?.abort();
+    } catch {
+      /* déjà arrêté */
+    }
+    try {
+      audioMp3Ref.current?.pause();
+    } catch {
+      /* déjà arrêté */
+    }
+    try {
+      audioCourant?.pause();
+    } catch {
+      /* déjà arrêté */
+    }
   };
 
   const sceneCourante = sceneIdx >= 0 ? scenario.scenes[sceneIdx] : null;
@@ -212,10 +362,19 @@ export function TheatreBoost({ scenario, enfant }: Props) {
           jouées par {scenario.personnages.length} personnages aux voix distinctes ({scenario.personnages.map((p) => p.nom).join(', ')}) —
           environ {minutes} min{secondes && ' 30'}.
         </p>
-        <p className="text-sm text-[--muted-foreground] mb-4">
+        <p className="text-sm text-[--muted-foreground] mb-1">
           {enfant
             ? 'Il est joué comme un petit dessin animé sonore qui défile tout seul. Tu le lances quand tu veux — ou pas du tout.'
-            : 'C\'est une proposition, jamais une obligation : lance-le maintenant, plus tard, ou passe ton chemin.'}
+            : "C'est une proposition, jamais une obligation : lance-le maintenant, plus tard, ou passe ton chemin."}
+        </p>
+        <p className="text-xs text-[--muted-foreground] mb-3">
+          {conversion
+            ? `🎙️ Le SPU grave déjà l'audio complet du théâtre (${conversion.fait}/${conversion.total}) — chaque voix enregistre sa partie, les didascalies sont lues par le narrateur.`
+            : mp3Url
+              ? '🎙️ Audio complet du théâtre déjà gravé (voix distinctes garanties) — le lancement est instantané.'
+              : conversionEchec
+                ? ''
+                : '🎙️ Préparation de l\u2019audio complet du théâtre…'}
         </p>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => void jouer()} className="rounded-full bg-amber-600 hover:bg-amber-600/85 text-white">
@@ -237,12 +396,30 @@ export function TheatreBoost({ scenario, enfant }: Props) {
         <p className="text-sm text-[--muted-foreground] mb-3">{scenario.resume}</p>
       )}
 
-      {/* v6.3 — préparation complète des voix : barre de progression */}
+      {/* v6.4 — conversion serveur du scénario en MP3 complet : progression */}
+      {conversion && (
+        <div className="rounded-xl bg-[--card] border border-[--border] p-3 mb-3">
+          <p className="text-sm font-medium mb-2">
+            🎙️ Conversion du théâtre en audio complet… {conversion.fait}/{conversion.total}
+            <span className="text-[--muted-foreground] font-normal"> — {conversion.phase}</span>
+          </p>
+          <div className="h-2 rounded-full bg-[--muted] overflow-hidden">
+            <div
+              className="h-full bg-amber-500 transition-all duration-300"
+              style={{ width: `${Math.round((conversion.fait / Math.max(1, conversion.total)) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-[--muted-foreground] mt-2">
+            Titres de scène, didascalies et présentations des personnages sont enregistrés par le conteur — la scène se jouera sans aucun temps d&apos;attente.
+          </p>
+        </div>
+      )}
+
+      {/* v6.3 — préparation des voix du repli client */}
       {preparation && (
         <div className="rounded-xl bg-[--card] border border-[--border] p-3 mb-3">
           <p className="text-sm font-medium mb-2">
             🎭 Préparation des voix… {preparation.fait}/{preparation.total} répliques
-            <span className="text-[--muted-foreground] font-normal"> — le conteur installe la scène, chaque voix enregistre sa partie</span>
           </p>
           <div className="h-2 rounded-full bg-[--muted] overflow-hidden">
             <div
@@ -250,7 +427,6 @@ export function TheatreBoost({ scenario, enfant }: Props) {
               style={{ width: `${Math.round((preparation.fait / Math.max(1, preparation.total)) * 100)}%` }}
             />
           </div>
-          <p className="text-xs text-[--muted-foreground] mt-2">Ensuite, la scène se joue sans aucun temps d&apos;attente — comme un vrai théâtre.</p>
         </div>
       )}
 
@@ -329,10 +505,10 @@ export function TheatreBoost({ scenario, enfant }: Props) {
         </blockquote>
       )}
 
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex flex-wrap items-center gap-2 mt-4">
         {!enLecture && (
           <Button size="sm" onClick={() => void jouer()} className="rounded-full bg-amber-600 hover:bg-amber-600/85 text-white">
-            <Play className="h-4 w-4 mr-1" aria-hidden /> {termine ? 'Rejouer le BOOST' : 'Reprendre le théâtre'}
+            <Play className="h-4 w-4 mr-1" aria-hidden /> {termine ? 'Rejouer le BOOST' : 'Lancer le théâtre'}
           </Button>
         )}
         {enLecture && (
@@ -343,6 +519,14 @@ export function TheatreBoost({ scenario, enfant }: Props) {
         <span className="text-xs text-[--muted-foreground]">
           {scenario.scenes.length} scènes · {scenario.personnages.length} voix distinctes · ≈ {minutes} min{secondes && ' 30'}
         </span>
+        {mp3Url && (
+          <span className="text-xs text-amber-700 dark:text-amber-300">🎙️ audio complet gravé</span>
+        )}
+        {revue && (
+          <span className="text-xs text-[--muted-foreground]" title="Revue IA du rendu : transcription de l'audio comparée au script, fautes corrigées">
+            · revue IA : {revue.score}/10 · {revue.couverture}% vérifié{revue.corrections ? ` · ${revue.corrections} correction(s)` : ''}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -367,11 +551,18 @@ function jouerBlob(blob: Blob): Promise<void> {
   });
 }
 
-function repliNavigateur(texte: string): Promise<void> {
+// v6.4 — repli navigateur AVEC LE PROFIL DE LA LIGNE : pitch et débit du
+// personnage (jamais plus la voix unique et monotone quand Piper échoue).
+function repliNavigateur(texte: string, voixProfil?: string): Promise<void> {
   return new Promise((resoudre) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || !texte.trim()) return resoudre();
     const u = new SpeechSynthesisUtterance(texte);
     u.lang = 'fr-FR';
+    const profil = profilParId(voixProfil || 'narrateur');
+    u.pitch = Math.max(0, Math.min(2, profil.pitch));
+    u.rate = Math.max(0.5, Math.min(2, profil.rate));
+    const v = window.speechSynthesis.getVoices().find((x) => x.lang?.toLowerCase().startsWith('fr'));
+    if (v) u.voice = v;
     u.onend = () => resoudre();
     u.onerror = () => resoudre();
     window.speechSynthesis.speak(u);

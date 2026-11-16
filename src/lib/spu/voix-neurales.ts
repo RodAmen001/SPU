@@ -204,6 +204,25 @@ async function decalerPitch(wav: Buffer, facteur: number, sr: number): Promise<B
   return executer('ffmpeg', ['-loglevel', 'error', '-i', 'pipe:0', '-af', filtre, '-f', 'wav', 'pipe:1'], wav);
 }
 
+/** v6.4 — filtre combiné : décalage de hauteur + homogénéisation du niveau
+ *  (dynaudnorm) — les 12 voix gardent leurs timbres mais partagent une force
+ *  d'écoute comparable, comme des comédiens bien réglés. v6.4 bis : SORTIE
+ *  FORCÉE À 22050 Hz mono — les 4 modèles Piper ont des taux différents
+ *  (16000/22050/44100) et le concat ffmpeg exige un format homogène. */
+function filtrePitchNormalise(facteur: number, sr: number): string {
+  const chain: string[] = [];
+  if (Math.abs(facteur - 1) >= 0.015) {
+    const atempo = 1 / facteur;
+    if (atempo >= 0.5 && atempo <= 2) {
+      chain.push(`asetrate=${Math.round(sr * facteur)}`);
+      chain.push(`atempo=${atempo.toFixed(5)}`);
+    }
+  }
+  chain.push('aresample=22050');
+  chain.push('dynaudnorm=f=200:g=5:m=12:p=0.9');
+  return chain.join(',');
+}
+
 // ── Cache LRU des audios générés ──────────────────────────────────────────────
 const CACHE = new Map<string, Buffer>();
 const MAX_CACHE = 48;
@@ -212,14 +231,23 @@ const EN_COURS = new Map<string, Promise<Buffer>>();
 /**
  * Génère (ou ressert depuis le cache) le WAV d'un segment pour un profil de voix SPU.
  * Retourne null si le moteur n'est pas installé ou le profil sans modèle → repli navigateur.
+ * v6.4 — opts.normaliser : homogénéise le niveau sonore entre les modèles (une
+ * scène réelle = des voix distinctes mais d'une même force) ; opts.timeoutMs :
+ * délai élargi pour l'ASSEMBLAGE serveur du BOOST (une voix à la fois, jamais la
+ * course à 4 générations parallèles qui faisait tout échouer sur un CPU lent).
  */
-export async function genererVoix(profilId: string, texte: string, debit = 1): Promise<Buffer | null> {
+export async function genererVoix(
+  profilId: string,
+  texte: string,
+  debit = 1,
+  opts: { timeoutMs?: number; normaliser?: boolean } = {}
+): Promise<Buffer | null> {
   if (!etatNeurales()) return null;
   const cfg = configPour(profilId);
   if (!cfg || !texte.trim()) return null;
   const t = texte.trim().slice(0, 1200);
   const longueurEffective = Math.max(0.5, Math.min(2, cfg.longueur / Math.max(0.5, Math.min(2, debit || 1))));
-  const cle = createHash('sha1').update(`${profilId}|${longueurEffective.toFixed(3)}|${t}`).digest('hex');
+  const cle = createHash('sha1').update(`${profilId}|${longueurEffective.toFixed(3)}|${t}|${opts.normaliser ? 'n' : ''}`).digest('hex');
 
   const enCache = CACHE.get(cle);
   if (enCache) {
@@ -230,15 +258,22 @@ export async function genererVoix(profilId: string, texte: string, debit = 1): P
   const enVol = EN_COURS.get(cle);
   if (enVol) return enVol;
 
+  const delai = opts.timeoutMs ?? 30000;
   const promesse = (async () => {
     const args = ['-m', join(DIR_MODELES, `${cfg.modele}.onnx`), '--length-scale', longueurEffective.toFixed(3), '-f', '-'];
     if (cfg.locuteur !== undefined) args.push('--speaker', String(cfg.locuteur));
-    let wav = await executer(BIN, args, `${t}\n`);
+    let wav = await executer(BIN, args, `${t}\n`, delai);
     const sr = sampleRateDe(cfg.modele);
     try {
-      wav = await decalerPitch(wav, cfg.pitch, sr); // ffmpeg absent → voix non décalée, jamais d'échec
+      if (opts.normaliser) {
+        // pitch + NORMALISATION de la force de la voix + 22050 Hz homogène, UNE passe ffmpeg
+        const filtre = filtrePitchNormalise(cfg.pitch, sr);
+        wav = await executer('ffmpeg', ['-loglevel', 'error', '-i', 'pipe:0', '-af', filtre, '-f', 'wav', 'pipe:1'], wav, delai);
+      } else {
+        wav = await decalerPitch(wav, cfg.pitch, sr); // ffmpeg absent → voix non décalée, jamais d'échec
+      }
     } catch {
-      console.error('[voix-neurales] décalage de hauteur indisponible (ffmpeg ?) — voix neutre servie');
+      console.error('[voix-neurales] traitement audio indisponible (ffmpeg ?) — voix neutre servie');
     }
     CACHE.set(cle, wav);
     if (CACHE.size > MAX_CACHE) {

@@ -109,8 +109,10 @@ STRUCTURE IMPOSÉE — les phases, dans cet ordre :
 RÈGLES ABSOLUES :
 • TOUT est JOUÉ par les personnages, JAMAIS narré d'une seule voix du début à la fin : un personnage « Le Conteur » peut porter les transitions, mais chaque phase contient AU MOINS DEUX personnages qui parlent.
 • 4 à 6 personnages au total, chacun nommé (prénoms vivants, adaptés au public), chacun avec SA voix distincte.
+• PERSONNAGES ET CONDITIONS RÉELS (exigence du concepteur : pas de contenu générique) : chaque personnage a une condition précise et vivante liée AU CHEMIN PARCOURU — métier, lien familial, quartier, épreuve concrète — cohérente d'une scène à l'autre ; les circonstances ÉVOLUENT vraiment (la situation de départ, l'élément déclencheur et les péripéties doivent être des événements précis, datables dans le récit, jamais des formules abstraites type « un jour tout a changé »).
 • La réplique « texte » est COURTE (1 à 2 phrases, jamais plus de 220 caractères) — c'est du théâtre parlé, rythmé : les répliques s'enchaînent comme dans une scène réelle, sans monologues.
-• « didascalie » = l'action visible en une ligne (affichée à l'écran, jamais lue).
+• « didascalie » = la PHRASE QUE LE NARRATEUR LIT À VOIX HAUTE avant la réplique pour annoncer la CONDITION dans laquelle se trouve le personnage (ce qu'il fait, où il est, comment il respire) : une phrase française complète, parlable, vivante — jamais un fragment télégraphique, jamais entre parenthèses. Exemple correct : « Léo marche dans la ville, les yeux plissés par le soleil de midi. »
+• FRANÇAIS IMPECCABLE (exigence du concepteur) : orthographe, conjugaison, syntaxe et lexique soignés dans TOUT le scénario — relis chaque réplique avant de répondre ; jamais « se rendre pas », jamais d'anglicisme ni de mot mal accordé.
 • Volume total parlé : 2400 à 3200 caractères (≈ 3 à 5 minutes de théâtre audio).
 • Image : 1 emoji par scène pour la bande dessinée enfant.
 • Français, pas de markdown, pas d'emoji DANS les répliques.
@@ -128,6 +130,41 @@ Astuce de distribution : le Conteur → "conteur" ; le héros jeune homme → "h
 }
 
 // ── Génération ────────────────────────────────────────────────────────────────
+// v6.4 — après la génération, une PASSE DE RELECTURE IA relit le scénario
+// complet : corrige les fautes de français, affine les didascalies pour qu'elles
+// soient parlables et vivantes, garde exactement la même structure. Le résultat
+// est le scénario SOIGNEUSEMENT ORCHESTRÉ exigé par le concepteur.
+export async function reviserScenario(scenario: ScenarioBoost, audience: 'adulte' | 'enfant'): Promise<ScenarioBoost> {
+  try {
+    const brut = await llmChat(
+      [
+        {
+          role: 'system',
+          content:
+            "Tu es metteur en scène et RELECTEUR d'un théâtre audio en français. On te donne le JSON complet d'un scénario BOOST. Ton travail : (1) corriger TOUTES les fautes de français (orthographe, conjugaison, syntaxe, lexique) dans les répliques, les didascalies, le titre et le résumé ; (2) rendre chaque didascalie PARLABLE et vivante — une phrase complète que le narrateur lira à voix haute pour annoncer la condition du personnage (ex. « Léo marche dans la ville, les yeux plissés par le soleil de midi. »), jamais un fragment ; (3) serrer les répliques qui dépassent 220 caractères ; (4) ne RIEN changer d'autre : mêmes personnages, mêmes voix, mêmes scènes, même ordre, même déclaration forte. " +
+            (audience === 'enfant' ? 'Public : enfant de 6 à 12 ans — reste simple, concret, rassurant.' : 'Public : adulte.') +
+            ' Réponds UNIQUEMENT avec le JSON corrigé, même schéma exact que l\u2019original.',
+        },
+        { role: 'user', content: JSON.stringify(scenario) },
+      ],
+      { timeoutMs: 50000, temperature: 0.3, maxTokens: 3000 }
+    );
+    const j = extractJson<Partial<ScenarioBoost>>(brut);
+    // la relecture ne remplace le scénario que si elle est COMPLÈTE et cohérente
+    if (
+      j?.scenes?.length &&
+      j.personnages?.length &&
+      j.scenes.every((s) => s.phase && s.lignes?.length) &&
+      j.scenes.length === scenario.scenes.length
+    ) {
+      return { ...scenario, ...j } as ScenarioBoost;
+    }
+    return scenario;
+  } catch {
+    return scenario; // la relecture est un plus — jamais bloquante
+  }
+}
+
 export async function genererBoost(
   chemin: string,
   audience: 'adulte' | 'enfant' = 'adulte',
@@ -200,7 +237,7 @@ export async function genererBoost(
     }));
 
     const heros = (j.heros || personnages[0].nom).trim();
-    return {
+    const scenario = {
       titre: (j.titre || 'Le BOOST').trim(),
       resume: (j.resume || '').trim(),
       heros,
@@ -209,6 +246,9 @@ export async function genererBoost(
       scenes,
       dureeEstimeeSec: estimerDuree(scenes),
     };
+    // v6.4 — PASSE DE RELECTURE IA avant stockage : français impeccable,
+    // didascalies parlables, répliques serrées (structure intacte).
+    return await reviserScenario(scenario, audience);
     } catch (e) {
       console.error('[boost] tentative', essai + 1, 'en échec :', e instanceof Error ? e.message : e);
       // une seule tentative de plus, puis on renonce en silence — le BOOST ne

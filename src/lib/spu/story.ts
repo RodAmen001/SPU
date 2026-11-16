@@ -152,8 +152,15 @@ async function llChatSafe(consigne: string, enfant: boolean, renforcee: boolean)
 
 Rappel absolu : ton histoire doit être 100 % appropriée${enfant ? ' pour des enfants de 6 à 12 ans' : ''}. Aucune violence, aucun contenu sexuel ou haineux, aucune scène effrayante. Réécris en gardant uniquement la dimension douce et lumineuse.`
     : consigne;
+  // v6.4 — exigence du concepteur : le texte NARRÉ doit être grammaticalement
+  // et lexicalement irréprochable (il sera lu à voix haute par le narrateur).
   return llmChat(
-    [{ role: 'user', content: contrainte }],
+    [
+      {
+        role: 'user',
+        content: `${contrainte}\n\nIMPORTANT — FRANÇAIS IMPECCABLE : orthographe, conjugaison, accords et lexique soignés dans toute l'histoire ; relis-toi avant de répondre, aucune faute ne doit rester.`,
+      },
+    ],
     { timeoutMs: 20000, temperature: enfant ? 0.8 : 0.85, maxTokens: enfant ? 500 : 700 }
   );
 }
