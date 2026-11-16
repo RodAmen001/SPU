@@ -91,7 +91,6 @@ export interface ReponseVue {
   meditation: string;
   reflexion: string;
   perspective: string;
-  angles: string[];
   questionOuverte: string | null;
   final: { echangeId: string; sessionId: string; etape?: number; niveau?: number; perspectiveDisponible?: boolean; suiteDisponible?: boolean } | null;
   enCours: boolean;
@@ -108,7 +107,6 @@ export const REPONSE_VIDE: ReponseVue = {
   meditation: '',
   reflexion: '',
   perspective: '',
-  angles: [],
   questionOuverte: null,
   final: null,
   enCours: false,

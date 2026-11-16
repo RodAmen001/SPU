@@ -250,7 +250,7 @@ export function VueReponse({
           >
             <FlaskConical className="h-4 w-4 text-[--muted-foreground]" aria-hidden />
             <span className="text-sm font-medium text-[--muted-foreground]">
-              La réflexion derrière la réponse — synthèse, sources et écoute du Mentor
+              La réflexion derrière la réponse — synthèse, sources et construction de la réponse
             </span>
             <ChevronDown className={`h-4 w-4 ml-auto text-[--muted-foreground] transition-transform ${reflexionOuverte ? 'rotate-180' : ''}`} aria-hidden />
           </button>
@@ -313,40 +313,6 @@ export function VueReponse({
         </p>
       )}
     </div>
-  );
-}
-
-export function AnglesMentor({ angles, enCours, choisir }: { angles: string[]; enCours: boolean; choisir?: (a: string) => void }) {
-  if (!angles.length) return null;
-  return (
-    <Card className="p-5 border-[--accent] apparu">
-      <h3 className="font-semibold text-[15px] mb-1.5">Deux questions pour affiner — si tu le souhaites</h3>
-      <p className="text-xs text-[--muted-foreground] leading-relaxed mb-3">
-        Elles m&apos;aident à mieux cerner ta préoccupation et à circonscrire la réponse. Tu n&apos;es pas obligé d&apos;y répondre :
-        partage plutôt librement ce que tu veux — un détail, un ressenti, un souvenir — ou poursuis sans rien préciser.
-      </p>
-      <ul className="space-y-2.5">
-        {angles.map((a, i) => (
-          <li key={i} className="flex gap-2.5 text-[15px] leading-relaxed">
-            <span className="shrink-0 h-6 w-6 rounded-full bg-[--accent]/30 text-[--foreground] text-xs flex items-center justify-center font-semibold mt-0.5">
-              {i + 1}
-            </span>
-            {choisir ? (
-              <button
-                onClick={() => choisir(a)}
-                className="text-left hover:text-[--primary] transition-colors"
-                title="Cliquer pour reprendre cette piste dans ta réponse"
-              >
-                {a}
-              </button>
-            ) : (
-              <span>{a}</span>
-            )}
-          </li>
-        ))}
-      </ul>
-      {enCours && <p className="text-xs text-[--muted-foreground] mt-3">Réponds librement — ou poursuis sans répondre, comme tu préfères.</p>}
-    </Card>
   );
 }
 

@@ -104,10 +104,11 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // La parabole-réponse et son interprétation doivent refléter LA SYNTHÈSE des
   // sources. Le premier arbitrage (sur la question, en parallèle) a laissé la
   // parabole sous le seuil ? On ré-arbitre alors les candidates DU CORPUS
-  // directement contre la synthèse. v5.0 : uniquement si la synthèse a une
-  // vraie confiance (≥ 50 %) — inutile de dépenser un appel IA contre un
-  // résumé extractif de repli.
-  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && (resultat.synthese.confiance ?? 0) >= 0.5 && !budgetEpuise(14000)) {
+  // directement contre la synthèse. v5.1 : PLUS DE VERROU DE CONFIANCE — même
+  // une synthèse extractive de repli porte un signal utile pour l'arbitre,
+  // qui voit TOUJOURS la question en plus de la synthèse. Un cadrage manqué à
+  // cause d'un seuil d'éligibilité est un scénario interdit.
+  if (match.sousSeuil && resultat.synthese?.texte && !budgetEpuise(12000)) {
     yield { type: 'status', step: 'reorientation' };
     const reorientee = await reArbitrerSurSynthese(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
     if (reorientee && !reorientee.sousSeuil) match = reorientee;
@@ -116,11 +117,14 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // ── v4.8 — Repli EN LIGNE : aucune parabole du corpus ne convient efficacement
   // ? Le SPU consulte une IA + un moteur de recherche pour RETROUVER une parabole
   // réelle et traditionnelle (jamais inventée), sourcée et vérifiée via
-  // l'encyclopédie, orientée vers la synthèse. En cas d'échec : la parabole du
-  // corpus la plus proche reste servie, honnêtement signalée sous le seuil.
-  if (match.sousSeuil && !modeDegrade && resultat.synthese?.texte && (resultat.synthese.confiance ?? 0) >= 0.5 && !budgetEpuise(16000)) {
+  // l'encyclopédie, orientée vers la synthèse — et vers la question. v5.1 :
+  // PLUS DE VERROU DE CONFIANCE, et ce repli s'applique AUSSI en mode dégradé
+  // (l'ancrage est alors la question elle-même). En cas d'échec de la recherche :
+  // la parabole du corpus la plus proche reste servie, honnêtement signalée.
+  if (match.sousSeuil && !budgetEpuise(18000)) {
     yield { type: 'status', step: 'enligne' };
-    const trouvee = await paraboleEnLigne(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
+    const ancrage = resultat.synthese?.texte || question;
+    const trouvee = await paraboleEnLigne(ancrage, question, opts.modeCorpus).catch(() => null);
     if (trouvee) match = trouvee;
   }
 

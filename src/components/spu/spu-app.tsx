@@ -1,12 +1,13 @@
-// SPU v4.7 — Application principale (single route, navigation par vues)
-// v4.7 : grande fluidité — matching parallèle aux sources, histoire et perspective
-// en parallèle, tonalité locale, escalade plafonnée, budget de réponse garanti.
-// v4.5 : sources adaptatives 2→3→4→5 (confiance ≥ 50 %, sinon meilleur score),
-// questions d'affinage facultatives (max 2, invitation douce, poursuite libre),
-// parole du Mentor repliée dans l'onglet réflexion, TOUTE la réponse lue par
-// le narrateur. Historique : v4.4 structure universelle de réponse (parabole +
-// interprétation + histoire + perspective), synthèse repliée, carte « Quoi de
-// neuf » ; v4.1 fil de discussion, musique MP3 par mode, théâtre sonore, compte.
+// SPU v5.1 — Application principale (single route, navigation par vues)
+// v5.1 : chaque requête reçoit UNE PARABOLE cadrée (ré-arbitrage vers la synthèse
+// puis recherche en ligne si le corpus ne cadre pas) — fin des questions d'affinage
+// et de la « simple écoute » du Mentor.
+// Historique : v4.7 grande fluidité (matching parallèle aux sources, histoire et
+// perspective en parallèle, tonalité locale, escalade plafonnée) ; v4.5 sources
+// adaptatives 2→3→4→5, parole du Mentor repliée dans l'onglet réflexion, TOUTE la
+// réponse lue par le narrateur ; v4.4 structure universelle de réponse (parabole +
+// interprétation + histoire + perspective) ; v4.1 fil de discussion, musique MP3
+// par mode, théâtre sonore, compte.
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,7 +26,7 @@ import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, typ
 import { VERSION_SPU } from '@/lib/spu/constants';
 import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
 import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
-import { VueReponse, EtapesEnDirect, AnglesMentor } from './reponse-view';
+import { VueReponse, EtapesEnDirect } from './reponse-view';
 import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fil-discussion';
 import { VueEnfant } from './child-view';
 import { VueJournal } from './journal-view';
@@ -732,10 +733,6 @@ function FluxMentor() {
         r.reflexion = String(d.text || '');
         setReponse({ ...r });
       },
-      angles: (d) => {
-        r.angles = (d.questions as string[]) || [];
-        setReponse({ ...r });
-      },
       questionOuverte: (d) => {
         r.questionOuverte = String(d.text || '');
         setReponse({ ...r });
@@ -787,15 +784,13 @@ function FluxMentor() {
     void appeler({ reponse: contenu, etape });
   };
 
-  // L'utilisateur n'est JAMAIS forcé de répondre aux questions d'affinage :
-  // il peut poursuivre sans rien préciser, et la suite reste complète.
+  // v5.1 : chaque message avance le dialogue et reçoit sa réponse complète.
   const poursuivreSansRepondre = () => {
     setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: '(je poursuis sans préciser davantage)' }]);
     void appeler({ reponse: '', saute: true, etape });
   };
 
   const dernierSpu = [...messages].reverse().find((m) => m.role === 'spu');
-  const anglesDisponibles = dernierSpu?.reponse?.angles || [];
   const dialogueFini = dernierSpu?.reponse?.final?.etape === 3 || dernierSpu?.reponse?.questionOuverte;
 
   return (
@@ -833,13 +828,8 @@ function FluxMentor() {
         />
       )}
 
-      {(etape === 2 || etape === 3) && anglesDisponibles.length > 0 && !reponse && (
+      {(etape === 2 || etape === 3) && !reponse && (
         <div className="mt-5 pl-9">
-          <AnglesMentor
-            angles={anglesDisponibles}
-            enCours={false}
-            choisir={(a) => setBrouillon(a)}
-          />
           <div className="mt-3">
             <Textarea
               value={brouillon}
@@ -852,7 +842,7 @@ function FluxMentor() {
             />
             <div className="flex flex-wrap justify-end gap-2 mt-2">
               <Button variant="ghost" onClick={() => { poursuivreSansRepondre(); setBrouillon(''); }} className="rounded-full min-h-[44px] text-[--muted-foreground]">
-                Poursuivre sans répondre
+                Avancer sans préciser davantage
               </Button>
               <Button onClick={() => { if (brouillon.trim()) { repondreAngle(brouillon.trim()); setBrouillon(''); } }} disabled={!brouillon.trim()} className="rounded-full min-h-[44px]">
                 <Send className="h-4 w-4 mr-2" aria-hidden /> {etape === 2 ? 'Continuer (étape 2/3)' : 'Recevoir la synthèse (3/3)'}

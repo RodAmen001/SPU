@@ -38,7 +38,7 @@ Si le problème persiste, tu peux toujours consulter les paraboles du corpus loc
 
 // v4.9 — Honnêteté en cas de panne (exigence du bilan de test) : l'utilisateur
 // doit savoir quand les sources ont échoué, jamais croire à une recherche fictive.
-export const NOTE_SOUS_SEUIL = `Parabole la plus proche de mon corpus pour ta question — mes sources n'ont pas permis d'affiner davantage ce choix aujourd'hui.`;
+export const NOTE_SOUS_SEUIL = `Aucune parabole de mon corpus ne cadrait assez finement avec ta requête, et la recherche en ligne n'a rien donné de vérifiable cette fois — je t'offre la plus proche, en toute honnêteté.`;
 export const BANNIERE_SOURCES_ECHOUEES = `Je n'ai pas pu joindre mes sources d'intelligence et de recherche : la synthèse est donc absente, et cette parabole n'a pas pu être orientée vers elle. Réessaie dans quelques instants — la parabole reste, elle, réelle et sourcée.`;
 
 // 21.6 — Message de détresse (modèle imposé)
