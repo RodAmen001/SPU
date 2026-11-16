@@ -13,7 +13,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, RotateCcw, SkipForward, Star } from 'lucide-react';
+import { Pause, Play, RotateCcw, SkipForward, Star, Volume2 } from 'lucide-react';
 import { getMoteurAudio, pistesDuMode, type ModeMusique } from '@/lib/spu/audio-engine';
 import { useSpuStore } from '@/lib/spu/store';
 
@@ -26,7 +26,8 @@ type NotesGlobales = Record<string, { moyenne: number; nb: number }>;
 
 /** Le cadre de notation, dans les deux variantes (panneau adjacent / compacte). */
 export function CadreMusique({ variante = 'panneau' }: { variante?: 'panneau' | 'compacte' }) {
-  const { audioActive } = useSpuStore();
+  const { audioActive, volume: volumeStore, setVolume } = useSpuStore();
+  const [volumeLocal, setVolumeLocal] = useState(Math.round((volumeStore ?? 0.3) * 100));
   const [piste, setPiste] = useState<PisteCourante | null>(null);
   const [enPause, setEnPause] = useState(false);
   const [notes, setNotes] = useState<NotesGlobales>({});
@@ -82,10 +83,20 @@ export function CadreMusique({ variante = 'panneau' }: { variante?: 'panneau' | 
   const globale = piste ? notes[piste.titre] : undefined;
   const compacte = variante === 'compacte';
 
+  // v6.5 — LE VOLUME de la musique de fond se règle DANS le cadre : même
+  // réglage que le curseur de la barre du haut (état partagé + moteur).
+  const reglerVolume = (v: number) => {
+    setVolumeLocal(v);
+    const f = Math.max(0, Math.min(1, v / 100));
+    setVolume(f);
+    getMoteurAudio().setVolume(f);
+  };
+
   return (
     <div className="rounded-xl border border-[--primary]/40 bg-[--card]/95 px-3 py-2 shadow-sm">
-      {/* Titre courant + note globale (une ligne, même en compact) */}
-      <p className={`font-medium leading-snug ${compacte ? 'text-[13px]' : 'text-sm'} truncate`} title={piste ? `${piste.titre} · ${piste.artiste}` : undefined}>
+      {/* Titre courant + note globale — le titre n'est JAMAIS tronqué : c'est
+          lui qu'on vient lire quand la musique a changé pendant la lecture. */}
+      <p className={`font-medium leading-snug ${compacte ? 'text-[13px]' : 'text-sm'} line-clamp-2`} title={piste ? `${piste.titre} · ${piste.artiste}` : undefined}>
         <span aria-hidden>♫ </span>
         {piste ? (
           <>
@@ -104,6 +115,22 @@ export function CadreMusique({ variante = 'panneau' }: { variante?: 'panneau' | 
           )}
         </p>
       )}
+
+      {/* v6.5 — VOLUME de la musique de fond, directement dans le cadre */}
+      <div className={`flex items-center gap-2 ${compacte ? 'mt-1.5' : 'mt-2'}`}>
+        <Volume2 className="h-3.5 w-3.5 text-[--muted-foreground] shrink-0" aria-hidden />
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={volumeLocal}
+          onChange={(e) => reglerVolume(Number(e.target.value))}
+          className="flex-1 h-1.5 accent-[--primary]"
+          aria-label="volume de la musique de fond"
+          title="Volume de la musique de fond"
+        />
+        <span className="text-[10px] text-[--muted-foreground] w-7 text-right tabular-nums">{volumeLocal}</span>
+      </div>
 
       {/* Notation 1-5 + commandes, sur la même ligne (compact) ou en deux rangées */}
       <div className={`flex items-center gap-1 ${compacte ? 'mt-1' : 'mt-2 flex-wrap'}`}>

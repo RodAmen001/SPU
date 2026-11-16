@@ -157,13 +157,15 @@ export function SpuApp() {
         naviguer={naviguer}
       />
       <main className="flex-1">
-        {/* v6.4 — SMARTPHONE : le cadre musique est un PETIT RECTANGLE épinglé en
-            haut, indépendant (à l'intérieur d'aucun autre cadre), qui n'empêche
-            pas les autres textes — noter, rejouer ou passer ne quitte jamais la
-            conversation. */}
+        {/* v6.5 — SMARTPHONE : le cadre musique est un PETIT RECTANGLE FIXÉ sous la
+            barre du haut (épinglé à TOUTE profondeur de défilement — le titre de
+            la chanson reste lisible sans remonter en début de conversation),
+            indépendant, hors de tout autre cadre. L'espace réservé en flux garde
+            le début du fil lisible : les textes glissent SOUS le rectangle. */}
+        {vueConversation && cadreMusiqueOuvert && <div className="lg:hidden h-[68px]" aria-hidden="true" />}
         {vueConversation && cadreMusiqueOuvert && (
-          <div className="lg:hidden sticky top-14 z-10 px-2 pt-2">
-            <div className="max-w-md mx-auto">
+          <div className="lg:hidden fixed top-14 left-0 right-0 z-20 px-2 pt-1.5 pointer-events-none">
+            <div className="pointer-events-auto max-w-md mx-auto">
               <CadreMusique variante="compacte" />
             </div>
           </div>
@@ -779,6 +781,7 @@ function FluxMentor() {
   const [brouillon, setBrouillon] = useState('');
   const [boostScenario, setBoostScenario] = useState<ScenarioBoost | null>(null);
   const [boostEnAttente, setBoostEnAttente] = useState<{ echangeId: string } | null>(null);
+  const [boostEchoue, setBoostEchoue] = useState(false); // v6.5 — échec annoncé, jamais silencieux
   const finaliser = useFinalisation();
 
   const appeler = async (corps: Record<string, unknown>) => {
@@ -869,9 +872,12 @@ function FluxMentor() {
     setReponse(null);
   };
 
-  // v6.2 — polling du BOOST préparé en arrière-plan : toutes les 5 s, jusqu'à
-  // 4 min. Dès que le scénario est prêt → l'offre « Lancer le BOOST ». En cas
-  // d'échec, la carte s'efface discrètement — jamais au détriment de la réponse.
+  // v6.2 — polling du BOOST préparé en arrière-plan : toutes les 5 s. v6.5 —
+  // la préparation (écriture du scénario + passe de relecture IA) prend
+  // SOUVENT plus de 4 minutes sur le CPU du serveur : le polling dure désormais
+  // JUSQU'À 10 MINUTES (120 essais) et un échec annonce clairement le repli —
+  // le BOOST est TOUJOURS proposé après les 3 requêtes du mode Mentor, jamais
+  // remplacé par un simple « nouveau dialogue ».
   useEffect(() => {
     if (!boostEnAttente) return;
     let vivant = true;
@@ -887,7 +893,13 @@ function FluxMentor() {
           setBoostEnAttente(null);
           return;
         }
-        if (j.echec || essais >= 48) setBoostEnAttente(null);
+        if (j.echec) {
+          setBoostEchoue(true);
+          setBoostEnAttente(null);
+        } else if (essais >= 120) {
+          setBoostEchoue(true);
+          setBoostEnAttente(null);
+        }
       } catch {
         /* le prochain tick réessaiera */
       }
@@ -977,17 +989,31 @@ function FluxMentor() {
         </div>
       )}
 
-      {/* v6.2 — le BOOST se prépare en arrière-plan : carte d'attente */}
+      {/* v6.2/6.5 — le BOOST se prépare en arrière-plan : carte d'attente honnête.
+          La préparation complète (écriture du scénario + passe de relecture IA)
+          prend souvent PLUSIEURS minutes sur le serveur — la carte reste en place
+          jusqu'à 10 minutes, le BOOST arrive toujours après les 3 requêtes. */}
       {boostEnAttente && !boostScenario && (
         <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-4 mt-5 flex items-start gap-3">
           <Zap className="h-5 w-5 mt-0.5 text-amber-600 animate-pulse shrink-0" aria-hidden />
           <div>
             <p className="font-semibold text-sm">⚡ BOOST en préparation…</p>
             <p className="text-xs text-[--muted-foreground] mt-0.5">
-              Ton théâtre du courage est en train d&apos;être écrit pour ce chemin parcouru — l&apos;offre s&apos;affichera ici dans un instant.
-              Ta réponse, elle, est complète ci-dessus.
+              Ton théâtre du courage est en train d&apos;être écrit, relu par l&apos;IA, puis gravé — cela prend
+              souvent plusieurs minutes. Ta réponse, elle, est complète ci-dessus ; l&apos;offre « Lancer le BOOST »
+              apparaîtra ici dès que le théâtre est prêt (tu peux lire la suite en attendant).
             </p>
           </div>
+        </div>
+      )}
+
+      {/* v6.5 — l'échec est ANNONCÉ, jamais silencieux : la personne sait où en est */}
+      {boostEchoue && !boostScenario && (
+        <div className="rounded-2xl border border-[--border] bg-[--card] p-3 mt-3">
+          <p className="text-sm text-[--muted-foreground]">
+            ⚡ Le BOOST n&apos;a pas pu être préparé cette fois (les moteurs IA étaient saturés) — ta synthèse
+            ci-dessus reste complète. Il sera de nouveau proposé à ton prochain dialogue de 3 requêtes.
+          </p>
         </div>
       )}
 
@@ -996,7 +1022,7 @@ function FluxMentor() {
 
       {dialogueFini && !reponse && (
         <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); setBoostEnAttente(null); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
+          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); setBoostEnAttente(null); setBoostEchoue(false); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
             <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouveau dialogue
           </Button>
         </div>

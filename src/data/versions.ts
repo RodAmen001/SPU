@@ -15,10 +15,20 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.5',
+    date: '16/11/2026',
+    titre: 'Volume et titre de la musique toujours à portée de main, et le BOOST toujours au rendez-vous après 3 requêtes',
+    actuelle: true,
+    points: [
+      "LE VOLUME DE LA MUSIQUE DE FOND SE RÈGLE DANS LE CADRE DE NOTATION : un curseur directement sous le titre — le même réglage que celui de la barre du haut.",
+      "LE TITRE DE LA CHANSON QUI PASSE EST TOUJOURS LISIBLE : sur smartphone le cadre est FIXÉ sous la barre du haut (épinglé à toute profondeur de défilement — plus besoin de remonter au début de la conversation), et le titre n'est jamais tronqué.",
+      "LE BOOST EST TOUJOURS PROPOSÉ APRÈS LES 3 REQUÊTES DU MODE MENTOR : la préparation (scénario + relecture IA) prend souvent plus de 4 minutes — l'attente passe à 10 minutes et l'échec, s'il arrive, est annoncé clairement au lieu d'être silencieux.",
+    ],
+  },
+  {
     version: 'v6.4',
     date: '16/11/2026',
     titre: 'Noter sans quitter le fil, retour en arrière, et le BOOST gravé comme une vraie pièce de théâtre',
-    actuelle: true,
     points: [
       "NOTER LA MUSIQUE SANS QUITTER JAMAIS TA CONVERSATION : le cadre musique est désormais ADJACENT au fil — une colonne à droite sur grand écran (la grande place libre), et sur smartphone un petit rectangle ÉPINGLÉ en haut, indépendant, qui n'empêche pas les autres textes et ne se place dans aucun autre cadre. Noter 1-5 étoiles, rejouer, pause, suivant : tout se fait pendant que la conversation continue.",
       "BOUTON RETOUR EN ARRIÈRE (haut de page) : il revient à la PAGE PRÉCÉDENTE (historique interne de navigation), pas forcément à l'accueil.",

@@ -142,7 +142,9 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
           );
           return;
         }
-        if (essais >= 48) {
+        // v6.5 — la préparation (scénario + relecture IA) dépasse souvent 4 min
+        // sur le serveur : le polling attend jusqu'à 10 minutes avant d'abandonner.
+        if (essais >= 120) {
           setMessages((ms) =>
             ms.map((mm) => (mm.id === attente.id && mm.reponse ? { ...mm, reponse: { ...mm.reponse, boostEnAttente: undefined } } : mm))
           );
