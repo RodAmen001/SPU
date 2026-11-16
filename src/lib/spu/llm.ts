@@ -226,7 +226,14 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, label = 'opérat
   ]);
 }
 
-/** Appel LLM simple avec timeout, un retry et temporisation sur 429 (quota temporaire). */
+/** Appel LLM simple avec timeout et PERSISTANCE RÉELLE (v6.1 — exigence du
+ *  concepteur : AU MOINS CINQ TENTATIVES sur les IA avant d'abandonner).
+ *  Ordre : z.ai (2 essais : config fraîche + attente 429), puis la chaîne de
+ *  secours complète (Groq → GitHub Models → Pollinations GET → POST ×2) — et si
+ *  TOUT a échoué, une DEUXIÈME PASSE complète après une courte respiration :
+ *  les fenêtres de quota tournent vite (Groq 30/min, GitHub 15/min, Pollinations
+ *  45 s/IP), une fenêtre fermée au premier passage est souvent ouverte au second.
+ *  Jusqu'à 12 tentatives réelles, jamais moins de 6 tant que le budget le permet. */
 export async function llmChat(
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   opts: { timeoutMs?: number; temperature?: number; maxTokens?: number } = {}
@@ -237,8 +244,10 @@ export async function llmChat(
     throw new Error('budget épuisé — repli local');
   }
   let derniereErreur: unknown = null;
-  let retentations429 = 0;
-  for (let essai = 0; essai < 4; essai++) {
+  let tentatives = 0;
+  // ── z.ai : jusqu'à 2 essais (config re-provisionnée, attente sur 429) ──
+  for (let essai = 0; essai < 2; essai++) {
+    tentatives++;
     const delai = delaiEffectif(timeoutMs);
     if (delai === null) throw new Error('budget épuisé — repli local');
     try {
@@ -259,15 +268,10 @@ export async function llmChat(
         await recreeZai();
         continue;
       }
-      if (/429|too many/i.test(msg)) {
-        // Quota momentané : UNE seule petite attente, puis on bascule au secours —
-        // insister longtemps ne fait que gonfler la latence totale.
-        if (retentations429 < 1) {
-          retentations429++;
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
-        }
-        break;
+      if (/429|too many/i.test(msg) && essai === 0) {
+        // Quota momentané : UNE petite attente puis second essai — ensuite secours.
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
       }
       // v4.9 : quelle que soit l'erreur du SDK (configuration absente, hébergement
       // externe, réseau, format inattendu…), on passe TOUJOURS à la chaîne de
@@ -277,18 +281,27 @@ export async function llmChat(
   }
   // ── Chaîne de secours gratuite (aucune clé requise) : le SPU répond partout.
   // v4.9 : plusieurs moteurs essayés à la suite — l'échec de l'un bascule sur
-  // le suivant, jusqu'à ~20 s de patience acceptées par le concepteur.
-  for (const moteur of CHAINE_SECOURS) {
-    if (budgetEpuise(3000)) break;
-    const delaiSecours = delaiEffectif(Math.min(moteur.delaiMs, timeoutMs + 20000), 2000);
-    if (!delaiSecours) break;
-    try {
-      return await moteur.appeler({ messages, timeoutMs: delaiSecours, temperature, maxTokens });
-    } catch (e) {
-      derniereErreur = e;
-      continue;
+  // le suivant. v6.1 : DEUX PASSES complètes (≥ 5 tentatives exigées avant
+  // abandon) — entre les deux, une respiration laisse tourner les fenêtres.
+  for (let passe = 0; passe < 2; passe++) {
+    if (passe > 0) {
+      if (budgetEpuise(9000)) break;
+      await new Promise((r) => setTimeout(r, 2500)); // respiration : les quotas tournent
+    }
+    for (const moteur of CHAINE_SECOURS) {
+      if (budgetEpuise(3000)) break;
+      const delaiSecours = delaiEffectif(Math.min(moteur.delaiMs, timeoutMs + 20000), 2000);
+      if (!delaiSecours) break;
+      tentatives++;
+      try {
+        return await moteur.appeler({ messages, timeoutMs: delaiSecours, temperature, maxTokens });
+      } catch (e) {
+        derniereErreur = e;
+        continue;
+      }
     }
   }
+  console.error(`[llm] abandon après ${tentatives} tentatives sur les IA :`, derniereErreur instanceof Error ? derniereErreur.message : derniereErreur);
   throw derniereErreur;
 }
 

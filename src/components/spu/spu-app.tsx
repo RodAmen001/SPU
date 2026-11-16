@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Sparkles, Compass, Baby, NotebookPen, Library, Eye, ShieldCheck,
   Volume2, VolumeX, ArrowLeft, RefreshCw, Send, AudioLines, Music4,
-  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf, Repeat,
+  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf, Repeat, SkipForward,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { streamSSE } from '@/lib/spu/sse-client';
@@ -321,10 +321,21 @@ function EnTete({
               <span className="hidden lg:inline ml-1 text-xs">Voix</span>
             </Button>
           </ReglagesVoix>
-          {/* Musique de fond */}
-          <div className="flex items-center gap-1.5" title="Musique de fond — 51 musiques libres, variées à chaque conversation">
+          {/* Musique de fond + MUSIQUE SUIVANTE (v6.1 : passer une piste qui déplait) */}
+          <div className="flex items-center gap-1.5" title="Musique de fond — 100 musiques libres, variées à chaque conversation">
             <Music4 className={`h-4 w-4 ${audioActive ? 'text-[--primary]' : 'text-[--muted-foreground]'}`} aria-hidden />
             <Switch checked={audioActive} onCheckedChange={basculeAudio} aria-label="musique de fond" />
+            {audioActive && (
+              <Button
+                variant="ghost" size="sm"
+                onClick={() => getMoteurAudio().pisteSuivante()}
+                className="rounded-full px-1.5"
+                title="Musique suivante — passer cette piste"
+                aria-label="musique suivante"
+              >
+                <SkipForward className="h-4 w-4 text-[--primary]" aria-hidden />
+              </Button>
+            )}
           </div>
           {audioActive && (
             <input
@@ -782,9 +793,8 @@ function FluxMentor() {
         : undefined;
       const msg = finaliser(r);
       if (boostRecu) {
-        // v6.0 — le BOOST joue le grand final : la narration classique s'efface
-        // devant le théâtre (la réponse reste complète dans le fil).
-        ttsStop();
+        // v6.1 — le BOOST est PROPOSÉ sous la réponse : la narration normale se
+        // joue, et la personne décide si (et quand) elle lance le théâtre.
         setBoostScenario(boostRecu);
       }
       setMessages((m) => [...m, { ...msg, etiquette }]);

@@ -1,10 +1,10 @@
 // Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
 
 /** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
-export const VERSION_SPU = '6.0';
+export const VERSION_SPU = '6.1';
 
 // Identité réseau du SPU (politique Wikimedia : User-Agent descriptif + contact)
-export const UA_SPU = 'SPU/6.0 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
+export const UA_SPU = 'SPU/6.1 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',

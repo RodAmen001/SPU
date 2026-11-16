@@ -200,6 +200,17 @@ export class MoteurAudio {
   }
 
   /**
+   * v6.1 — « MUSIQUE SUIVANTE » : l'utilisateur passe une piste qui lui déplait.
+   * Le mode courant est conservé, la piste suivante du sac démarre en fondu —
+   * disponible à tout moment depuis la barre de menu.
+   */
+  pisteSuivante(): PisteLibre | null {
+    if (typeof window === 'undefined' || !this.modeActuel) return null;
+    this.jouerMode(this.modeActuel); // joueMode piste déjà la SUIVANTE du sac
+    return this.infoCourante;
+  }
+
+  /**
    * Démarre (ou bascule avec fondu) la musique de fond : une NOUVELLE piste à
    * chaque appel. Repli automatique sur le fond local si le MP3 en ligne est
    * indisponible (hors-ligne, blocage réseau).

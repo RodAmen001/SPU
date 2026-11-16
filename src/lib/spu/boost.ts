@@ -130,14 +130,16 @@ Astuce de distribution : le Conteur → "conteur" ; le héros jeune homme → "h
 // ── Génération ────────────────────────────────────────────────────────────────
 export async function genererBoost(
   chemin: string,
-  audience: 'adulte' | 'enfant' = 'adulte'
+  audience: 'adulte' | 'enfant' = 'adulte',
+  opts: { timeoutMs?: number } = {}
 ): Promise<ScenarioBoost | null> {
+  const timeoutMs = opts.timeoutMs ?? 55000;
   // deux tentatives : les moteurs gratuits ont des fenêtres de quota — un seul
   // échec ne doit pas priver la personne de son BOOST.
   for (let essai = 0; essai < 2; essai++) {
     try {
       const brut = await llmChat([{ role: 'user', content: promptBoost(chemin, audience) }], {
-        timeoutMs: 55000,
+        timeoutMs,
         temperature: essai === 0 ? 0.85 : 0.75,
         maxTokens: 2800,
       });

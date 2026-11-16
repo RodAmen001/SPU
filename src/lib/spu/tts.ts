@@ -88,6 +88,10 @@ function voixFrancaise(): SpeechSynthesisVoice | null {
 // Lecture neuronale en cours (pour pause / reprise / arrêt propres)
 let lectureNeurale: { audio: HTMLAudioElement; url: string; terminer: () => void } | null = null;
 
+// Annulation de la lecture en cours : ttsStop() interrompt aussi les
+// générations en vol (plus aucun fetch fantôme après un arrêt).
+let controleLecture: AbortController | null = null;
+
 function attacherDucking(): void {
   try {
     // import paresseux pour éviter tout cycle de module
@@ -105,19 +109,24 @@ function relacherDucking(): void {
   }
 }
 
-async function parlerNeural(
-  texte: string,
-  profil: ProfilVoix,
-  debitGlobal: number,
-  fin?: () => void
-): Promise<void> {
+/** GÉNÉRATION seule : produit le WAV d'un segment via Piper — SANS le jouer.
+ *  C'est la clé de la narration CONTINUE (v6.1) : chaque segment est généré
+ *  EN AVANCE, pendant que le précédent se joue, et la lecture enchaîne les
+ *  fichiers déjà prêts — plus jamais un blanc de « génération » entre deux
+ *  phrases. */
+async function genererBlobNeural(texte: string, profil: ProfilVoix, debitGlobal: number): Promise<Blob> {
   const res = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ voix: profil.id, texte, debit: debitGlobal }),
+    signal: controleLecture?.signal,
   });
   if (!res.ok) throw new Error('voix neuronale indisponible');
-  const blob = await res.blob();
+  return await res.blob();
+}
+
+/** LECTURE seule : joue un WAV déjà prêt (le plus vite possible, sans latence). */
+async function jouerBlobNeural(blob: Blob): Promise<void> {
   if (lectureAnnulee) return;
   await new Promise<void>((resoudre) => {
     const url = URL.createObjectURL(blob);
@@ -141,7 +150,6 @@ async function parlerNeural(
     attacherDucking();
     audio.play().catch(terminer);
   });
-  fin?.();
 }
 
 interface OptionsParler {
@@ -166,30 +174,77 @@ function parlerNavigateur(texte: string, opts: OptionsParler): Promise<void> {
   });
 }
 
-async function parlerUnSegment(texte: string, opts: OptionsParler): Promise<void> {
-  if (!texte.trim()) return;
-  const profil = opts.profil || VOIX_SPU[0];
-  const debit = opts.debitGlobal ?? 1;
-  if (etatNeuralesClient.disponible) {
-    try {
-      await parlerNeural(texte, profil, debit, opts.fin);
-      return;
-    } catch {
-      /* moteur momentanément indisponible → repli navigateur */
+interface PriseDeParole {
+  texte: string;
+  profil: ProfilVoix;
+  pauseAvantMs?: number; // respiration VOLONTAIRE (changement de personnage)
+}
+
+/** Le moteur de narration CONTINUE (v6.1).
+ *  Principe : une file d'attente de sons. Trois générations Piper tournent
+ *  toujours EN AVANCE de la lecture ; dès qu'un segment finit de se jouer, le
+ *  suivant est DÉJÀ prêt dans la file — la voix enchaîne sans aucun blanc.
+ *  Si Piper tombe en cours de route : repli navigateur pour le reste du texte. */
+async function lireEnContinu(prises: PriseDeParole[], debit: number) {
+  if (!prises.length) return;
+  const neurale = etatNeuralesClient.disponible;
+
+  if (!neurale) {
+    // navigateur : la synthèse locale est déjà continue (file interne du navigateur)
+    for (const p of prises) {
+      if (lectureAnnulee) return;
+      if (p.pauseAvantMs) await pauseMs(p.pauseAvantMs);
+      await parlerNavigateur(p.texte, { profil: p.profil, debitGlobal: debit });
+    }
+    return;
+  }
+
+  // File de génération : 3 segments préparés en permanence devant la lecture.
+  const EN_AVANCE = 3;
+  let curseur = 0; // prochain segment à générer
+  let lus = 0; // segments déjà joués (et retirés de la file)
+  let piperTombe = false; // Piper indisponible en cours de route → repli navigateur
+  const file: Promise<Blob | null>[] = [];
+  const lancerGeneration = () => {
+    while (curseur < prises.length && file.length - lus < EN_AVANCE) {
+      const p = prises[curseur];
+      const promesse = genererBlobNeural(p.texte, p.profil, debit)
+        .then((b) => b as Blob)
+        .catch(() => null); // échec → null : le segment passera au repli navigateur
+      file.push(promesse);
+      curseur++;
+    }
+  };
+
+  for (let i = 0; i < prises.length; i++) {
+    if (lectureAnnulee) return;
+    const p = prises[i];
+    if (p.pauseAvantMs) await pauseMs(p.pauseAvantMs);
+    lancerGeneration();
+    const blob = await file.shift()!; // attend le son déjà en génération
+    lus++;
+    if (lectureAnnulee) return;
+    if (blob && !piperTombe) {
+      await jouerBlobNeural(blob);
+    } else {
+      // Piper indisponible pour ce segment → repli navigateur, et on y reste
+      // (évite d'alterner voix neuronale et voix navigateur au fil du texte)
+      piperTombe = true;
+      await parlerNavigateur(p.texte, { profil: p.profil, debitGlobal: debit });
     }
   }
-  await parlerNavigateur(texte, opts);
 }
 
 const pauseMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Découpe un bloc de texte en segments de ~220 caractères aux frontières de phrases. */
+/** Découpe un bloc de texte en segments de ~300 caractères aux frontières de
+ *  phrases — de grands segments = moins de jonctions = narration plus fluide. */
 function decouperNarration(texte: string): string[] {
   const phrases = texte.match(/[^.!?…]+[.!?…]+["»)\s]*|[^.!?…]+$/g) || [texte];
   const segments: string[] = [];
   let courant = '';
   for (const ph of phrases) {
-    if ((courant + ph).length > 220 && courant) {
+    if ((courant + ph).length > 300 && courant) {
       segments.push(courant.trim());
       courant = ph;
     } else courant += ph;
@@ -206,16 +261,26 @@ export async function ttsParler(texte: string, opts: OptionsParler = {}) {
   ttsStop();
   await verifierNeurales();
   lectureAnnulee = false;
-  for (const seg of decouperNarration(texte)) {
-    if (lectureAnnulee) return;
-    await parlerUnSegment(seg, opts);
-    await pauseMs(120);
+  controleLecture = new AbortController();
+  const profil = opts.profil || VOIX_SPU[0];
+  try {
+    // v6.1 — narration CONTINUE : un seul flux de prises de parole, aucune
+    // pause intercalée entre les segments (le Piper respire déjà tout seul).
+    await lireEnContinu(
+      decouperNarration(texte).map((seg) => ({ texte: seg, profil })),
+      opts.debitGlobal ?? 1
+    );
+  } finally {
+    controleLecture = null;
+    opts.fin?.();
   }
 }
 
 // ── Théâtre sonore : narration + dialogues avec voix distinctes ───────────────
 // Les passages entre « … » sont parlés par des personnages (voix en rotation),
-// le reste par le narrateur. Respiration de 220 ms entre chaque prise de parole.
+// le reste par le narrateur — le tout DANS LE MÊME FLUX CONTINU (v6.1) : les
+// voix des personnages se préparent pendant que le narrateur parle. Une seule
+// respiration légère (120 ms) marque le changement de preneur de parole.
 export async function lireTheatre(
   texte: string,
   reglages: { narrateur: string; personnages: string[]; debit: number } = { ...VOIX_PAR_DEFAUT, debit: 1 }
@@ -224,38 +289,41 @@ export async function lireTheatre(
   ttsStop();
   await verifierNeurales();
   lectureAnnulee = false;
+  controleLecture = new AbortController();
 
   const voixNarrateur = profilParId(reglages.narrateur);
   const voixPersos = (reglages.personnages.length ? reglages.personnages : VOIX_PAR_DEFAUT.personnages).map(profilParId);
 
-  // Découpage : alternance narration / dialogues « … »
+  // Découpage : alternance narration / dialogues « … » — flatten en prises
   const morceaux = texte.split(/(«[^»]*»)/g).filter((m) => m.trim());
+  const prises: PriseDeParole[] = [];
   let indicePerso = 0;
-
+  let dernier = '';
   for (const morceau of morceaux) {
-    if (lectureAnnulee) return;
     const estDialogue = /^«[^»]*»$/.test(morceau.trim());
     if (estDialogue) {
       const profil = voixPersos[indicePerso % Math.max(1, voixPersos.length)];
       indicePerso++;
-      await parlerUnSegment(morceau, { profil, debitGlobal: reglages.debit });
+      prises.push({ texte: morceau.trim(), profil, pauseAvantMs: dernier === 'perso' ? 220 : 140 });
+      dernier = 'perso';
     } else {
       for (const seg of decouperNarration(morceau)) {
-        if (lectureAnnulee) return;
-        await parlerUnSegment(seg, { profil: voixNarrateur, debitGlobal: reglages.debit });
+        prises.push({ texte: seg, profil: voixNarrateur, pauseAvantMs: dernier === 'perso' ? 140 : 0 });
+        dernier = 'narr';
       }
     }
-    await pauseMs(220); // respiration entre les prises de parole
+  }
+  try {
+    await lireEnContinu(prises, reglages.debit);
+  } finally {
+    controleLecture = null;
   }
 }
 
 /** Bouton « écouter » du panneau Voix : même chaîne que la lecture réelle. */
 export async function ttsEssayer(idProfil: string, phrase: string, debit: number) {
   if (typeof window === 'undefined') return;
-  ttsStop();
-  await verifierNeurales();
-  lectureAnnulee = false;
-  await parlerUnSegment(phrase, { profil: profilParId(idProfil), debitGlobal: debit, fin: () => {} });
+  await ttsParler(phrase, { profil: profilParId(idProfil), debitGlobal: debit });
 }
 
 export function ttsPause() {
@@ -284,6 +352,11 @@ export function ttsReprise() {
 
 export function ttsStop() {
   lectureAnnulee = true; // stoppe la boucle neuronale dès le segment courant
+  try {
+    controleLecture?.abort(); // v6.1 — annule aussi les générations en vol
+  } catch {
+    /* déjà annulé */
+  }
   if (lectureNeurale) {
     const l = lectureNeurale;
     lectureNeurale = null;

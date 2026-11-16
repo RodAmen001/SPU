@@ -96,14 +96,15 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         r.current.erreur = String(d.error || 'Erreur');
         setReponse({ ...r.current });
       },
-    }, 240000); // le BOOST a son propre temps : garde-fou allongé
-    // Stream terminé → bulle horodatée + jingle + lecture complète par le narrateur,
-    // SAUF si un BOOST est orchestré : le théâtre multi-voix prend le relais.
+    }, 240000); // garde-fou allongé (flux + préparation du BOOST)
+    // Stream terminé → bulle horodatée + jingle + lecture complète par le narrateur.
+    // v6.1 — le BOOST est PROPOSÉ (carte « Lancer le BOOST » dans la bulle) : la
+    // narration normale se joue toujours, et l'enfant décide de lancer le théâtre.
     r.current.enCours = false;
     const finie = { ...r.current };
     setMessages((m) => [...m, { id: uid(), role: 'spu', heure: heureMaintenant(), reponse: { ...finie, heure: null } }]);
     if (getMoteurAudio().volume > 0) getMoteurAudio().jingleReponse();
-    if (ttsActive && !finie.boost) {
+    if (ttsActive) {
       const texte = texteNarrationComplete(finie);
       if (texte.trim()) void ttsParler(texte, { profil: profilParId(voixNarrateur), debitGlobal: debitVoix });
     }
@@ -111,6 +112,39 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
   };
 
   const dernierSpu = [...messages].reverse().find((m) => m.role === 'spu');
+
+  // v6.1 — la zone de question est disponible AVANT et APRÈS le fil : l'enfant
+  // pose une nouvelle question juste après la réponse, dans la MÊME session —
+  // jamais de « nouvelle discussion » obligatoire (c'est la continuité de la
+  // série qui permet au BOOST de conclure un même sujet).
+  const formulaireQuestion = (classes: string) => (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        poser(question);
+      }}
+      className={classes}
+    >
+      <div className="flex gap-2">
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Écris ta question ici…"
+          className="flex-1 h-14 rounded-2xl border-2 border-[--border] bg-[--card] px-5 text-lg focus:outline-none focus:border-[--accent]"
+          maxLength={500}
+          aria-label="ta question"
+        />
+        <Button type="submit" size="lg" disabled={!!reponse?.enCours || !question.trim()} className="h-14 rounded-2xl text-lg px-7">
+          {reponse?.enCours ? '…' : 'Raconte !'}
+        </Button>
+      </div>
+      {messages.length > 0 && !reponse && (
+        <p className="text-center text-sm text-[--muted-foreground] mt-2">
+          Une autre question ? Pose-la tout de suite — on continue la même histoire.
+        </p>
+      )}
+    </form>
+  );
 
   return (
     <div className="min-h-[calc(100vh-8rem)]">
@@ -158,25 +192,7 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         ))}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          poser(question);
-        }}
-        className="flex gap-2 mb-8"
-      >
-        <input
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Écris ta question ici…"
-          className="flex-1 h-14 rounded-2xl border-2 border-[--border] bg-[--card] px-5 text-lg focus:outline-none focus:border-[--accent]"
-          maxLength={500}
-          aria-label="ta question"
-        />
-        <Button type="submit" size="lg" disabled={!!reponse?.enCours || !question.trim()} className="h-14 rounded-2xl text-lg px-7">
-          {reponse?.enCours ? '…' : 'Raconte !'}
-        </Button>
-      </form>
+      {formulaireQuestion('mb-8')}
 
       {/* Fil de discussion enfant */}
       <div className="space-y-6" aria-live="polite">
@@ -251,10 +267,13 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         )}
       </div>
 
+      {/* v6.1 — question immédiate après la réponse : la zone est ICI, en bas du fil */}
+      {!reponse && formulaireQuestion('mt-8')}
+
       {messages.length > 0 && !reponse && (
-        <div className="flex justify-center mt-8">
-          <Button variant="outline" onClick={() => setMessages([])} className="rounded-full h-12 text-base">
-            <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouvelle discussion
+        <div className="flex justify-center mt-6">
+          <Button variant="ghost" onClick={() => setMessages([])} className="rounded-full h-10 text-sm text-[--muted-foreground]">
+            <RefreshCw className="h-3.5 w-3.5 mr-2" aria-hidden /> Effacer le fil (nouveau sujet)
           </Button>
         </div>
       )}

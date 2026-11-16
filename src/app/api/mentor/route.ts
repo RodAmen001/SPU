@@ -10,7 +10,7 @@ import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif } from '@/lib/spu/flux';
 import { genererBoost, cheminBoost } from '@/lib/spu/boost';
-import { avecBudget, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
+import { avecBudget, budgetRestant, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -61,15 +61,34 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       const status = (step: string) => send('status', { step });
 
-      // v6.0 — LE BOOST est orchestré APRÈS le budget principal : il a son propre
-      // temps et ne peut jamais amputer ni retarder la réponse du flux.
-      let finalEtape3: { echangeId: string } | null = null;
-      let sessionIdFinal = '';
-      let boostAOrchestrer: string | null = null;
-
       // Budget global de l'étape Mentor : au-delà, les appels IA cèdent la place
       // aux modèles locaux — la réponse complète est toujours servie.
       await avecBudget(BUDGET_MENTOR_MS, async () => {
+      // v6.1 — LE BOOST est prêt DÈS QUE LA 3ᵉ QUESTION TROUVE SA RÉPONSE : il est
+      // généré DANS le flux (jamais après le final — un travail post-réponse
+      // dépassait le délai du proxy et faisait tomber la requête en 502), puis
+      // PROPOSÉ à la personne — jamais lancé automatiquement.
+      const orchestrerBoost = async (cheminBoostTexte: string, echangeId: string) => {
+        try {
+          if (budgetRestant() < 58000) {
+            console.error('[api/mentor] boost sauté (budget restant', Math.round(budgetRestant() / 1000), 's) — la réponse passe avant tout');
+            return;
+          }
+          status('boost');
+          const delaiBoost = Math.max(25000, Math.min(38000, budgetRestant() - 15000));
+          const scenario = await genererBoost(cheminBoostTexte, 'adulte', { timeoutMs: delaiBoost });
+          if (scenario) {
+            send('boost', { scenario, mode: 'mentor' });
+            db.echange.update({
+              where: { id: echangeId },
+              data: { payload: JSON.stringify({ type: 'mentor-boost', titre: scenario.titre, heros: scenario.heros }) },
+            }).catch(() => {});
+          }
+        } catch (e) {
+          console.error('[api/mentor] boost (silencieux) :', e instanceof Error ? e.message : e);
+        }
+      };
+
       try {
         // Session + état — rattachée au compte SPU si l'utilisateur est connecté
         const compte = await utilisateurDeReq(req).catch(() => null);
@@ -277,10 +296,9 @@ export async function POST(req: NextRequest) {
           send('question-ouverte', { text: QUESTION_OUVERTE_FINALE });
           etat.etape = 1;
           await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
-          // v6.0 — la 3ᵉ étape est close : le BOOST se prépare (hors budget principal)
-          finalEtape3 = { echangeId: echLibre3.id };
-          sessionIdFinal = session.id;
-          boostAOrchestrer = [etat.questionInitiale, ...(etat.partages || [])].filter(Boolean).join('\n');
+          // v6.1 — le BOOST est prêt (proposé, jamais imposé) puis le final part
+          await orchestrerBoost([etat.questionInitiale, ...(etat.partages || [])].filter(Boolean).join('\n'), echLibre3.id);
+          send('final', { echangeId: echLibre3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
           return;
         }
         const p0 = await phase0(reponse);
@@ -317,34 +335,17 @@ export async function POST(req: NextRequest) {
 
         etat.etape = 1; // prêt pour un nouveau cycle
         await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
-        // v6.0 — la toute dernière question du Mentor vient d'être servie : LE BOOST
-        finalEtape3 = { echangeId: echange3.id };
-        sessionIdFinal = session.id;
-        boostAOrchestrer = chemin;
+        // v6.1 — la 3ᵉ question vient de trouver sa réponse : le BOOST est prêt
+        // (généré dans le flux, PROPOSÉ à la personne, jamais imposé)
+        await orchestrerBoost(chemin, echange3.id);
+        send('final', { echangeId: echange3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
       } catch (err) {
         console.error('[api/mentor]', err);
         send('erreur', { message: MESSAGE_ERREUR_SOURCES });
+      } finally {
+        controller.close();
       }
       });
-
-      // ── v6.0 — ORCHESTRATION DU BOOST (après la 3ᵉ question, hors budget principal :
-      // le théâtre a son propre temps et ne peut jamais amputer la réponse reçue) ──
-      if (finalEtape3) {
-        try {
-          const scenario = boostAOrchestrer ? await genererBoost(boostAOrchestrer, 'adulte') : null;
-          if (scenario) {
-            send('boost', { scenario, mode: 'mentor' });
-            db.echange.update({
-              where: { id: finalEtape3.echangeId },
-              data: { payload: JSON.stringify({ type: 'mentor-boost', titre: scenario.titre, heros: scenario.heros }) },
-            }).catch(() => {});
-          }
-        } catch (e) {
-          console.error('[api/mentor] boost (silencieux) :', e instanceof Error ? e.message : e);
-        }
-        send('final', { echangeId: finalEtape3.echangeId, sessionId: sessionIdFinal, etape: 3, perspectiveDisponible: false });
-      }
-      controller.close();
     },
   });
 

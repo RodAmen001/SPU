@@ -15,10 +15,22 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.1',
+    date: '16/11/2026',
+    titre: 'La voix qui coule sans silence, la musique qui se passe, le BOOST qui se choisit',
+    actuelle: true,
+    points: [
+      'NARRATION CONTINUE (exigence du concepteur) : chaque segment du texte est généré par les voix neuronales PENDANT que le précédent se joue (file de préchargement, 3 segments en avance) — plus aucun blanc de « génération » entre deux phrases ; segments allongés à ~300 caractères, pauses intercalées supprimées, même fluidité pour le théâtre du BOOST.',
+      "Bouton « MUSIQUE SUIVANTE » (exigence du concepteur) : toujours visible dans la barre du haut dès que la musique joue — une piste qui déplait se passe d'un clic, en fondu doux, sans couper l'ambiance.",
+      "BOOST AU CHOIX de l'utilisateur (exigence du concepteur) : le scénario est prêt DÈS QUE la 3ᵉ question du Mentor trouve sa réponse — il est généré dans le flux (le travail post-réponse dépassait le délai du proxy et provoquait des 502) et PROPOSÉ sous la réponse : « Lancer le BOOST » — maintenant, plus tard, ou jamais. La narration normale se joue toujours.",
+      "MODE ENFANT en fil continu (exigence du concepteur) : la zone de question est disponible AVANT et APRÈS la réponse — l'enfant pose une nouvelle question tout de suite, dans la MÊME session, jamais de « nouvelle discussion » obligatoire ; c'est cette continuité qui permet au BOOST (prêt dès la 3ᵉ question corrélative, bande dessinée offerte) de conclure un même sujet.",
+      'PERSISTANCE RÉELLE sur les IA : au moins 5 tentatives avant abandon — z.ai (2 essais), puis la chaîne complète Groq → GitHub Models → Pollinations ×3, et une DEUXIÈME PASSE complète après une respiration (les fenêtres de quota tournent) : jusqu\'à 12 tentatives réelles.',
+    ],
+  },
+  {
     version: 'v6.0',
     date: '16/11/2026',
     titre: "Le BOOST, l'Oracle Inversé et les 12 voix : le grand chantier du courage",
-    actuelle: true,
     points: [
       "RÈGLE DURE — au moins DEUX sources pour chaque réponse (exigence du concepteur) : la synthèse n'est jamais livrée avec une seule source ; trois passes de patience, rafale finale sur toutes les sources restantes, et le LLM de synthèse doit citer au moins deux sources.",
       "Mode ORACLE INVERSÉ (remplace Deep) : le SPU présente UNE parabole sans son interprétation ; tu dis ce que tu en comprends ; il analyse ta lecture face aux interprétations des intelligences réflexives, te donne LA BONNE INTERPRÉTATION, une APPRÉCIATION valorisante (jamais rabaisser) et une ORIENTATION née du rapprochement ta réponse ↔ parabole.",
