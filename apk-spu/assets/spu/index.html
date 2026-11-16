@@ -30,19 +30,24 @@
       </svg>
       <h1>SPU <span>Pocket</span></h1>
       <p class="sous-titre">Système Parabolique Universel</p>
-      <p class="badge-eval">Version d'évaluation 1.2 — des mises à jour régulières viendront ✨</p>
+      <p class="badge-eval">Version d'évaluation 1.3 — des mises à jour régulières viendront ✨</p>
     </div>
 
     <div class="cartes">
+      <button class="carte" data-nav="inversee">
+        <span class="carte-ico">🔄</span>
+        <span class="carte-titre">Oracle Inversé <span class="badge-nouveau">nouveau</span></span>
+        <span class="carte-desc">Le renversement : je te donne <b>UNE parabole sans son interprétation</b> — dis ce que TU comprends, et je t'analyse ta lecture. Fonctionne <b>hors ligne</b>.</span>
+      </button>
       <button class="carte" data-nav="demander">
         <span class="carte-ico">💬</span>
-        <span class="carte-titre">Poser une question <span class="badge-nouveau">nouveau</span></span>
+        <span class="carte-titre">Poser une question</span>
         <span class="carte-desc">Tape ta question et reçois une réponse — <b>sans serveur</b> (mode nomade) ou en narration complète avec un serveur SPU.</span>
       </button>
       <button class="carte" data-nav="bibliotheque">
         <span class="carte-ico">📖</span>
         <span class="carte-titre">Bibliothèque</span>
-        <span class="carte-desc"><b id="nb-textes">65</b> paraboles et fables, avec leurs interprétations. Fonctionne <b>hors ligne</b>.</span>
+        <span class="carte-desc"><b id="nb-textes">100</b> paraboles et fables, avec leurs interprétations. Fonctionne <b>hors ligne</b>.</span>
       </button>
       <button class="carte" data-nav="connexion">
         <span class="carte-ico">🌐</span>
@@ -117,6 +122,43 @@
     </div>
   </section>
 
+  <!-- ══════════ ORACLE INVERSÉ (v1.3 — comme le WebSPU v6) ══════════ -->
+  <section id="ecran-inversee" class="ecran">
+    <header class="barre">
+      <button class="retour" data-nav="accueil" aria-label="Retour">‹</button>
+      <h2>Oracle Inversé</h2>
+    </header>
+    <div class="contenu">
+      <div class="bloc">
+        <p>C'est le renversement : <b>je te donne d'abord la parabole</b> — sans son interprétation.
+        Dis-moi avec tes mots ce que tu en comprends, et je t'analyse ta lecture :
+        ce qu'elle touche de juste, <b>la bonne interprétation</b>, d'autres éclairages, et une orientation.</p>
+        <p class="note">Tout fonctionne <b>hors ligne</b>, avec les interprétations de la bibliothèque (100 textes).</p>
+      </div>
+      <div class="bloc" id="inv-etape1">
+        <input type="text" id="inv-theme" maxlength="300" placeholder="Ce qui te traverse en ce moment (facultatif)" autocomplete="off">
+        <div class="dem-actions">
+          <button id="btn-inv-recevoir" class="btn-or">🔄 Recevoir ma parabole</button>
+        </div>
+      </div>
+      <div class="bloc" id="inv-parabole" hidden>
+        <h3 id="inv-code">📜</h3>
+        <blockquote id="inv-texte" style="font-size:18px"></blockquote>
+        <p id="inv-culture" class="note"></p>
+        <textarea id="inv-reponse" rows="4" maxlength="2000" placeholder="Avec tes mots : que comprends-tu de cette parabole ? Une image, une leçon, un souvenir…"></textarea>
+        <div class="dem-actions">
+          <button id="btn-inv-repondre" class="btn-or">Je dis ce que je comprends</button>
+        </div>
+        <p id="inv-compteur" class="note">0 / 2000</p>
+      </div>
+      <div id="inv-resultat" class="dem-resultat" hidden></div>
+      <div class="dem-actions" id="inv-actions" hidden>
+        <button id="btn-inv-ecouter" class="btn-simple">▶ Écouter l'analyse</button>
+        <button id="btn-inv-nouvelle" class="btn-simple">🔄 Nouvelle parabole</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ══════════ CONNEXION SERVEUR ══════════ -->
   <section id="ecran-connexion" class="ecran">
     <header class="barre">
@@ -126,7 +168,7 @@
     <div class="contenu">
       <div class="bloc">
         <h3>🎁 Ce qui est déjà dans ta poche</h3>
-        <p>La bibliothèque complète des <b>65 textes</b> avec interprétations, la recherche, les favoris et la lecture à voix haute — <b>sans internet, sans compte</b>.</p>
+        <p>La bibliothèque complète des <b>100 textes</b> avec interprétations, la recherche, les favoris, l'Oracle Inversé et la lecture à voix haute — <b>sans internet, sans compte</b>.</p>
       </div>
       <div class="bloc">
         <h3>🌍 Ce qu'ajoute un serveur SPU</h3>
@@ -190,8 +232,8 @@
     </header>
     <div class="contenu">
       <div class="bloc centre">
-        <p class="grand-titre">SPU Pocket <b>1.2.0</b></p>
-        <p>Companion mobile du <b>Système Parabolique Universel</b> (v4.3) — un orchestrateur narratif qui répond aux questions de la vie par des paraboles, des histoires et un théâtre de voix.</p>
+        <p class="grand-titre">SPU Pocket <b>1.3.0</b></p>
+        <p>Companion mobile du <b>Système Parabolique Universel</b> (v6.1) — un orchestrateur narratif qui répond aux questions de la vie par des paraboles, des histoires et un théâtre de voix.</p>
         <p class="badge-eval">Version d'évaluation publique — l'application évolue et s'améliore régulièrement.</p>
       </div>
       <div class="bloc">
@@ -199,8 +241,8 @@
         <ul class="roadmap">
           <li><b>v1.1 ✓</b> — poser tes questions et recevoir une réponse narrée (avec un serveur SPU)</li>
           <li><b>v1.2 ✓</b> — <b>mode nomade</b> : poser tes questions sans aucun serveur, réponse directe</li>
-          <li><b>v1.3</b> — nouvelles paraboles et fables chaque mois, partage de tes textes favoris</li>
-          <li><b>v1.4</b> — voix neuronales enrichies, création d'histoires depuis le téléphone</li>
+          <li><b>v1.3 ✓</b> — corpus porté à <b>100 textes</b> (75 paraboles + 25 fables) et <b>Oracle Inversé hors ligne</b> : une parabole nue, ta lecture analysée</li>
+          <li><b>v1.4</b> — le BOOST (théâtre du courage) via serveur SPU, voix neuronales enrichies</li>
           <li><b>v1.5</b> — mode communautaire : proposer tes propres paraboles</li>
           <li><b>et au-delà</b> — ta feuille de route, écrite avec vos retours</li>
         </ul>
@@ -209,7 +251,7 @@
       <div class="bloc">
         <h3>🔓 Libertés &amp; technologies</h3>
         <ul class="puces">
-          <li>65 textes du domaine public et de la tradition orale, avec leurs sources.</li>
+          <li>100 textes du domaine public et de la tradition orale, avec leurs sources — la même base que le serveur SPU.</li>
           <li>Questions : mode nomade via une IA publique gratuite, ou serveur SPU complet.</li>
           <li>Lecture vocale par la synthèse de ton téléphone (Google TTS) — aucune donnée envoyée.</li>
           <li>Le SPU utilise des outils libres : Piper TTS (licence MIT), Next.js, Prisma.</li>

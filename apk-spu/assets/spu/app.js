@@ -94,7 +94,7 @@ function trouveParCode(code) {
 /* ── Navigation ── */
 function ecranDeHash() {
   const h = location.hash.replace(/^#\/?/, '');
-  return ['bibliotheque', 'lecteur', 'connexion', 'apropos', 'demander'].includes(h) ? h : 'accueil';
+  return ['bibliotheque', 'lecteur', 'connexion', 'apropos', 'demander', 'inversee'].includes(h) ? h : 'accueil';
 }
 function montrer(ecran) {
   document.querySelectorAll('.ecran').forEach((e) => e.classList.remove('active'));
@@ -279,7 +279,7 @@ $('#btn-maj').addEventListener('click', async () => {
 });
 
 /* ── Poser une question (v1.2 — mode serveur OU mode nomade sans serveur) ── */
-const VERSION_APP = '1.2.1';
+const VERSION_APP = '1.3.0';
 
 // Sécurité de base côté téléphone (complète le serveur, jamais remplacée) :
 const DETRESSE_MIN = /suicid|mettre fin (à|a) mes jours|je veux mourir|plus envie de vivre|sans envie de vivre|me faire du mal|automutila|me tuer|tuer moi/i;
@@ -511,6 +511,102 @@ async function poserQuestion() {
     btn.textContent = '✨ Demander';
   }
 }
+
+/* ── ORACLE INVERSÉ (v1.3 — le mode signature du WebSPU v6, hors ligne) ──
+// Le renversement : le SPU donne UNE parabole NUE ; la personne dit ce qu'elle
+// comprend ; l'analyse (locale, par les interprétations du corpus) rend
+// l'écho de sa lecture, une APPRÉCIATION VALORISANTE (jamais rabaisser),
+// LA BONNE INTERPRÉTATION, d'autres éclairages et une ORIENTATION. */
+const FAMILLES_SPU = {
+  F1: 'la patience', F2: 'le détachement', F3: 'le courage', F4: 'la justice',
+  F5: 'le renouveau', F6: 'l\'ancrage', F7: 'la légèreté', F8: 'l\'intégrité',
+  F9: 'l\'action', F10: 'la relation',
+};
+let invParabole = null;
+
+function motsDe(s) {
+  return normaliserTexte(s).split(/\s+/).filter((m) => m.length > 3 && !MOTS_VIDES_DEM.has(m));
+}
+
+function invRecevoir() {
+  arreterVoix();
+  const theme = $('#inv-theme').value.trim();
+  invParabole = theme ? paraboleHorsLigne(theme) : (SPU_DATA.adulte || [])[Math.floor(Math.random() * (SPU_DATA.adulte || []).length)];
+  $('#inv-code').textContent = '📜 ' + (invParabole.code || '') + (FAMILLES_SPU[invParabole.famille] ? ' — sur ' + FAMILLES_SPU[invParabole.famille] : '');
+  $('#inv-texte').textContent = invParabole.texte;
+  $('#inv-culture').textContent = invParabole.culture || '';
+  $('#inv-reponse').value = '';
+  $('#inv-compteur').textContent = '0 / 2000';
+  $('#inv-etape1').hidden = true;
+  $('#inv-parabole').hidden = false;
+  $('#inv-resultat').hidden = true;
+  $('#inv-actions').hidden = true;
+  $('#inv-reponse').focus();
+}
+
+/* L'analyse hors-ligne : la réponse de la personne est mise en regard des
+   mots-clés et des interprétations de LA parabole — valorisation d'abord. */
+function invAnalyser() {
+  const reponse = $('#inv-reponse').value.trim();
+  const zone = $('#inv-resultat');
+  if (!reponse) {
+    zone.hidden = false;
+    zone.innerHTML = '<span class="titre">Partage ce que tu as compris — même en deux mots 🙂</span>';
+    return;
+  }
+  arreterVoix();
+  const motsReponse = motsDe(reponse);
+  const cles = new Set((invParabole.motsCles || []).map((c) => normaliserTexte(c)));
+  const touches = [];
+  for (const m of motsReponse) {
+    for (const c of cles) {
+      if (c.indexOf(m) !== -1 || m.indexOf(c) !== -1) { touches.push(m); break; }
+    }
+  }
+  const uniques = [...new Set(touches)].slice(0, 6);
+  const interps = invParabole.interpretations || [];
+  const bonne = interps[0] || '';
+  const autres = interps.slice(1, 3);
+
+  // L'appréciation : toujours valorisante — ce que sa lecture touche de la parabole.
+  const famille = FAMILLES_SPU[invParabole.famille] || 'la sagesse';
+  let appreciation;
+  if (uniques.length) {
+    appreciation = 'Ta lecture touche juste : les mots « ' + uniques.join(', ') + ' » sont exactement les fils de cette parabole. ' +
+      'Tu l\'as lue avec tes propres yeux, et c\'est précisément ce qui fait la valeur de ta réponse — personne ne peut la deviner à ta place.';
+  } else {
+    appreciation = 'Ta lecture porte ta propre signature : tu as vu dans cette parabole quelque chose qui parle DE TOI, ' +
+      'et c\'est ainsi que les paraboles les plus anciennes travaillent — chacune y retrouve son propre chemin. Elle résonne surtout du côté de ' + famille + '.';
+  }
+  const orientation = 'Garde cette lecture avec toi : ' + famille + ' se cultive par petites touches. ' +
+    'Reprends la parabole dans deux ou trois jours — tu verras apparaître un détail nouveau, exactement là où tu en es dans ta vie.';
+
+  const html =
+    '<div class="dem-part"><h3>🪞 Ta lecture, vue par le SPU</h3><p>' + echapper(appreciation) + '</p></div>' +
+    (bonne ? '<div class="dem-part"><h3>🗝️ La bonne interprétation</h3><p>' + echapper(bonne) + '</p></div>' : '') +
+    (autres.length ? '<div class="dem-part"><h3>🔦 Autres éclairages possibles</h3><ul>' + autres.map((a) => '<li>' + echapper(a) + '</li>').join('') + '</ul></div>' : '') +
+    '<div class="dem-part"><h3>🧭 Ton orientation</h3><p>' + echapper(orientation) + '</p></div>' +
+    '<p class="note">Analyse hors-ligne, appuyée sur les interprétations de la bibliothèque. Connecte un serveur SPU pour l\'analyse complète par les intelligences réflexives (WebSPU v6).</p>';
+
+  zone.hidden = false;
+  zone.innerHTML = html;
+  $('#inv-actions').hidden = false;
+  derniereReponse = [appreciation, bonne ? 'La bonne interprétation. ' + bonne : '', 'Ton orientation. ' + orientation].filter(Boolean).join(' ');
+  $('#btn-inv-ecouter').hidden = false;
+}
+
+$('#btn-inv-recevoir').addEventListener('click', invRecevoir);
+$('#btn-inv-repondre').addEventListener('click', invAnalyser);
+$('#btn-inv-nouvelle').addEventListener('click', () => {
+  $('#inv-parabole').hidden = true;
+  $('#inv-resultat').hidden = true;
+  $('#inv-actions').hidden = true;
+  $('#inv-etape1').hidden = false;
+  $('#inv-theme').value = '';
+  $('#inv-theme').focus();
+});
+$('#btn-inv-ecouter').addEventListener('click', () => { if (derniereReponse) lire(derniereReponse); });
+$('#inv-reponse').addEventListener('input', (e) => { $('#inv-compteur').textContent = e.target.value.length + ' / 2000'; });
 
 /* ── Divers ── */
 function echapper(s) {
