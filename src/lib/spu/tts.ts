@@ -238,13 +238,17 @@ async function lireEnContinu(prises: PriseDeParole[], debit: number) {
 const pauseMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Découpe un bloc de texte en segments de ~300 caractères aux frontières de
- *  phrases — de grands segments = moins de jonctions = narration plus fluide. */
-function decouperNarration(texte: string): string[] {
+ *  phrases — de grands segments = moins de jonctions = narration plus fluide.
+ *  v6.3 — le PREMIER segment est court (≈130 caractères) : Piper le synthétise
+ *  en une fraction de seconde, la voix démarre dès l'arrivée de la réponse,
+ *  pendant que les segments suivants (grands) se préparent en cascade. */
+function decouperNarration(texte: string, taillePremier = 300): string[] {
   const phrases = texte.match(/[^.!?…]+[.!?…]+["»)\s]*|[^.!?…]+$/g) || [texte];
   const segments: string[] = [];
   let courant = '';
   for (const ph of phrases) {
-    if ((courant + ph).length > 300 && courant) {
+    const limite = segments.length === 0 ? taillePremier : 300;
+    if ((courant + ph).length > limite && courant) {
       segments.push(courant.trim());
       courant = ph;
     } else courant += ph;
@@ -264,15 +268,41 @@ export async function ttsParler(texte: string, opts: OptionsParler = {}) {
   controleLecture = new AbortController();
   const profil = opts.profil || VOIX_SPU[0];
   try {
-    // v6.1 — narration CONTINUE : un seul flux de prises de parole, aucune
-    // pause intercalée entre les segments (le Piper respire déjà tout seul).
+    // v6.3 — narration CONTINUE et DÉMARRAGE IMMÉDIAT : le premier segment est
+    // court (≈130 caractères) pour que la voix commence en moins d'une seconde ;
+    // les segments suivants, grands, se préparent pendant ce temps.
     await lireEnContinu(
-      decouperNarration(texte).map((seg) => ({ texte: seg, profil })),
+      decouperNarration(texte, 130).map((seg) => ({ texte: seg, profil })),
       opts.debitGlobal ?? 1
     );
   } finally {
     controleLecture = null;
     opts.fin?.();
+  }
+}
+
+// ── Préchauffage des voix neuronales (v6.3) ───────────────────────────────────
+// Le premier appel Piper charge le modèle en mémoire (1 à 3 s) : ce préchauffage
+// est lancé au démarrage du SPU (et à l'activation de la narration) avec une
+// phrase minuscule — quand la réponse arrive, la voix démarre SANS délai.
+let prechauffeFait = false;
+export async function prechaufferNeurales(): Promise<void> {
+  if (typeof window === 'undefined' || prechauffeFait) return;
+  const etat = await verifierNeurales();
+  if (!etat.disponible) return;
+  prechauffeFait = true;
+  try {
+    const controle = new AbortController();
+    const annuler = setTimeout(() => controle.abort(), 25000);
+    await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voix: 'narrateur', texte: 'Bonjour.', debit: 1 }),
+      signal: controle.signal,
+    }).catch(() => {});
+    clearTimeout(annuler);
+  } catch {
+    /* jamais critique : le préchauffage est un confort, pas une étape */
   }
 }
 
@@ -295,11 +325,12 @@ export async function lireTheatre(
   const voixPersos = (reglages.personnages.length ? reglages.personnages : VOIX_PAR_DEFAUT.personnages).map(profilParId);
 
   // Découpage : alternance narration / dialogues « … » — flatten en prises
+  // (v6.3 : le premier morceau narré commence par un segment court → démarrage immédiat)
   const morceaux = texte.split(/(«[^»]*»)/g).filter((m) => m.trim());
   const prises: PriseDeParole[] = [];
   let indicePerso = 0;
   let dernier = '';
-  for (const morceau of morceaux) {
+  for (const [mi, morceau] of morceaux.entries()) {
     const estDialogue = /^«[^»]*»$/.test(morceau.trim());
     if (estDialogue) {
       const profil = voixPersos[indicePerso % Math.max(1, voixPersos.length)];
@@ -307,7 +338,7 @@ export async function lireTheatre(
       prises.push({ texte: morceau.trim(), profil, pauseAvantMs: dernier === 'perso' ? 220 : 140 });
       dernier = 'perso';
     } else {
-      for (const seg of decouperNarration(morceau)) {
+      for (const seg of decouperNarration(morceau, mi === 0 ? 130 : 300)) {
         prises.push({ texte: seg, profil: voixNarrateur, pauseAvantMs: dernier === 'perso' ? 140 : 0 });
         dernier = 'narr';
       }

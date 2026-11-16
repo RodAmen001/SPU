@@ -1,19 +1,23 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// SPU v6.1 — LE THÉÂTRE BOOST (composant client)
+// SPU v6.3 — LE THÉÂTRE BOOST (composant client)
 // Joue le scénario BOOST reçu du serveur : chaque réplique est parlée par la
 // voix DU personnage (12 timbres distincts, moteur Piper via /api/tts), avec
 // musique de fond spécialement boostante. En mode Enfant, la bande dessinée
 // défile au fur et à mesure que le théâtre audio avance.
-// v6.1 — le BOOST est une PROPOSITION : jamais de lancement automatique, la
-// personne décide quand (et si) elle le joue. La lecture est CONTINUE : les
-// répliques suivantes sont générées PENDANT que la réplique courante se joue.
+// v6.3 — SCÈNE RÉELLE : TOUTES les voix sont générées AVANT la première réplique
+// (barre de progression « Préparation des voix… n/m », 4 générations en
+// parallèle) puis la lecture enchaîne SANS AUCUNE latence — plus jamais
+// d'attente entre deux prises de parole. Et comme au théâtre, LE CONTEUR
+// ANNONCE l'ouverture de chaque scène et CHAQUE personnage qui prend la parole
+// pour la première fois (« Thomas, l'ami. ») — jamais de voix mystérieuse.
+// v6.1 — le BOOST est une PROPOSITION : jamais de lancement automatique.
 // ═════════════════════════════════════════════════════════════════════════════
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Square, Zap } from 'lucide-react';
-import type { ScenarioBoost, SceneBoost } from '@/lib/spu/boost';
+import type { ScenarioBoost, SceneBoost, LigneTheatre } from '@/lib/spu/boost';
 import { getMoteurAudio } from '@/lib/spu/audio-engine';
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -23,13 +27,25 @@ interface Props {
   enfant?: boolean; // bande dessinée défilante synchronisée
 }
 
+// Une entrée de la file de lecture : réplique du scénario OU annonce du conteur.
+interface EntreeFile {
+  ligne: LigneTheatre;
+  s: number; // index de scène (pour la bande dessinée)
+  i: number; // index de réplique dans la scène (-1 pour une annonce d'ouverture)
+  sc: SceneBoost;
+  annonce?: boolean; // réplique du conteur (ouverture de scène / présentation)
+}
+
 export function TheatreBoost({ scenario, enfant }: Props) {
   const [sceneIdx, setSceneIdx] = useState(-1);
   const [ligneIdx, setLigneIdx] = useState(-1);
   const [demarre, setDemarre] = useState(false);
   const [enLecture, setEnLecture] = useState(false);
+  const [preparation, setPreparation] = useState<{ fait: number; total: number } | null>(null);
   const [termine, setTermine] = useState(false);
   const annuler = useRef(false);
+  const controlePrep = useRef<AbortController | null>(null);
+  const blobsPrepares = useRef<(Blob | null)[] | null>(null); // cache : rejouer = zéro préparation
   const bandeRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const ligneRef = useRef<HTMLDivElement | null>(null);
@@ -45,9 +61,36 @@ export function TheatreBoost({ scenario, enfant }: Props) {
     getMoteurAudio().couper();
   }, []);
 
-  // lecture complète : scène par scène, réplique par réplique — SANS blancs :
-  // la file précharge en permanence les 2 répliques suivantes pendant que la
-  // réplique courante se joue (v6.1, même principe que la narration continue).
+  // ── Construction de la file de lecture (v6.3 — SCÈNE RÉELLE) ──
+  // Le conteur ouvre chaque scène par son titre, puis présente CHAQUE personnage
+  // au moment où il prend la parole pour la première fois : « Thomas, l'ami. »
+  const construireFile = useCallback((): EntreeFile[] => {
+    const cont = scenario.personnages.find((p) => p.voix === 'conteur' || /conteur|narrat/i.test(p.nom));
+    const voixConteur = cont?.voix || 'narrateur';
+    const roleDe = new Map(scenario.personnages.map((p) => [p.nom.toLowerCase(), p.role]));
+    const dejaPresents = new Set<string>();
+    const file: EntreeFile[] = [];
+    scenario.scenes.forEach((sc, s) => {
+      file.push({
+        ligne: { perso: 'Le Conteur', voix: voixConteur, texte: `${sc.titre}.` },
+        s, i: -1, sc, annonce: true,
+      });
+      sc.lignes.forEach((l, i) => {
+        const cle = l.perso.toLowerCase();
+        const conteurLuiMeme = l.voix === 'narrateur' || l.voix === voixConteur;
+        if (!dejaPresents.has(cle) && !conteurLuiMeme) {
+          dejaPresents.add(cle);
+          const role = roleDe.get(cle);
+          const annonce = role ? `${l.perso}, ${role}.` : `${l.perso}.`;
+          file.push({ ligne: { perso: 'Le Conteur', voix: voixConteur, texte: annonce }, s, i, sc, annonce: true });
+        }
+        file.push({ ligne: l, s, i, sc });
+      });
+    });
+    return file;
+  }, [scenario]);
+
+  // lecture complète — v6.3 : PRÉPARATION TOTALE puis lecture sans blancs
   const jouer = useCallback(async () => {
     if (enLecture) return;
     annuler.current = false;
@@ -55,49 +98,77 @@ export function TheatreBoost({ scenario, enfant }: Props) {
     setEnLecture(true);
     setTermine(false);
     lancerMusiqueBoost();
-    const plat = scenario.scenes.flatMap((sc, s) => sc.lignes.map((l, i) => ({ l, s, i, sc })));
-    const EN_AVANCE = 2;
-    let curseur = 0;
-    const file: Promise<Blob | null>[] = [];
-    const precharger = () => {
-      while (curseur < plat.length && file.length < EN_AVANCE) {
-        const prise = plat[curseur];
-        file.push(
-          fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voix: prise.l.voix, texte: prise.l.texte, debit: 1 }),
-          })
-            .then((res) => (res.ok ? res.blob() : null))
-            .catch(() => null)
-        );
-        curseur++;
+    const file = construireFile();
+
+    // 1) PRÉPARATION COMPLÈTE : toutes les voix sont générées AVANT la première
+    //    réplique (4 générations Piper en parallèle, barre de progression).
+    //    Cache : rejouer le théâtre ne régénère rien.
+    let blobs = blobsPrepares.current;
+    if (!blobs || blobs.length !== file.length || blobs.every((b) => b === null)) {
+      blobs = new Array(file.length).fill(null);
+      const controle = new AbortController();
+      controlePrep.current = controle;
+      let suivant = 0;
+      let fait = 0;
+      setPreparation({ fait: 0, total: file.length });
+      const ouvrier = async () => {
+        while (suivant < file.length && !annuler.current && !controle.signal.aborted) {
+          const k = suivant++;
+          try {
+            const res = await fetch('/api/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ voix: file[k].ligne.voix, texte: file[k].ligne.texte, debit: 1 }),
+              signal: controle.signal,
+            });
+            blobs![k] = res.ok ? await res.blob() : null;
+          } catch {
+            blobs![k] = null; // Piper indisponible pour cette réplique → repli navigateur
+          }
+          fait++;
+          if (!annuler.current) setPreparation({ fait, total: file.length });
+        }
+      };
+      await Promise.all([ouvrier(), ouvrier(), ouvrier(), ouvrier()]);
+      controlePrep.current = null;
+      if (annuler.current) {
+        setPreparation(null);
+        return;
       }
-    };
+      blobsPrepares.current = blobs;
+    }
+    setPreparation(null);
+
+    // 2) LECTURE : chaque son est DÉJÀ prêt — zéro latence entre les répliques,
+    //    de courtes respirations calibrées comme au théâtre.
     try {
       let scenePrecedente = -1;
-      for (let k = 0; k < plat.length; k++) {
+      for (let k = 0; k < file.length; k++) {
         if (annuler.current) return;
-        const prise = plat[k];
-        if (prise.s !== scenePrecedente) {
-          scenePrecedente = prise.s;
-          setSceneIdx(prise.s);
+        const e = file[k];
+        if (e.s !== scenePrecedente) {
+          scenePrecedente = e.s;
+          setSceneIdx(e.s);
           setLigneIdx(-1);
           try {
-            getMoteurAudio().ajusterScene(prise.sc.musique);
+            getMoteurAudio().ajusterScene(e.sc.musique);
           } catch { /* jamais critique */ }
-          await pause(900);
+          await pause(420); // courte respiration de changement de scène (l'annonce suit aussitôt)
         }
-        precharger();
-        setLigneIdx(prise.i);
-        const blob = await file.shift()!;
-        if (annuler.current) return;
-        if (blob) {
-          await jouerBlob(blob);
+        if (e.annonce) {
+          setLigneIdx(e.i);
+          const blob = blobs![k];
+          if (blob) await jouerBlob(blob);
+          else await repliNavigateur(e.ligne.texte);
+          await pause(130); // l'annonce s'efface, la réplique part aussitôt
         } else {
-          await repliNavigateur(prise.l.texte);
+          setLigneIdx(e.i);
+          const blob = blobs![k];
+          if (blob) await jouerBlob(blob);
+          else await repliNavigateur(e.ligne.texte);
+          const suivantMemeLocuteur = file[k + 1] && !file[k + 1].annonce && file[k + 1].ligne.perso === e.ligne.perso;
+          await pause(suivantMemeLocuteur ? 110 : 170); // respiration naturelle entre les prises de parole
         }
-        await pause(200); // respiration entre les prises de parole
       }
       setTermine(true);
     } finally {
@@ -106,7 +177,7 @@ export function TheatreBoost({ scenario, enfant }: Props) {
       setEnLecture(false);
       arreterMusique();
     }
-  }, [scenario, enLecture, lancerMusiqueBoost, arreterMusique]);
+  }, [scenario, enLecture, lancerMusiqueBoost, arreterMusique, construireFile]);
 
   // v6.1 — JAMAIS de lancement automatique : le BOOST attend le choix de la
   // personne (« Lancer le théâtre »), juste après la réponse ou plus tard.
@@ -119,6 +190,7 @@ export function TheatreBoost({ scenario, enfant }: Props) {
 
   const stopper = () => {
     annuler.current = true;
+    try { controlePrep.current?.abort(); } catch { /* déjà arrêté */ }
     try { audioCourant?.pause(); } catch { /* déjà arrêté */ }
   };
 
@@ -163,6 +235,23 @@ export function TheatreBoost({ scenario, enfant }: Props) {
       </div>
       {scenario.resume && !enfant && (
         <p className="text-sm text-[--muted-foreground] mb-3">{scenario.resume}</p>
+      )}
+
+      {/* v6.3 — préparation complète des voix : barre de progression */}
+      {preparation && (
+        <div className="rounded-xl bg-[--card] border border-[--border] p-3 mb-3">
+          <p className="text-sm font-medium mb-2">
+            🎭 Préparation des voix… {preparation.fait}/{preparation.total} répliques
+            <span className="text-[--muted-foreground] font-normal"> — le conteur installe la scène, chaque voix enregistre sa partie</span>
+          </p>
+          <div className="h-2 rounded-full bg-[--muted] overflow-hidden">
+            <div
+              className="h-full bg-amber-500 transition-all duration-300"
+              style={{ width: `${Math.round((preparation.fait / Math.max(1, preparation.total)) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-[--muted-foreground] mt-2">Ensuite, la scène se joue sans aucun temps d&apos;attente — comme un vrai théâtre.</p>
+        </div>
       )}
 
       {enfant ? (

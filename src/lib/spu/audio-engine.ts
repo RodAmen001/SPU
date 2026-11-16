@@ -12,7 +12,7 @@ import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
 
 export type ModeMusique = 'oracle' | 'mentor' | 'deep' | 'enfant' | 'boost' | 'accueil';
 
-interface PisteLibre {
+export interface PisteLibre {
   titre: string;
   artiste: string;
   licence: string;
@@ -24,6 +24,12 @@ interface PisteLibre {
 }
 
 const MUSIQUES = CATALOGUE_MUSIQUES as PisteLibre[];
+
+/** v6.3 — la liste des pistes d'un mode (pour le cadre musique : écouter une
+ *  piste précise, voir les notes globales de la liste). */
+export function pistesDuMode(mode: ModeMusique): PisteLibre[] {
+  return sacDePistes(mode);
+}
 
 /** Repli hors-ligne : fonds embarqués (SoundHelix, T. Schürger — usage libre). */
 const REPLI_LOCAL: Record<ModeMusique, string> = {
@@ -223,6 +229,48 @@ export class MoteurAudio {
     this.modeActuel = mode;
     const info = this.pisterSuivante(mode);
     this.infoCourante = info;
+    this.demarrerAudio(mode, info);
+  }
+
+  /** v6.3 — REJOUER la piste courante depuis le début (cadre musique). */
+  rejouerPiste(): PisteLibre | null {
+    if (typeof window === 'undefined') return null;
+    if (!this.modeActuel || !this.infoCourante) return this.pisteSuivante();
+    const info = this.infoCourante;
+    const mode = this.modeActuel;
+    this.arreterFond(300);
+    this.demarrerAudio(mode, info);
+    return info;
+  }
+
+  /** v6.3 — jouer UNE piste précise du catalogue (clic dans la liste du cadre). */
+  jouerPiste(mode: ModeMusique, piste: PisteLibre): void {
+    if (typeof window === 'undefined') return;
+    this.arreterFond(DUREE_FONDU_MS);
+    this.modeActuel = mode;
+    this.infoCourante = piste;
+    this.dernieresJouees.push(piste.url);
+    if (this.dernieresJouees.length > 8) this.dernieresJouees.shift();
+    this.demarrerAudio(mode, piste);
+  }
+
+  /** v6.3 — pause / reprise de la piste courante (cadre musique). */
+  basculerLecture(): boolean {
+    if (!this.fond) return false;
+    try {
+      if (this.fond.paused) {
+        void this.fond.play();
+        return true;
+      }
+      this.fond.pause();
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Lancement réel de l'audio d'une piste (fondu d'entrée, repli local). */
+  private demarrerAudio(mode: ModeMusique, info: PisteLibre) {
     const lancer = (audio: HTMLAudioElement, info: PisteLibre) => {
       this.fond = audio;
       const demarrer = () => {

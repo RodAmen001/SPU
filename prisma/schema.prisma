@@ -128,3 +128,19 @@ model LogsDetresse {
   decision     String // distress | review | pass
   createdAt    DateTime @default(now())
 }
+
+// v6.3 — Notation des musiques (cadre musique) : chaque note 1-5 d'un auditeur
+// alimente la MOYENNE GLOBALE de la piste, renvoyée au SPU (le concepteur) via
+// GET /api/musique pour classer les pistes PAR MODE et retirer les inappropriées.
+// La table est aussi créée défensivement à l'exécution (CREATE TABLE IF NOT
+// EXISTS dans /api/musique) — les bases restaurées n'exigent aucune migration.
+model NoteMusique {
+  id        String   @id @default(uuid())
+  titre     String
+  artiste   String?
+  note      Int // 1 à 5
+  mode      String? // mode en cours quand la note est donnée (oracle, mentor…)
+  createdAt DateTime @default(now())
+
+  @@index([titre])
+}

@@ -1,13 +1,17 @@
 // Pages Transparence (13.3), Confidentialité / RGPD (7.6),
 // Comment fonctionne le SPU (v4.8), Quoi de neuf + historique (v4.8),
-// Soutenir le concepteur (v4.8).
+// Soutenir le concepteur (v4.8), MUSIQUES + CADRE D'ÉCOUTE (v6.3).
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, Eye, Scale, Users, HeartHandshake, Compass, Newspaper, Volume2, Music4, Mail, Phone, Leaf, BookOpen, Sparkles, History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ShieldCheck, Eye, Scale, Users, HeartHandshake, Compass, Newspaper, Volume2, Music4, Mail, Phone, Leaf, BookOpen, Sparkles, History, Play, Pause, RotateCcw, SkipForward, Star } from 'lucide-react';
 import { VERSION_SPU } from '@/lib/spu/constants';
 import { VERSIONS } from '@/data/versions';
+import { getMoteurAudio, pistesDuMode, type ModeMusique } from '@/lib/spu/audio-engine';
+import { useSpuStore } from '@/lib/spu/store';
 
 // ── v4.8 — « Comment fonctionne le SPU » (onglet dédié, exigence du concepteur) ──
 export function VueFonctionnement() {
@@ -292,6 +296,12 @@ export function VueConfidentialite() {
 // Exigence du concepteur : établir la liste des musiques de fond avec leurs
 // liens respectifs et l'insérer là où de droit. La liste est générée depuis le
 // catalogue (musiques-libres.json) — elle reste donc toujours exacte.
+// ── v6.3 — LE CADRE MUSIQUE ────────────────────────────────────────────────────
+// Exigence du concepteur : un cadre dédié où l'auditeur NOTE la musique qui
+// passe (1 à 5 étoiles), la REJOUE, la met en pause ou la PASSE au suivant —
+// et où chaque musique de la liste porte sa NOTE GLOBALE (moyenne des
+// auditeurs), renvoyée au SPU via /api/musique pour classer les pistes PAR
+// MODE et retirer les inappropriées.
 import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
 
 interface PisteMusique {
@@ -305,23 +315,178 @@ interface PisteMusique {
   ambiance: string;
 }
 
+type NotesGlobales = Record<string, { moyenne: number; nb: number }>;
+
+function CadreEcouteMusique() {
+  const { audioActive } = useSpuStore();
+  const [piste, setPiste] = useState<{ titre: string; artiste: string } | null>(null);
+  const [enPause, setEnPause] = useState(false);
+  const [notes, setNotes] = useState<NotesGlobales>({});
+  const [maNote, setMaNote] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
+  const [nbPistesMode, setNbPistesMode] = useState(0);
+  const modeRef = useRef<ModeMusique>('accueil');
+
+  // piste courante : rafraîchie chaque seconde (le moteur n'émet pas d'événement)
+  useEffect(() => {
+    const id = setInterval(() => {
+      const moteur = getMoteurAudio();
+      const info = moteur.pisteCourante;
+      modeRef.current = moteur.mode || 'accueil';
+      setPiste(info ? { titre: info.titre, artiste: info.artiste } : null);
+      setNbPistesMode(pistesDuMode(modeRef.current).length);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const chargerNotes = async () => {
+    try {
+      const res = await fetch('/api/musique', { cache: 'no-store' });
+      const j = (await res.json()) as { pistes: { titre: string; moyenne: number; nb: number }[] };
+      const m: NotesGlobales = {};
+      for (const p of j.pistes || []) m[p.titre] = { moyenne: p.moyenne, nb: p.nb };
+      setNotes(m);
+    } catch {
+      /* notes indisponibles : le cadre reste utilisable */
+    }
+  };
+
+  useEffect(() => {
+    void chargerNotes();
+  }, []);
+
+  const noter = async (note: number) => {
+    if (!piste) return;
+    setMaNote(note);
+    try {
+      const res = await fetch('/api/musique', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titre: piste.titre, artiste: piste.artiste, note, mode: modeRef.current }),
+      });
+      setMessage(res.ok ? 'Merci ! Ta note rejoint la note globale de cette musique.' : 'Note non transmise — réessaie dans un instant.');
+      void chargerNotes();
+    } catch {
+      setMessage('Note non transmise — réessaie dans un instant.');
+    }
+  };
+
+  const globale = piste ? notes[piste.titre] : undefined;
+
+  return (
+    <Card className="p-6 border-2 border-[--primary]/30 bg-[--primary]/5">
+      <h3 className="font-semibold mb-1 flex items-center gap-2">
+        <Star className="h-4 w-4 text-[--primary]" aria-hidden /> Cadre d&apos;écoute — la musique qui passe
+      </h3>
+
+      {!audioActive && !piste && (
+        <p className="text-sm text-[--muted-foreground]">
+          La musique est coupée. Active-la dans la barre du haut (interrupteur ♫) — la piste en cours apparaîtra ici, prête à être notée, rejouée ou passée.
+        </p>
+      )}
+
+      {audioActive && !piste && (
+        <p className="text-sm text-[--muted-foreground]">La piste en cours arrive… (fondu d&apos;entrée ou fond de secours sans titre distant)</p>
+      )}
+
+      {piste && (
+        <>
+          <p className="text-[15px] font-medium mt-2">
+            ♫ {piste.titre} <span className="text-[--muted-foreground] font-normal">· {piste.artiste}</span>
+          </p>
+          <p className="text-xs text-[--muted-foreground] mt-0.5">
+            Rotation du mode « {modeRef.current} » : {nbPistesMode} pistes — la note globale ci-dessous remonte au SPU pour classer les musiques et retirer celles qui déçoivent.
+          </p>
+
+          {/* la NOTE GLOBALE des auditeurs, calculée côté serveur */}
+          <p className="text-sm mt-3">
+            Note globale des auditeurs :{' '}
+            {globale ? (
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                ★ {String(globale.moyenne).replace('.', ',')} / 5 <span className="font-normal text-[--muted-foreground]">({globale.nb} note{globale.nb > 1 ? 's' : ''})</span>
+              </span>
+            ) : (
+              <span className="text-[--muted-foreground]">pas encore de note — sois le premier à donner la tienne</span>
+            )}
+          </p>
+
+          {/* NOTER la piste qui passe : 1 à 5 étoiles */}
+          <div className="flex items-center gap-1 mt-2" role="group" aria-label="noter cette musique de 1 à 5 étoiles">
+            <span className="text-xs text-[--muted-foreground] mr-1">Ta note :</span>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => void noter(n)}
+                className="p-1"
+                aria-label={`noter ${n} sur 5`}
+                title={`Noter ${n} / 5`}
+              >
+                <Star className={`h-5 w-5 ${n <= maNote ? 'fill-amber-500 text-amber-500' : 'text-[--muted-foreground]'}`} aria-hidden />
+              </button>
+            ))}
+          </div>
+          {message && <p className="text-xs text-[--primary] mt-1">{message}</p>}
+
+          {/* REJOUER · PAUSE · SUIVANT */}
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <Button size="sm" variant="outline" onClick={() => getMoteurAudio().rejouerPiste()} className="rounded-full" title="Rejouer cette piste depuis le début">
+              <RotateCcw className="h-4 w-4 mr-1" aria-hidden /> Rejouer
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              onClick={() => setEnPause(!getMoteurAudio().basculerLecture())}
+              className="rounded-full"
+              title={enPause ? 'Reprendre la musique' : 'Mettre la musique en pause'}
+            >
+              {enPause ? <Play className="h-4 w-4 mr-1" aria-hidden /> : <Pause className="h-4 w-4 mr-1" aria-hidden />}
+              {enPause ? 'Reprendre' : 'Pause'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setMaNote(0); setMessage(null); getMoteurAudio().pisteSuivante(); }} className="rounded-full" title="Passer à la musique suivante">
+              <SkipForward className="h-4 w-4 mr-1" aria-hidden /> Suivant
+            </Button>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export function VueMusiques() {
   const pistes = CATALOGUE_MUSIQUES as PisteMusique[];
   const parUsage = (u: string) => pistes.filter((p) => p.usage.split('+').includes(u));
-  const groupes: { nom: string; note: string; pistes: PisteMusique[] }[] = [
-    { nom: 'Accueil et pages documentaires', note: 'musique douce présente sur chaque page du SPU', pistes: parUsage('accueil') },
-    { nom: 'Oracle', note: 'majestueuse et contemplative', pistes: parUsage('oracle') },
-    { nom: 'Mentor', note: 'chaleureuse, un compagnon de route', pistes: parUsage('mentor') },
-    { nom: 'Oracle Inversé', note: 'profonde, au rythme du souffle', pistes: parUsage('deep') },
-    { nom: 'Enfant', note: 'légère, espiègle et douce', pistes: parUsage('enfant') },
-    { nom: 'BOOST', note: 'épique, héroïque et triomphante', pistes: parUsage('boost') },
+  const groupes: { nom: string; note: string; mode: ModeMusique; pistes: PisteMusique[] }[] = [
+    { nom: 'Accueil et pages documentaires', note: 'musique douce présente sur chaque page du SPU', mode: 'accueil', pistes: parUsage('accueil') },
+    { nom: 'Oracle', note: 'majestueuse et contemplative', mode: 'oracle', pistes: parUsage('oracle') },
+    { nom: 'Mentor', note: 'chaleureuse, un compagnon de route', mode: 'mentor', pistes: parUsage('mentor') },
+    { nom: 'Oracle Inversé', note: 'profonde, au rythme du souffle', mode: 'deep', pistes: parUsage('deep') },
+    { nom: 'Enfant', note: 'légère, espiègle et douce', mode: 'enfant', pistes: parUsage('enfant') },
+    { nom: 'BOOST', note: 'épique, héroïque et triomphante', mode: 'boost', pistes: parUsage('boost') },
   ];
+
+  // notes globales (une seule requête, partagée avec le cadre d'écoute)
+  const [notes, setNotes] = useState<NotesGlobales>({});
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/musique', { cache: 'no-store' });
+        const j = (await res.json()) as { pistes: { titre: string; moyenne: number; nb: number }[] };
+        const m: NotesGlobales = {};
+        for (const p of j.pistes || []) m[p.titre] = { moyenne: p.moyenne, nb: p.nb };
+        setNotes(m);
+      } catch {
+        /* liste sans notes si le serveur ne répond pas */
+      }
+    })();
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <h2 className="text-xl font-semibold flex items-center gap-2">
         <Music4 className="h-5 w-5 text-[--primary]" aria-hidden /> Les musiques du SPU
       </h2>
+
+      {/* v6.3 — LE CADRE MUSIQUE : noter, rejouer, pause, suivant */}
+      <CadreEcouteMusique />
 
       <Card className="p-6">
         <p className="text-[15px] leading-relaxed">
@@ -332,11 +497,13 @@ export function VueMusiques() {
           <span className="font-medium"> les unes après les autres</span> sans jamais répéter les trois
           dernières, et le son de transition est désormais une cloche douce qui respecte toutes les
           ambiances. La musique joue sur <span className="font-medium">chaque page</span> du SPU.
+          <span className="block mt-2">Chaque piste de la liste porte sa <span className="font-medium">note globale</span> : clique sur ▶ pour l&apos;écouter ici même, note-la, et le SPU classera les pistes par mode — les pistes mal notées seront retirées du catalogue.</span>
         </p>
         <div className="flex flex-wrap gap-2 mt-4">
           <Badge variant="outline" className="rounded-full">🎵 {pistes.length} pistes vérifiées</Badge>
           <Badge variant="outline" className="rounded-full">🎯 sélection liée à la parabole</Badge>
           <Badge variant="outline" className="rounded-full">🔁 rotation sans répétition</Badge>
+          <Badge variant="outline" className="rounded-full">★ notation des auditeurs (v6.3)</Badge>
         </div>
       </Card>
 
@@ -347,8 +514,19 @@ export function VueMusiques() {
           <ul className="space-y-2">
             {g.pistes.map((p) => (
               <li key={p.url} className="text-sm leading-relaxed flex flex-wrap gap-x-2 items-baseline">
-                <span className="font-medium">{p.titre}</span>
+                <button
+                  onClick={() => getMoteurAudio().jouerPiste(g.mode, p)}
+                  className="font-medium text-[--primary] hover:underline underline-offset-2"
+                  title={`écouter « ${p.titre} » comme musique de fond`}
+                >
+                  ▶ {p.titre}
+                </button>
                 <span className="text-[--muted-foreground]">· {p.artiste} · {p.ambiance} · {p.duree}</span>
+                {notes[p.titre] && (
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    ★ {String(notes[p.titre].moyenne).replace('.', ',')} ({notes[p.titre].nb})
+                  </span>
+                )}
                 <a href={p.url} target="_blank" rel="noreferrer" className="text-[--primary] underline underline-offset-2 hover:opacity-80">
                   écouter
                 </a>

@@ -26,7 +26,7 @@ import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, typ
 import type { ScenarioBoost } from '@/lib/spu/boost';
 import { VERSION_SPU } from '@/lib/spu/constants';
 import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
-import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
+import { ttsStop, ttsParler, profilParId, prechaufferNeurales } from '@/lib/spu/tts';
 import { VueReponse, EtapesEnDirect } from './reponse-view';
 import { TheatreBoost } from './theatre-boost';
 import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fil-discussion';
@@ -94,6 +94,13 @@ export function SpuApp() {
     setTtsActive(v);
     if (!v) ttsStop();
   };
+
+  // v6.3 — PRÉCHAUFFAGE des voix neuronales au démarrage (et à l'activation de
+  // la narration) : le modèle Piper est chargé en mémoire AVANT la première
+  // réponse — quand la réponse arrive, la lecture démarre sans délai.
+  useEffect(() => {
+    void prechaufferNeurales();
+  }, [ttsActive]);
 
   // v4.8 — Bouton de SORTIE : coupe musique et voix, affiche l'adieu et tente
   // la fermeture réelle de l'onglet (le navigateur ne permet de fermer que les
@@ -321,9 +328,16 @@ function EnTete({
               <span className="hidden lg:inline ml-1 text-xs">Voix</span>
             </Button>
           </ReglagesVoix>
-          {/* Musique de fond + MUSIQUE SUIVANTE (v6.1 : passer une piste qui déplait) */}
+          {/* Musique de fond + MUSIQUE SUIVANTE (v6.1) + CADRE MUSIQUE (v6.3) */}
           <div className="flex items-center gap-1.5" title="Musique de fond — 100 musiques libres, variées à chaque conversation">
-            <Music4 className={`h-4 w-4 ${audioActive ? 'text-[--primary]' : 'text-[--muted-foreground]'}`} aria-hidden />
+            <button
+              onClick={() => naviguer('musiques')}
+              className="flex items-center"
+              title="Cadre musique — noter la piste, la rejouer ou la passer"
+              aria-label="ouvrir le cadre musique"
+            >
+              <Music4 className={`h-4 w-4 ${audioActive ? 'text-[--primary]' : 'text-[--muted-foreground]'}`} aria-hidden />
+            </button>
             <Switch checked={audioActive} onCheckedChange={basculeAudio} aria-label="musique de fond" />
             {audioActive && (
               <Button

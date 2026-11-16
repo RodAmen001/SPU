@@ -109,7 +109,7 @@ STRUCTURE IMPOSÉE — les phases, dans cet ordre :
 RÈGLES ABSOLUES :
 • TOUT est JOUÉ par les personnages, JAMAIS narré d'une seule voix du début à la fin : un personnage « Le Conteur » peut porter les transitions, mais chaque phase contient AU MOINS DEUX personnages qui parlent.
 • 4 à 6 personnages au total, chacun nommé (prénoms vivants, adaptés au public), chacun avec SA voix distincte.
-• La réplique « texte » est courte (1 à 3 phrases) — c'est du théâtre parlé, rythmé.
+• La réplique « texte » est COURTE (1 à 2 phrases, jamais plus de 220 caractères) — c'est du théâtre parlé, rythmé : les répliques s'enchaînent comme dans une scène réelle, sans monologues.
 • « didascalie » = l'action visible en une ligne (affichée à l'écran, jamais lue).
 • Volume total parlé : 2400 à 3200 caractères (≈ 3 à 5 minutes de théâtre audio).
 • Image : 1 emoji par scène pour la bande dessinée enfant.

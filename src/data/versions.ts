@@ -15,10 +15,21 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.3',
+    date: '16/11/2026',
+    titre: 'La voix qui part sans attendre, le cadre musique où l\'auditeur note tout, le BOOST joué comme une scène réelle',
+    actuelle: true,
+    points: [
+      "DÉMARRAGE DE LA LECTURE SANS ATTENTE : le premier segment lu est désormais court (≈130 caractères) — Piper le synthétise en une fraction de seconde et la voix commence dès que la réponse arrive ; les voix neuronales sont PRÉCHAUFFÉES au démarrage du SPU (le modèle est chargé en mémoire avant la première question — plus aucun délai de « réveil »).",
+      "CADRE MUSIQUE DÉDIÉ (vue « Les musiques du SPU », accessible en un clic depuis l'icône ♫ de la barre du haut) : la piste qui passe s'affiche avec son titre et son artiste ; tu la NOTES de 1 à 5 étoiles, tu la REJOUS, la mets en PAUSE ou la PASSES au suivant. Chaque musique de la liste porte sa NOTE GLOBALE (moyenne des auditeurs) — ces notes remontent au SPU via /api/musique pour classer les pistes PAR MODE et retirer les inappropriées.",
+      "LE BOOST EST JOUÉ COMME UNE SCÈNE RÉELLE : toutes les voix sont générées AVANT la première réplique (barre de progression « Préparation des voix… n/m », 4 générations en parallèle), puis la lecture enchaîne SANS AUCUNE latence — plus jamais d'attente entre deux prises de parole. Et le CONTEUR annonce désormais l'ouverture de chaque scène et CHAQUE personnage qui prend la parole pour la première fois (« Thomas, l'ami. »). Rejouer le théâtre ne régénère rien (cache des voix).",
+      "Répliques du scénario resserrées (1 à 2 phrases) : le théâtre respire au rythme d'une vraie conversation, pas d'un scénario de spectacle.",
+    ],
+  },
+  {
     version: 'v6.2',
     date: '16/11/2026',
     titre: 'Le BOOST toujours au rendez-vous : préparé en coulisses, proposé juste après la réponse',
-    actuelle: true,
     points: [
       "CORRECTION MAJEURE — le BOOST n'apparaissait pas en mode Mentor : la préparation du théâtre était bridée par le budget de la réponse (elle ne partait que si la 3ᵉ question se terminait en moins de ~52 s, ce qui arrive presque jamais) — le BOOST était donc presque toujours sauté en silence.",
       "NOUVELLE ARCHITECTURE : le scénario du BOOST est écrit EN ARRIÈRE-PLAN, après la fermeture de la réponse (plus jamais de 502, plus jamais de budget amputé) et stocké en base de données ; l'interface affiche « ⚡ BOOST en préparation… » dès la fin de la synthèse et récupère le théâtre par polling léger (GET /api/boost, 1 requête toutes les 5 s).",
