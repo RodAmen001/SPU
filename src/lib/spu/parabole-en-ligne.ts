@@ -94,16 +94,30 @@ export async function paraboleEnLigne(
   _mode: 'adulte' | 'enfant' = 'adulte',
 ): Promise<ParaboleMatch | null> {
   const consigne = CONSIGNE.replace('[Q]', question.slice(0, 700)).replace('[S]', synthese.slice(0, 1100));
-  let brut: string;
-  try {
-    brut = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 20000, temperature: 0.4, maxTokens: 650 });
-  } catch {
+  // v5.1 — deux essais : les modèles à raisonnement (gpt-oss) peuvent tronquer
+  // leur JSON ; un second appel avec plus de jetons fiabilise la recherche.
+  let brut = '';
+  for (const maxTokens of [1000, 1400]) {
+    try {
+      brut = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 20000, temperature: 0.4, maxTokens });
+      if (extractJson<CandidatWeb>(brut)) break;
+      console.error('[parabole-en-ligne] JSON inexploitable (essai maxTokens', maxTokens, ')');
+    } catch (e) {
+      console.error('[parabole-en-ligne] llm échec (maxTokens', maxTokens, ') :', e instanceof Error ? e.message : e);
+      brut = '';
+    }
+  }
+  if (!brut) return null;
+  const j = extractJson<CandidatWeb>(brut);
+  if (!j || !j.titre || !j.texte || !j.interpretation) {
+    console.error('[parabole-en-ligne] candidat incomplet :', String(brut).slice(0, 200));
     return null;
   }
-  const j = extractJson<CandidatWeb>(brut);
-  if (!j || !j.titre || !j.texte || !j.interpretation) return null;
   const texte = String(j.texte).trim();
-  if (texte.length < 80 || texte.length > 1600) return null;
+  if (texte.length < 60 || texte.length > 2000) {
+    console.error('[parabole-en-ligne] longueur récit hors bornes :', texte.length);
+    return null;
+  }
 
   const urlWiki = await verifierSurWikipedia(String(j.recherche || ''), String(j.titre));
   const sourceOeuvre = String(j.sourceOeuvre || '').trim();

@@ -110,8 +110,12 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // cause d'un seuil d'éligibilité est un scénario interdit.
   if (match.sousSeuil && resultat.synthese?.texte && !budgetEpuise(12000)) {
     yield { type: 'status', step: 'reorientation' };
-    const reorientee = await reArbitrerSurSynthese(resultat.synthese.texte, question, opts.modeCorpus).catch(() => null);
+    const reorientee = await reArbitrerSurSynthese(resultat.synthese.texte, question, opts.modeCorpus).catch((e) => {
+      console.error('[flux] ré-arbitrage échec :', e instanceof Error ? e.message : e);
+      return null;
+    });
     if (reorientee && !reorientee.sousSeuil) match = reorientee;
+    else console.error('[flux] ré-arbitrage : aucune candidate du corpus au-dessus du seuil pour cette synthèse');
   }
 
   // ── v4.8 — Repli EN LIGNE : aucune parabole du corpus ne convient efficacement
@@ -124,8 +128,12 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   if (match.sousSeuil && !budgetEpuise(18000)) {
     yield { type: 'status', step: 'enligne' };
     const ancrage = resultat.synthese?.texte || question;
-    const trouvee = await paraboleEnLigne(ancrage, question, opts.modeCorpus).catch(() => null);
+    const trouvee = await paraboleEnLigne(ancrage, question, opts.modeCorpus).catch((e) => {
+      console.error('[flux] parabole en ligne échec :', e instanceof Error ? e.message : e);
+      return null;
+    });
     if (trouvee) match = trouvee;
+    else console.error('[flux] parabole en ligne : rien de vérifiable retourné — repli sur la plus proche du corpus');
   }
 
   resultat.parabole = match;

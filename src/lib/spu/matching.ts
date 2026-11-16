@@ -129,7 +129,7 @@ Identifie d'abord le CŒUR ÉMOTIONNEL de la question (ex. : trahison d'un proch
 Choisis ensuite la parabole dont le ressort émotionnel correspond le mieux à ce cœur — elle doit éclairer la situation de la personne, pas simplement reprendre ses mots.
 Note la pertinence de 0 à 1 (1 = éclairage profond et juste ; 0.4 = très vague ; 0.65 = seuil de qualité minimal).
 Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretation_index": 0}`;
-    const reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 12000, temperature: 0.2, maxTokens: 120 });
+    const reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 14000, temperature: 0.2, maxTokens: 700 });
     const json = extractJson<{ index: number; score: number; interpretation_index: number }>(reponse);
     if (json && typeof json.index === 'number' && candidats[json.index]) {
       arbitrage = {
@@ -138,8 +138,9 @@ Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretat
         interpretation_index: typeof json.interpretation_index === 'number' ? json.interpretation_index : 0,
       };
     }
-  } catch {
-    // arbitrage indisponible : on garde le meilleur cosinus
+  } catch (e) {
+    // arbitrage indisponible : on garde le meilleur cosinus (diagnostic dans les logs)
+    console.error('[matching] arbitre question échec :', e instanceof Error ? e.message : e);
   }
 
   const choisi = arbitrage ? candidats.find((c) => c.id === arbitrage!.id)! : candidats[0];
@@ -208,7 +209,7 @@ ${candidats.map((c, i) => `[${i}] (${c.code}, ${c.culture}) « ${c.texte} » —
 Choisis la parabole dont la leçon reflète le mieux LA SYNTHÈSE (son cœur émotionnel et sa direction, pas seulement les mots de la question).
 Note la pertinence de 0 à 1 (1 = éclairage profond et juste ; 0.65 = seuil de qualité minimal).
 Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretation_index": 0}`;
-    const reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 12000, temperature: 0.2, maxTokens: 120 });
+    const reponse = await llmChat([{ role: 'user', content: consigne }], { timeoutMs: 14000, temperature: 0.2, maxTokens: 700 });
     const json = extractJson<{ index: number; score: number; interpretation_index: number }>(reponse);
     if (json && typeof json.index === 'number' && candidats[json.index]) {
       choisi = {
@@ -217,10 +218,14 @@ Réponds UNIQUEMENT avec un JSON exact : {"index": 0, "score": 0.0, "interpretat
         interpretation_index: typeof json.interpretation_index === 'number' ? json.interpretation_index : 0,
       };
     }
-  } catch {
+  } catch (e) {
+    console.error('[matching] arbitre synthèse échec :', e instanceof Error ? e.message : e);
     return null; // arbitrage indisponible : on garde la première parabole
   }
-  if (!choisi) return null;
+  if (!choisi) {
+    console.error('[matching] arbitre synthèse : JSON inexploitable');
+    return null;
+  }
   const p = parCode.get(choisi.id)!;
   const interps = safeParse<string[]>(p.interpretations, []);
   return {

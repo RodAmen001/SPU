@@ -184,7 +184,14 @@ async function appelGroq(c: CorpsSecours): Promise<string> {
         fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }),
+          // v5.1 — gpt-oss est un modèle À RAISONNEMENT : ses jetons de réflexion
+          // consomment le max_tokens et tronquaient les JSON (arbitres, parabole
+          // en ligne). On bride son raisonnement quand le modèle le supporte.
+          body: JSON.stringify(
+            modele.includes('gpt-oss')
+              ? { model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens, reasoning_effort: 'low' }
+              : { model: modele, messages: c.messages, temperature: c.temperature, max_tokens: c.maxTokens }
+          ),
           signal: AbortSignal.timeout(delai),
         }),
         delai,
