@@ -91,3 +91,6 @@ scripts/sauvegarde/
 
 # environnement local (v4.9 — hygiène : le chemin BD est déjà défini dans le Dockerfile)
 .env
+
+# vidages mémoire des tests piper
+core

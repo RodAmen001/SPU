@@ -1,12 +1,16 @@
 // GET  /api/tts — capacités du moteur de voix (neuronales locales ou navigateur)
 // POST /api/tts — génère le WAV d'un segment pour un profil de voix du SPU
+// v6.0 — les voix manquantes sont téléchargées À LA DEMANDE depuis le cloud du
+// concepteur (Hugging Face : Rodamen/spu-voix) puis servies 100 % local.
 import { NextRequest, NextResponse } from 'next/server';
-import { etatNeurales, genererVoix, voixDisponibles, nomHumainModele } from '@/lib/spu/voix-neurales';
+import { etatNeurales, genererVoix, voixDisponibles, nomHumainModele, prechargerVoixCloud } from '@/lib/spu/voix-neurales';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!etatNeurales()) {
+  let disponible = etatNeurales();
+  if (!disponible) disponible = await prechargerVoixCloud();
+  if (!disponible) {
     return NextResponse.json({ disponible: false, moteur: 'navigateur', raison: 'Moteur Piper non installé — repli sur les voix du navigateur.' });
   }
   const disponibles = voixDisponibles();
@@ -21,6 +25,9 @@ export async function POST(req: NextRequest) {
   const corps = (await req.json().catch(() => ({}))) as { voix?: string; texte?: string; debit?: number };
   if (!corps.voix || !corps.texte) {
     return NextResponse.json({ error: 'Paramètres « voix » et « texte » requis.' }, { status: 400 });
+  }
+  if (!etatNeurales()) {
+    await prechargerVoixCloud(); // première utilisation : les voix descendent du cloud
   }
   if (!etatNeurales()) {
     return NextResponse.json({ disponible: false }, { status: 503 });

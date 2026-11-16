@@ -9,6 +9,7 @@ import { phase0 } from '@/lib/spu/distress';
 import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif } from '@/lib/spu/flux';
+import { genererBoost, cheminBoost } from '@/lib/spu/boost';
 import { avecBudget, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
@@ -38,6 +39,7 @@ interface EtatMentor {
   parabole1?: { id: string; texte: string; interpretation: string; culture: string };
   histoire1?: string;
   perspective1?: string;
+  partages?: string[]; // v6.0 — tout ce que la personne a partagé (pour le BOOST)
 }
 
 export async function POST(req: NextRequest) {
@@ -58,6 +60,12 @@ export async function POST(req: NextRequest) {
       const send = (event: string, data: unknown) =>
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       const status = (step: string) => send('status', { step });
+
+      // v6.0 — LE BOOST est orchestré APRÈS le budget principal : il a son propre
+      // temps et ne peut jamais amputer ni retarder la réponse du flux.
+      let finalEtape3: { echangeId: string } | null = null;
+      let sessionIdFinal = '';
+      let boostAOrchestrer: string | null = null;
 
       // Budget global de l'étape Mentor : au-delà, les appels IA cèdent la place
       // aux modèles locaux — la réponse complète est toujours servie.
@@ -218,6 +226,7 @@ export async function POST(req: NextRequest) {
           // rejoue sur la question ENRICHIE (question initiale + précision apportée).
           // Chaque réponse porte sa parabole réelle, sourcée et cadrée.
           const enrichie = `${etat.questionInitiale} — Précision apportée par la personne : ${reponse}`.slice(0, 2000);
+          etat.partages = [...(etat.partages || []), reponse].slice(-4);
           const ech2 = await db.echange.create({
             data: { sessionId: session.id, question: reponse, mode: 'mentor', etape: 2, audioActive: corps.audioActive || false },
           });
@@ -268,7 +277,10 @@ export async function POST(req: NextRequest) {
           send('question-ouverte', { text: QUESTION_OUVERTE_FINALE });
           etat.etape = 1;
           await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
-          send('final', { echangeId: echLibre3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
+          // v6.0 — la 3ᵉ étape est close : le BOOST se prépare (hors budget principal)
+          finalEtape3 = { echangeId: echLibre3.id };
+          sessionIdFinal = session.id;
+          boostAOrchestrer = [etat.questionInitiale, ...(etat.partages || [])].filter(Boolean).join('\n');
           return;
         }
         const p0 = await phase0(reponse);
@@ -305,14 +317,34 @@ export async function POST(req: NextRequest) {
 
         etat.etape = 1; // prêt pour un nouveau cycle
         await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
-        send('final', { echangeId: echange3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
+        // v6.0 — la toute dernière question du Mentor vient d'être servie : LE BOOST
+        finalEtape3 = { echangeId: echange3.id };
+        sessionIdFinal = session.id;
+        boostAOrchestrer = chemin;
       } catch (err) {
         console.error('[api/mentor]', err);
         send('erreur', { message: MESSAGE_ERREUR_SOURCES });
-      } finally {
-        controller.close();
       }
       });
+
+      // ── v6.0 — ORCHESTRATION DU BOOST (après la 3ᵉ question, hors budget principal :
+      // le théâtre a son propre temps et ne peut jamais amputer la réponse reçue) ──
+      if (finalEtape3) {
+        try {
+          const scenario = boostAOrchestrer ? await genererBoost(boostAOrchestrer, 'adulte') : null;
+          if (scenario) {
+            send('boost', { scenario, mode: 'mentor' });
+            db.echange.update({
+              where: { id: finalEtape3.echangeId },
+              data: { payload: JSON.stringify({ type: 'mentor-boost', titre: scenario.titre, heros: scenario.heros }) },
+            }).catch(() => {});
+          }
+        } catch (e) {
+          console.error('[api/mentor] boost (silencieux) :', e instanceof Error ? e.message : e);
+        }
+        send('final', { echangeId: finalEtape3.echangeId, sessionId: sessionIdFinal, etape: 3, perspectiveDisponible: false });
+      }
+      controller.close();
     },
   });
 

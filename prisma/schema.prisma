@@ -41,6 +41,8 @@ model Session {
   expiresAt  DateTime
   mentorState String? // JSON: état du dialogue Mentor (étape, historique)
   deepState  String? // JSON: état du parcours Deep (niveau courant)
+  oracleState String? // JSON: état du parcours Oracle Inversé (parabole présentée, étape)
+  boostState String? // JSON: série de questions/réponses Enfant pour décider d'un BOOST
   userId     String? // présent si la session est rattachée à un compte SPU
   user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   echanges   Echange[]

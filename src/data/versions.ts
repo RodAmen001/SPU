@@ -15,10 +15,23 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.0',
+    date: '16/11/2026',
+    titre: "Le BOOST, l'Oracle Inversé et les 12 voix : le grand chantier du courage",
+    actuelle: true,
+    points: [
+      "RÈGLE DURE — au moins DEUX sources pour chaque réponse (exigence du concepteur) : la synthèse n'est jamais livrée avec une seule source ; trois passes de patience, rafale finale sur toutes les sources restantes, et le LLM de synthèse doit citer au moins deux sources.",
+      "Mode ORACLE INVERSÉ (remplace Deep) : le SPU présente UNE parabole sans son interprétation ; tu dis ce que tu en comprends ; il analyse ta lecture face aux interprétations des intelligences réflexives, te donne LA BONNE INTERPRÉTATION, une APPRÉCIATION valorisante (jamais rabaisser) et une ORIENTATION née du rapprochement ta réponse ↔ parabole.",
+      "LE BOOST (exigence du concepteur) : un théâtre audio de 3 à 5 minutes en 5 phases — situation initiale, élément déclencheur, péripéties avec LA DÉCLARATION FORTE, dénouement, situation finale — où le héros, face aux difficultés, se remet en confiance par une décision ferme (parfois suite à l'exhortation vive d'un maître), puis atteint les résultats tant recherchés par ses actions et ses prières.",
+      "Le BOOST est JOUÉ par plusieurs personnages, chacun avec SA voix distincte parmi les 12 voix du SPU — jamais une narration mono-voix. En Mentor : il suit la toute dernière question (étape 3/3). En Enfant : il clôt une série d'au moins 3 questions corrélées, sous forme d'une BANDE DESSINÉE défilante synchronisée au théâtre audio.",
+      'Musique BOOST dédiée : les pistes épiques, héroïques et triomphantes du catalogue ; le fond épouse chaque scène (douce, tension, déclaration, triomphe).',
+      '12 voix principales paramétrées pour des timbres nettement distinctibles (hommes et femmes), hébergées dans le cloud et chargées à la demande.',
+    ],
+  },
+  {
     version: 'v5.0',
     date: '15/11/2026',
     titre: "La réponse qui ne s'arrête plus jamais : histoires vivantes, musique partout, IA en rotation",
-    actuelle: true,
     points: [
       "Fin des histoires génériques (exigence du concepteur) : les formules interchangeables (« quelqu'un marchait… », « la voix de l'eau lui parvint », rivière par défaut) sont interdites aux IA ; chaque histoire commence par une scène concrète — lieu, personnage caractérisé, objet — et porte le ressort émotionnel de LA question posée.",
       "Histoires issues des livres saints (exigence du concepteur) : quand la parabole y résonne, l'histoire peut mettre en scène un passage RÉEL de la Bible, du Coran, de la Torah/Talmud ou des grandes traditions — fidèle au texte, référence citée (ex. « Luc 15 », « Coran 18 ») — ou une histoire originale dans leur esprit ; jamais de référence incertaine.",

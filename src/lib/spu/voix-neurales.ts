@@ -5,7 +5,7 @@
 // du SPU sont mappés sur ces vraies voix, avec réglage fin (débit, hauteur via ffmpeg).
 import { spawn } from 'child_process';
 import { createHash } from 'crypto';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 const RACINE = process.cwd();
@@ -19,27 +19,48 @@ interface ConfigVoixNeurale {
   pitch: number; // 1 = neutre ; > 1 = plus aigu (enfants), < 1 = plus grave (aînés)
 }
 
+// ── Les 12 voix principales du SPU (v6.0) ─────────────────────────────────────
+// Chaque profil reçoit UN timbre nettement distinctible : des MODÈLES DIFFÉRENTS
+// (Tom, Gilles, Siwis, UPMC ×2 locuteurs, MLS multi-locuteurs — locuteurs choisis
+// par mesure de voix fondamentale : hommes 96-144 Hz, femmes 190-225 Hz) puis,
+// quand nécessaire, un réglage fin (longueur, hauteur via ffmpeg). Les voix des
+// personnages du BOOST et de l'histoire ne se confondent plus entre elles.
 // Priorité décroissante : le premier modèle présent sur le disque est utilisé.
 const CONFIGURATIONS: Record<string, ConfigVoixNeurale[]> = {
   narrateur: [{ modele: 'fr_FR-tom-medium', longueur: 0.98, pitch: 0.97 }],
-  conteur: [{ modele: 'fr_FR-tom-medium', longueur: 1.12, pitch: 0.95 }],
+  conteur: [{ modele: 'fr_FR-gilles-low', longueur: 1.1, pitch: 0.96 }],
   sage: [{ modele: 'fr_FR-upmc-medium', locuteur: 1, longueur: 1.08, pitch: 0.92 }],
-  'homme-jeune': [{ modele: 'fr_FR-upmc-medium', locuteur: 1, longueur: 1.0, pitch: 1.0 }],
+  'homme-jeune': [
+    { modele: 'fr_FR-mls-medium', locuteur: 20, longueur: 1.0, pitch: 1.0 }, // F0 134 Hz
+    { modele: 'fr_FR-upmc-medium', locuteur: 1, longueur: 1.0, pitch: 1.0 },
+  ],
   'homme-mure': [{ modele: 'fr_FR-tom-medium', longueur: 0.92, pitch: 0.95 }],
+  'homme-vigoureux': [
+    { modele: 'fr_FR-mls-medium', locuteur: 40, longueur: 0.95, pitch: 0.99 }, // F0 117 Hz
+    { modele: 'fr_FR-gilles-low', longueur: 0.95, pitch: 0.99 },
+  ],
   'femme-jeune': [
-    { modele: 'fr_FR-siwis-medium', longueur: 1.0, pitch: 1.0 },
+    { modele: 'fr_FR-mls-medium', locuteur: 95, longueur: 1.0, pitch: 1.0 }, // F0 208 Hz
     { modele: 'fr_FR-upmc-medium', locuteur: 0, longueur: 1.0, pitch: 1.0 },
   ],
-  'femme-mure': [{ modele: 'fr_FR-siwis-medium', longueur: 1.06, pitch: 0.98 }],
-  'vieille-femme': [{ modele: 'fr_FR-siwis-medium', longueur: 1.12, pitch: 0.96 }],
-  'enfant-fille': [{ modele: 'fr_FR-siwis-medium', longueur: 1.05, pitch: 1.38 }],
-  'enfant-garcon': [{ modele: 'fr_FR-tom-medium', longueur: 1.08, pitch: 1.45 }],
+  'femme-mure': [{ modele: 'fr_FR-upmc-medium', locuteur: 0, longueur: 1.05, pitch: 0.97 }],
+  'femme-conteuse': [
+    { modele: 'fr_FR-mls-medium', locuteur: 75, longueur: 1.02, pitch: 1.0 }, // F0 210 Hz
+    { modele: 'fr_FR-mls-medium', locuteur: 55, longueur: 1.02, pitch: 1.0 },
+  ],
+  'vieille-femme': [
+    { modele: 'fr_FR-mls-medium', locuteur: 25, longueur: 1.12, pitch: 0.94 }, // F0 225 Hz, ralenti
+    { modele: 'fr_FR-mls-medium', locuteur: 25, longueur: 1.1, pitch: 0.96 },
+  ],
+  'enfant-fille': [{ modele: 'fr_FR-mls-medium', locuteur: 55, longueur: 1.05, pitch: 1.38 }],
+  'enfant-garcon': [{ modele: 'fr_FR-tom-medium', longueur: 1.06, pitch: 1.45 }],
 };
 
 const NOMS_MODELES: Record<string, { nom: string; locuteurs?: Record<number, string> }> = {
   'fr_FR-tom-medium': { nom: 'Tom' },
   'fr_FR-upmc-medium': { nom: 'UPMC', locuteurs: { 0: 'Jessica', 1: 'Pierre' } },
-  'fr_FR-siwis-medium': { nom: 'Siwis' },
+  'fr_FR-gilles-low': { nom: 'Gilles' },
+  'fr_FR-mls-medium': { nom: 'MLS', locuteurs: { 20: 'Henri', 40: 'Bruno', 55: 'Mireille', 75: 'Léa', 95: 'Salomé', 25: 'Odile' } },
 };
 
 // ── Disponibilité (re-vérifiée toutes les 30 s) ───────────────────────────────
@@ -49,6 +70,56 @@ export function etatNeurales(): boolean {
   if (_etat && Date.now() - _etat.quand < 30000) return _etat.ok;
   const ok = existsSync(BIN) && existsSync(join(DIR_MODELES, 'fr_FR-tom-medium.onnx'));
   _etat = { ok, quand: Date.now() };
+  return ok;
+}
+
+// ── CLOUD — chargement à la demande des voix manquantes (v6.0) ────────────────
+// Les 5 modèles français (10 fichiers) sont hébergés dans le cloud du concepteur
+// (Hugging Face : Rodamen/spu-voix — voix libres MIT / CC-BY). Un modèle absent
+// du disque est téléchargé UNE fois, puis servi 100 % local. Sur un hébergement
+// au disque éphémère (Render), le cache est rechargé à la demande par instance.
+const BASE_CLOUD = process.env.SPU_VOIX_BASE || 'https://huggingface.co/Rodamen/spu-voix/resolve/main';
+
+const TELECHARGEMENTS = new Map<string, Promise<boolean>>();
+
+async function telechargerModele(modele: string): Promise<boolean> {
+  try {
+    mkdirSync(DIR_MODELES, { recursive: true });
+    for (const suffixe of ['onnx.json', 'onnx']) {
+      const cible = join(DIR_MODELES, `${modele}.${suffixe}`);
+      if (existsSync(cible) && statSync(cible).size > 1000) continue;
+      const res = await fetch(`${BASE_CLOUD}/${modele}.${suffixe}?download=true`);
+      if (!res.ok) return false;
+      const tampon = Buffer.from(await res.arrayBuffer());
+      if (tampon.length < 1000) return false;
+      writeFileSync(cible, tampon);
+    }
+    console.error(`[voix-neurales] modèle ${modele} téléchargé depuis le cloud`);
+    return true;
+  } catch (e) {
+    console.error(`[voix-neurales] téléchargement cloud ${modele} en échec :`, e instanceof Error ? e.message : e);
+    return false;
+  }
+}
+
+/** Précharge depuis le cloud tous les modèles configurés absents du disque.
+ *  Appelé par /api/tts avant toute génération — idempotent, concurrence sûre. */
+export async function prechargerVoixCloud(): Promise<boolean> {
+  const modeles = new Set<string>();
+  for (const configs of Object.values(CONFIGURATIONS)) for (const c of configs) modeles.add(c.modele);
+  let ok = etatNeurales();
+  for (const m of modeles) {
+    if (existsSync(join(DIR_MODELES, `${m}.onnx`))) continue;
+    if (!TELECHARGEMENTS.has(m)) TELECHARGEMENTS.set(m, telechargerModele(m).finally(() => TELECHARGEMENTS.delete(m)));
+    try {
+      if (await TELECHARGEMENTS.get(m)!) {
+        ok = true;
+        _etat = null; // force une re-vérification de disponibilité
+      }
+    } catch {
+      /* modèle suivant */
+    }
+  }
   return ok;
 }
 
@@ -164,7 +235,11 @@ export async function genererVoix(profilId: string, texte: string, debit = 1): P
     if (cfg.locuteur !== undefined) args.push('--speaker', String(cfg.locuteur));
     let wav = await executer(BIN, args, `${t}\n`);
     const sr = sampleRateDe(cfg.modele);
-    wav = await decalerPitch(wav, cfg.pitch, sr);
+    try {
+      wav = await decalerPitch(wav, cfg.pitch, sr); // ffmpeg absent → voix non décalée, jamais d'échec
+    } catch {
+      console.error('[voix-neurales] décalage de hauteur indisponible (ffmpeg ?) — voix neutre servie');
+    }
     CACHE.set(cle, wav);
     if (CACHE.size > MAX_CACHE) {
       const premiere = CACHE.keys().next().value;

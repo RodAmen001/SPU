@@ -21,6 +21,7 @@ const ETAPES_LISIBILES: Record<string, string> = {
   'préparation': 'Je prépare la suite…',
   'approfondissement': 'J\'approfondis avec toi…',
   'méditation': 'Je compose une méditation…',
+  'boost': 'Je monte ton théâtre BOOST — distribution des voix…',
   'perspective': 'Je relie ta question et la parabole…',
 };
 
@@ -123,7 +124,7 @@ export function VueReponse({
     );
   }
 
-  const rien = !reponse.synthese && !reponse.parabole && !reponse.histoire && !reponse.meditation && !reponse.reflexion && !reponse.perspective;
+  const rien = !reponse.synthese && !reponse.parabole && !reponse.histoire && !reponse.meditation && !reponse.reflexion && !reponse.perspective && !reponse.oracle;
   if (rien) return null;
 
   return (
@@ -151,6 +152,29 @@ export function VueReponse({
         <Card className="p-5 apparu border-[--secondary]/50 bg-[--muted]/30">
           <h3 className="font-semibold text-[15px] mb-2 text-[--secondary]">Méditation</h3>
           <p className="text-[15px] leading-relaxed font-serif italic whitespace-pre-line">{reponse.meditation}</p>
+        </Card>
+      )}
+
+      {/* ── ORACLE INVERSÉ (v6.0) — l'analyse de LA lecture de la personne :
+          écho fidèle de sa compréhension + appréciation VALORISANTE (jamais
+          rabaisser) + les autres éclairages des intelligences réflexives ── */}
+      {reponse.oracle && (
+        <Card className="p-6 apparu border-[--primary]/40 bg-gradient-to-br from-[--card] to-[--primary]/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="h-4 w-4 text-[--primary]" aria-hidden />
+            <h3 className="font-semibold text-[15px]">Ta lecture, vue par les intelligences réflexives</h3>
+          </div>
+          <p className="text-[15px] leading-relaxed whitespace-pre-line mb-3">{reponse.oracle.appreciation}</p>
+          {reponse.oracle.autres.length > 0 && (
+            <div className="pt-3 border-t border-[--border]/60">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[--muted-foreground] mb-1.5">Autres éclairages possibles de cette parabole</p>
+              <ul className="space-y-1.5">
+                {reponse.oracle.autres.map((a, i) => (
+                  <li key={i} className="text-sm text-[--muted-foreground] leading-relaxed">• {a}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
       )}
 

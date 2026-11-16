@@ -49,5 +49,24 @@ COPY --from=builder /app/src/data ./src/data
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# ── v6.0 — LES 12 VOIX NEURONALES EN PRODUCTION ──────────────────────────────
+# ffmpeg (décalage de hauteur des voix) + binaire Piper + les modèles français
+# téléchargés UNE fois à la construction depuis le cloud du concepteur
+# (Hugging Face : Rodamen/spu-voix — voix libres, MIT / CC-BY). Ensuite, la
+# génération de voix reste 100 % locale : aucun appel réseau à la lecture.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p voix-piper/piper voix-piper/modeles \
+ && curl -sL -o /tmp/piper.tar.gz "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz" \
+ && tar xzf /tmp/piper.tar.gz -C /tmp \
+ && cp -r /tmp/piper/* voix-piper/piper/ \
+ && rm /tmp/piper.tar.gz \
+ && for f in fr_FR-tom-medium fr_FR-gilles-low fr_FR-mls-medium fr_FR-upmc-medium; do \
+      curl -sL --retry 3 -o "voix-piper/modeles/$f.onnx" "https://huggingface.co/Rodamen/spu-voix/resolve/main/$f.onnx?download=true" \
+      && curl -sL --retry 3 -o "voix-piper/modeles/$f.onnx.json" "https://huggingface.co/Rodamen/spu-voix/resolve/main/$f.onnx.json?download=true" \
+      && echo "voix $f : $(stat -c%s voix-piper/modeles/$f.onnx) octets"; \
+    done
+
 EXPOSE 7860
 ENTRYPOINT ["./docker-entrypoint.sh"]

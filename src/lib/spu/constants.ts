@@ -1,10 +1,10 @@
 // Constantes SPU v4.4 — messages imposés par le cahier des charges (Parts 13, 15, 21)
 
 /** Version officielle affichée partout (accueil, pied de page, titre, /api/version). */
-export const VERSION_SPU = '5.0';
+export const VERSION_SPU = '6.0';
 
 // Identité réseau du SPU (politique Wikimedia : User-Agent descriptif + contact)
-export const UA_SPU = 'SPU/5.0 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
+export const UA_SPU = 'SPU/6.0 (https://spu-web.onrender.com; contact ramenyido@gmail.com)';
 
 export const FAMILLES: Record<string, string> = {
   F1: 'Patience',
@@ -20,15 +20,15 @@ export const FAMILLES: Record<string, string> = {
 };
 
 // 21.4 — Message d'accueil
-export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v4.9.
+export const MESSAGE_ACCUEIL = `Bienvenue dans le SPU v6.0.
 
-Je suis un orchestrateur narratif. Je consulte plusieurs sources d'intelligence artificielle et de recherche, je synthétise leurs réponses, puis je te propose une parabole réelle et une histoire personnalisée.
+Je suis un orchestrateur narratif. Je consulte plusieurs sources d'intelligence artificielle et de recherche (au moins deux, toujours), je synthétise leurs réponses, puis je te propose une parabole réelle et une histoire personnalisée.
 
 Choisis ton mode :
 • Oracle — une réponse unique, rapide.
-• Mentor — un dialogue progressif en 3 étapes.
-• Deep — une exploration contemplative en 3 niveaux.
-• Enfant — un conte rassurant pour les 6-12 ans.
+• Mentor — un dialogue progressif en 3 étapes, soldé par le théâtre BOOST.
+• Oracle Inversé — je te donne une parabole : tu me dis ce que tu comprends, j'analyse ta lecture et je te réponds.
+• Enfant — un conte rassurant pour les 6-12 ans, avec bande dessinée et BOOST quand la série le mérite.
 
 Quel mode choisis-tu ? (Si tu ne précises pas, Oracle est sélectionné par défaut.)`;
 
@@ -108,7 +108,7 @@ LIVRES SAINTS ET CONTES (exigence du concepteur, v5.0) : tu peux puiser dans un 
 L'histoire DOIT répondre à cette inquiétude précise : l'enfant doit terminer l'histoire en sentant que sa question a reçu une vraie réponse, pas une histoire générique. Si le sujet est délicat (confusion dans la famille, dispute, mensonge…), traite-le avec des personnages animaux ou symboliques, avec douceur et honnêteté adaptées à son âge, et termine par une note rassurante qui ouvre une question douce. Parabole : [${params.enonce}]. Interprétation : [${params.interpretation}]. Contexte : [${params.contexte}]. Culture : [${params.culture}].`;
 }
 
-// Question ouverte finale (mode Mentor / Deep — posture éthique 1.3)
+// Question ouverte finale (mode Mentor — posture éthique 1.3)
 export const QUESTION_OUVERTE_FINALE = `Et toi, qu'est-ce que cette histoire te dit de ta propre route ? Prends ton temps pour répondre — ou garde la question avec toi.`;
 
 // Seuils (3.4)

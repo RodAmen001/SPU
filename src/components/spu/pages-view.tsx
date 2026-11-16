@@ -60,7 +60,7 @@ export function VueFonctionnement() {
         </h3>
         <p className="text-sm leading-relaxed text-[--muted-foreground]">
           Chaque mode a son ambiance (majestueuse pour l&apos;Oracle, chaleureuse pour le Mentor, profonde
-          pour Deep, espiègle pour l&apos;Enfant) et puise dans <span className="font-medium text-[--foreground]">51
+          pour l&apos;Oracle Inversé, espiègle pour l&apos;Enfant) et puise dans <span className="font-medium text-[--foreground]">100
           musiques libres de droits</span> — la piste change au fil de tes conversations, et une musique
           distincte accompagne chaque réponse. Tu peux couper le son à tout moment, et quitter
           l&apos;application proprement avec le bouton <span className="font-medium text-[--foreground]">Quitter</span> du
@@ -312,8 +312,9 @@ export function VueMusiques() {
     { nom: 'Accueil et pages documentaires', note: 'musique douce présente sur chaque page du SPU', pistes: parUsage('accueil') },
     { nom: 'Oracle', note: 'majestueuse et contemplative', pistes: parUsage('oracle') },
     { nom: 'Mentor', note: 'chaleureuse, un compagnon de route', pistes: parUsage('mentor') },
-    { nom: 'Deep', note: 'profonde, au rythme du souffle', pistes: parUsage('deep') },
+    { nom: 'Oracle Inversé', note: 'profonde, au rythme du souffle', pistes: parUsage('deep') },
     { nom: 'Enfant', note: 'légère, espiègle et douce', pistes: parUsage('enfant') },
+    { nom: 'BOOST', note: 'épique, héroïque et triomphante', pistes: parUsage('boost') },
   ];
 
   return (

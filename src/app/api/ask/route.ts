@@ -7,6 +7,7 @@ import { phase0, coucheA } from '@/lib/spu/distress';
 import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif, type EvenementSSE, type ResultatFlux } from '@/lib/spu/flux';
+import { genererBoost, cheminBoost, serieSoldeeParBoost } from '@/lib/spu/boost';
 import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
@@ -56,6 +57,11 @@ export async function POST(req: NextRequest) {
 
       let echangeId = '';
       let sessionId = corps.sessionId || '';
+      // v6.0 — mode Enfant : si la série corrélative de questions (≥ 3) peut être
+      // soldée d'un BOOST, il est orchestré APRÈS le budget principal (son propre
+      // temps, jamais au détriment de la réponse).
+      let boostEnfantDemande = false;
+      let resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
       // Budget global de la requête : au-delà, tous les appels IA cèdent la place
       // aux modèles locaux — une réponse complète est toujours servie.
       await avecBudget(BUDGET_ORACLE_MS, async () => {
@@ -155,7 +161,7 @@ export async function POST(req: NextRequest) {
 
         // ── Flux narratif complet ──
         const modeCorpus = mode === 'enfant' ? 'enfant' : 'adulte';
-        let resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
+        resultat = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
         for await (const ev of fluxNarratif(question, { modeCorpus, contexte: 'non partagé' })) {
           const e = ev as EvenementSSE;
           if (e.type === 'synthesis')
@@ -206,6 +212,8 @@ export async function POST(req: NextRequest) {
           console.error('[api/ask] journalisation (BD indisponible):', errBd);
         }
 
+        if (mode === 'enfant') boostEnfantDemande = true;
+        else
         send('final', {
           echangeId,
           sessionId,
@@ -214,10 +222,47 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error('[api/ask]', err);
         if (!echangeId) send('erreur', { message: MESSAGE_ERREUR_SOURCES });
-      } finally {
-        controller.close();
       }
       });
+
+      // ── v6.0 — LE BOOST ENFANT (hors budget principal : son propre temps) ──
+      // Si la série des questions juste passées (≥ 3, corrélatives) peut être
+      // soldée d'un BOOST, le théâtre-configuration est généré et envoyé AVANT le
+      // final : l'interface lance la bande dessinée défilante synchronisée.
+      if (boostEnfantDemande) {
+        try {
+          const sessionBoost = sessionId ? await db.session.findUnique({ where: { id: sessionId } }).catch(() => null) : null;
+          let etatBoost = sessionBoost?.boostState
+            ? (JSON.parse(sessionBoost.boostState) as { q: string[]; resumes: string[] })
+            : { q: [], resumes: [] };
+          etatBoost.q.push(question);
+          etatBoost.resumes.push(resultat?.parabole?.interpretationChoisie?.slice(0, 220) || '');
+          etatBoost.q = etatBoost.q.slice(-3);
+          etatBoost.resumes = etatBoost.resumes.slice(-3);
+          let boostDonne = false;
+          if (etatBoost.q.length >= 3 && serieSoldeeParBoost(etatBoost.q)) {
+            status('boost'); // l'interface annonce la préparation du théâtre
+            const scenario = await genererBoost(cheminBoost(etatBoost.q, etatBoost.resumes), 'enfant');
+            if (scenario) {
+              send('boost', { scenario, mode: 'enfant' });
+              etatBoost = { q: [], resumes: [] }; // la série est soldée : nouvelle série
+              boostDonne = true;
+            }
+          }
+          if (sessionId) {
+            db.session.update({ where: { id: sessionId }, data: { boostState: JSON.stringify(etatBoost) } }).catch(() => {});
+          }
+          console.error('[api/ask] boost enfant :', boostDonne ? 'orchestré' : 'série en cours', etatBoost.q.length);
+        } catch (e) {
+          console.error('[api/ask] boost enfant (silencieux) :', e instanceof Error ? e.message : e);
+        }
+        send('final', {
+          echangeId,
+          sessionId,
+          perspectiveDisponible: false,
+        });
+      }
+      controller.close();
     },
   });
 

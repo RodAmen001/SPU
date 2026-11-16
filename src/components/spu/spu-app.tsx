@@ -16,17 +16,19 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Sparkles, Compass, Moon, Baby, NotebookPen, Library, Eye, ShieldCheck,
-  Volume2, VolumeX, ArrowLeft, ArrowDown, RefreshCw, Send, AudioLines, Music4,
-  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf,
+  Sparkles, Compass, Baby, NotebookPen, Library, Eye, ShieldCheck,
+  Volume2, VolumeX, ArrowLeft, RefreshCw, Send, AudioLines, Music4,
+  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf, Repeat,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { streamSSE } from '@/lib/spu/sse-client';
 import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, type ReponseVue } from '@/lib/spu/store';
+import type { ScenarioBoost } from '@/lib/spu/boost';
 import { VERSION_SPU } from '@/lib/spu/constants';
 import { getMoteurAudio, type ModeMusique } from '@/lib/spu/audio-engine';
 import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
 import { VueReponse, EtapesEnDirect } from './reponse-view';
+import { TheatreBoost } from './theatre-boost';
 import { BulleUtilisateur, BulleSpu, FilDiscussion, type MessageFil } from './fil-discussion';
 import { VueEnfant } from './child-view';
 import { VueJournal } from './journal-view';
@@ -35,7 +37,7 @@ import { VueTransparence, VueConfidentialite, VueFonctionnement, VueNouveautes, 
 import { ReglagesVoix } from './reglages-voix';
 import { VoletCompte } from './compte-volet';
 
-type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'corpus' | 'musiques' | 'transparence' | 'confidentialite' | 'fonctionnement' | 'nouveautes' | 'soutien';
+type Vue = 'accueil' | 'oracle' | 'mentor' | 'oracle-inverse' | 'enfant' | 'journal' | 'corpus' | 'musiques' | 'transparence' | 'confidentialite' | 'fonctionnement' | 'nouveautes' | 'soutien';
 
 // v4.8 — La barre de menu : toutes les écrits et options de l'application,
 // disposés de la manière la plus claire possible (ordinateur : barre complète
@@ -44,7 +46,7 @@ type Vue = 'accueil' | 'oracle' | 'mentor' | 'deep' | 'enfant' | 'journal' | 'co
 const MODES: { id: Vue; icone: React.ReactNode; titre: string; description: string; musique: string }[] = [
   { id: 'oracle', icone: <Sparkles className="h-6 w-6" aria-hidden />, titre: 'Oracle', description: 'Une réponse unique : synthèse, parabole, histoire. Pour une question ponctuelle.', musique: 'majestueuse et contemplative' },
   { id: 'mentor', icone: <Compass className="h-6 w-6" aria-hidden />, titre: 'Mentor', description: 'Un dialogue progressif en 3 étapes, pour clarifier pas à pas.', musique: 'chaleureuse, un compagnon de route' },
-  { id: 'deep', icone: <Moon className="h-6 w-6" aria-hidden />, titre: 'Deep', description: 'Une exploration contemplative en 3 niveaux, au rythme de ta respiration.', musique: 'profonde, au rythme du souffle' },
+  { id: 'oracle-inverse', icone: <Repeat className="h-6 w-6" aria-hidden />, titre: 'Oracle Inversé', description: 'Le SPU te donne UNE parabole : dis ce que tu en comprends — il analyse ta lecture et te répond. Pour te découvrir toi-même.', musique: 'profonde, au rythme du souffle' },
   { id: 'enfant', icone: <Baby className="h-6 w-6" aria-hidden />, titre: 'Enfant', description: 'Un conte rassurant pour les 6-12 ans, joué comme un théâtre sonore.', musique: 'légère, espiègle et douce' },
 ];
 
@@ -69,7 +71,7 @@ export function SpuApp() {
   // « pas de page sans musique ») : les quatre modes gardent leur ambiance,
   // l'accueil et les pages documentaires jouent le sac « accueil » (calme).
   const modeMusiqueDe = (v: Vue): ModeMusique =>
-    v === 'oracle' || v === 'mentor' || v === 'deep' || v === 'enfant' ? v : 'accueil';
+    v === 'oracle' || v === 'mentor' || v === 'enfant' ? v : v === 'oracle-inverse' ? 'deep' : 'accueil';
 
   useEffect(() => {
     const moteur = getMoteurAudio();
@@ -129,7 +131,7 @@ export function SpuApp() {
         {vue === 'accueil' && <VueAccueil choisir={naviguer} aller={naviguer} />}
         {vue === 'oracle' && <FluxOracle />}
         {vue === 'mentor' && <FluxMentor />}
-        {vue === 'deep' && <FluxDeep />}
+        {vue === 'oracle-inverse' && <FluxOracleInverse />}
         {vue === 'enfant' && <VueEnfant surRetour={() => naviguer('accueil')} />}
         {vue === 'journal' && <div className="py-8 px-4"><VueJournal /></div>}
         {vue === 'corpus' && <div className="py-8 px-4"><VueCorpus /></div>}
@@ -377,7 +379,7 @@ const COULEURS_MODES: Record<string, { carte: string; pastille: string; survol: 
     pastille: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 group-hover:bg-emerald-500 group-hover:text-white',
     survol: 'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
   },
-  deep: {
+  'oracle-inverse': {
     carte: 'from-violet-500/15 via-indigo-500/10 to-transparent',
     pastille: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 group-hover:bg-violet-500 group-hover:text-white',
     survol: 'hover:border-violet-500/60 hover:shadow-violet-500/15',
@@ -390,7 +392,8 @@ const COULEURS_MODES: Record<string, { carte: string; pastille: string; survol: 
 };
 
 const BADGES_ACCUEIL: { texte: string; teinte: string }[] = [
-  { texte: '🎭 10 voix locales', teinte: 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-200' },
+  { texte: '🎭 12 voix locales distinctes', teinte: 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-200' },
+  { texte: '⚡ théâtre BOOST en 5 phases', teinte: 'border-orange-500/50 bg-orange-500/10 text-orange-800 dark:text-orange-200' },
   { texte: '🔊 réponse entièrement lue', teinte: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200' },
   { texte: '🎵 51 musiques libres, variées', teinte: 'border-violet-500/50 bg-violet-500/10 text-violet-800 dark:text-violet-200' },
   { texte: '📚 100 paraboles réelles et sourcées', teinte: 'border-sky-500/50 bg-sky-500/10 text-sky-800 dark:text-sky-200' },
@@ -481,20 +484,24 @@ function VueAccueil({ choisir, aller }: { choisir: (v: Vue) => void; aller: (v: 
 
 // ── Zone de question partagée ─────────────────────────────────────────────────
 function ZoneQuestion({
-  onEnvoyer, enCours, placeholder, suggestions, modeDeep,
+  onEnvoyer, enCours, placeholder, suggestions, modeLong, boutonLibre,
 }: {
-  onEnvoyer: (q: string) => void; enCours: boolean; placeholder: string; suggestions?: string[]; modeDeep?: boolean;
+  onEnvoyer: (q: string) => void; enCours: boolean; placeholder: string; suggestions?: string[];
+  modeLong?: boolean; boutonLibre?: string; // v6.0 — envoi sans texte (Oracle Inversé)
 }) {
   const [texte, setTexte] = useState('');
+  const envoyer = () => {
+    if (texte.trim() || boutonLibre) {
+      onEnvoyer(texte.trim());
+      setTexte('');
+    }
+  };
   return (
     <div className="space-y-3">
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (texte.trim()) {
-            onEnvoyer(texte.trim());
-            setTexte('');
-          }
+          envoyer();
         }}
         className="space-y-3"
       >
@@ -502,22 +509,21 @@ function ZoneQuestion({
           value={texte}
           onChange={(e) => setTexte(e.target.value)}
           placeholder={placeholder}
-          rows={modeDeep ? 3 : 2}
+          rows={modeLong ? 3 : 2}
           maxLength={2000}
           className="rounded-2xl border-[--border] bg-[--card] text-[15px] resize-none focus-visible:ring-[--primary]"
           aria-label="ta question"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && texte.trim()) {
-              onEnvoyer(texte.trim());
-              setTexte('');
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && (texte.trim() || boutonLibre)) {
+              envoyer();
             }
           }}
         />
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-[--muted-foreground]">{texte.length}/2000 · ⌘/Ctrl+Entrée pour envoyer</span>
-          <Button type="submit" disabled={enCours || !texte.trim()} className="rounded-full min-h-[44px]">
+          <Button type="submit" disabled={enCours || (!texte.trim() && !boutonLibre)} className="rounded-full min-h-[44px]">
             <Send className="h-4 w-4 mr-2" aria-hidden />
-            Envoyer
+            {boutonLibre || 'Envoyer'}
           </Button>
         </div>
       </form>
@@ -698,6 +704,7 @@ function FluxMentor() {
   const [messages, setMessages] = useState<MessageFil[]>([]);
   const [reponse, setReponse] = useState<ReponseVue | null>(null);
   const [brouillon, setBrouillon] = useState('');
+  const [boostScenario, setBoostScenario] = useState<ScenarioBoost | null>(null);
   const finaliser = useFinalisation();
 
   const appeler = async (corps: Record<string, unknown>) => {
@@ -705,6 +712,7 @@ function FluxMentor() {
     if (audioActive) getMoteurAudio().jouerMode('mentor');
     const r: ReponseVue = { ...REPONSE_VIDE, enCours: true };
     setReponse(r);
+    let boostRecu: ScenarioBoost | null = null;
     await streamSSE('/api/mentor', { sessionId: sessionId || undefined, ...corps }, {
       status: (d) => {
         r.statut = String(d.step || '');
@@ -732,6 +740,10 @@ function FluxMentor() {
       reflexion: (d) => {
         r.reflexion = String(d.text || '');
         setReponse({ ...r });
+      },
+      // v6.0 — LE BOOST arrive après la 3ᵉ étape : le théâtre prend le relais
+      boost: (d) => {
+        boostRecu = ((d as { scenario?: ScenarioBoost }).scenario || null) as ScenarioBoost | null;
       },
       questionOuverte: (d) => {
         r.questionOuverte = String(d.text || '');
@@ -768,7 +780,14 @@ function FluxMentor() {
       const etiquette = r.final?.etape
         ? `Étape ${r.final.etape}/3 — ${r.final.etape === 1 ? 'OUVERTURE' : r.final.etape === 2 ? 'APPROFONDISSEMENT' : 'SYNTHÈSE'}`
         : undefined;
-      setMessages((m) => [...m, { ...finaliser(r), etiquette }]);
+      const msg = finaliser(r);
+      if (boostRecu) {
+        // v6.0 — le BOOST joue le grand final : la narration classique s'efface
+        // devant le théâtre (la réponse reste complète dans le fil).
+        ttsStop();
+        setBoostScenario(boostRecu);
+      }
+      setMessages((m) => [...m, { ...msg, etiquette }]);
     }
     setReponse(null);
   };
@@ -852,9 +871,12 @@ function FluxMentor() {
         </div>
       )}
 
+      {/* v6.0 — LE BOOST : théâtre courageux après la toute dernière question */}
+      {boostScenario && <TheatreBoost scenario={boostScenario} />}
+
       {dialogueFini && !reponse && (
         <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); }} className="rounded-full">
+          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
             <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouveau dialogue
           </Button>
         </div>
@@ -869,13 +891,25 @@ function FluxMentor() {
   );
 }
 
-// ── FLUX DEEP (3 niveaux) — fil de discussion horodaté ────────────────────────
-function FluxDeep() {
-  const { sessionId, setSessionId, audioActive } = useSpuStore();
-  const [niveau, setNiveau] = useState(1);
+// ── FLUX ORACLE INVERSÉ (v6.0, remplace le mode Deep) ────────────────────────
+// Le SPU présente UNE parabole nue ; la personne dit ce qu'elle en comprend ;
+// le SPU analyse sa lecture face aux interprétations des intelligences
+// réflexives, donne LA BONNE INTERPRÉTATION, une APPRÉCIATION valorisante
+// (jamais rabaisser) et une ORIENTATION née du rapprochement réponse ↔ parabole.
+interface AnalyseOracle {
+  comprehension: string;
+  appreciation: string;
+  interpretation: string;
+  autres: string[];
+  orientation: string;
+}
+
+function FluxOracleInverse() {
+  const { sessionId, setSessionId, audioActive, ttsActive, voixNarrateur, debitVoix } = useSpuStore();
   const [messages, setMessages] = useState<MessageFil[]>([]);
   const [reponse, setReponse] = useState<ReponseVue | null>(null);
-  const [note, setNote] = useState('');
+  const [theme, setTheme] = useState('');
+  const [reponseLecture, setReponseLecture] = useState('');
   const finaliser = useFinalisation();
 
   const appeler = async (corps: Record<string, unknown>) => {
@@ -883,41 +917,33 @@ function FluxDeep() {
     if (audioActive) getMoteurAudio().jouerMode('deep');
     const r: ReponseVue = { ...REPONSE_VIDE, enCours: true };
     setReponse(r);
-    await streamSSE('/api/deep', { sessionId: sessionId || undefined, ...corps }, {
+    await streamSSE('/api/oracle-inverse', { sessionId: sessionId || undefined, ...corps }, {
       status: (d) => {
         r.statut = String(d.step || '');
         setReponse({ ...r });
       },
-      synthesis: (d) => {
-        r.synthese = d as never;
-        setReponse({ ...r });
-      },
       parabole: (d) => {
-        r.parabole = d as never;
-        // v5.0 — la musique s'accorde à LA parabole offerte (culture + famille)
-        const dp = d as { culture?: string; famille?: string };
-        getMoteurAudio().accorderParabole({ culture: dp.culture, famille: dp.famille });
+        r.parabole = d as never; // interprétation VOULUE vide : la parabole arrive nue
         setReponse({ ...r });
       },
-      histoire: (d) => {
-        r.histoire += String(d.chunk || '');
+      'demande-reflexion': (d) => {
+        r.questionOuverte = String(d.texte || '');
         setReponse({ ...r });
       },
-      meditation: (d) => {
-        r.meditation += String(d.chunk || '');
-        setReponse({ ...r });
-      },
-      perspective: (d) => {
-        r.perspective = String(d.text || '');
-        setReponse({ ...r });
-      },
-      questionOuverte: (d) => {
-        r.questionOuverte = String(d.text || '');
-        setReponse({ ...r });
-      },
-      // le serveur émet le nom hyphéné « question-ouverte » — même gestionnaire
-      'question-ouverte': (d) => {
-        r.questionOuverte = String(d.text || '');
+      'oracle-analyse': (d) => {
+        const a = d as { comprehension?: string; appreciation?: string; interpretation?: string; autres?: string[]; orientation?: string };
+        // v6.0 — l'analyse est affichée DANS la réponse : appréciation valorisante
+        // bien visible (carte dédiée), bonne interprétation sur la parabole,
+        // orientation dans la mise en perspective.
+        r.oracle = {
+          comprehension: a.comprehension || '',
+          appreciation: a.appreciation || '',
+          autres: a.autres || [],
+        };
+        if (a.interpretation && r.parabole) {
+          r.parabole = { ...r.parabole, interpretation: a.interpretation };
+        }
+        r.perspective = a.orientation || '';
         setReponse({ ...r });
       },
       erreur: (d) => {
@@ -929,7 +955,7 @@ function FluxDeep() {
         setReponse({ ...r });
       },
       final: (d) => {
-        const f = d as { echangeId: string; sessionId: string; niveau: number; suiteDisponible?: boolean };
+        const f = d as { echangeId: string; sessionId: string; etape: number };
         if (f.sessionId) setSessionId(f.sessionId);
         r.final = f as never;
         setReponse({ ...r });
@@ -939,34 +965,27 @@ function FluxDeep() {
         setReponse({ ...r });
       },
     });
-    // Stream terminé → la réponse part dans le fil (horodatée, avec son étiquette de niveau).
     r.enCours = false;
     if (r.final || r.erreur || r.distress) {
-      const etiquette = r.final?.niveau
-        ? `Niveau ${r.final.niveau}/3 — ${r.final.niveau === 1 ? 'OUVERTURE' : r.final.niveau === 2 ? 'INTROSPECTION' : 'PERSPECTIVE'}`
-        : undefined;
-      setMessages((m) => [...m, { ...finaliser(r), etiquette }]);
+      setMessages((m) => [...m, finaliser(r)]);
     }
     setReponse(null);
   };
 
-  const poser = (q: string) => {
-    setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: q }]);
-    void appeler({ question: q, niveau: 1 });
-  };
-
   const dernierSpu = [...messages].reverse().find((m) => m.role === 'spu');
-  const suiteDisponible = dernierSpu?.reponse?.final?.suiteDisponible && (dernierSpu.reponse.final.niveau === 1 || dernierSpu.reponse.final.niveau === 2);
+  const parabolePresente = dernierSpu?.reponse?.parabole && !dernierSpu.reponse.erreur;
+  const analyseFaite = !!dernierSpu?.reponse?.oracle;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {messages.length === 0 && !reponse && (
         <div className="mb-6">
-          <h1 className="text-2xl font-serif font-bold mb-1">Mode Deep</h1>
-          <Badge variant="outline" className="mb-4">Niveau {niveau}/3 — {niveau === 1 ? 'OUVERTURE' : niveau === 2 ? 'INTROSPECTION' : 'PERSPECTIVE'}</Badge>
+          <h1 className="text-2xl font-serif font-bold mb-1">Mode Oracle Inversé</h1>
+          <Badge variant="outline" className="mb-4">Le renversement : c&apos;est TOI qui lis d&apos;abord</Badge>
           <p className="text-sm text-[--muted-foreground] mb-4">
-            Un parcours contemplatif : trois niveaux de profondeur, un ton plus lent, une musique plus présente.
-            Prends ton temps.
+            Je te donne une parabole — sans son interprétation. Dis-moi ce que TU comprends :
+            j&apos;analyse ta lecture avec les intelligences réflexives, je te donne la bonne
+            interprétation, une appréciation sincère de ta réponse, et une orientation.
           </p>
         </div>
       )}
@@ -996,47 +1015,63 @@ function FluxDeep() {
         />
       )}
 
-      {suiteDisponible && !reponse && (
+      {/* Étape 2 : la personne dit ce qu'elle a compris */}
+      {parabolePresente && !analyseFaite && !reponse && (
         <div className="mt-6 pl-9 space-y-3">
           <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
+            value={reponseLecture}
+            onChange={(e) => setReponseLecture(e.target.value)}
+            rows={3}
             maxLength={2000}
-            placeholder={dernierSpu!.reponse!.final!.niveau === 1 ? 'Si tu veux noter ce qui a résonné (optionnel)…' : 'Un dernier mot avant la perspective finale (optionnel)…'}
+            placeholder="Avec tes mots : que comprends-tu de cette parabole ? Une image, une leçon, un souvenir…"
             className="rounded-2xl resize-none"
-            aria-label="note facultative"
+            aria-label="ce que tu comprends de la parabole"
           />
-          <div className="flex justify-center">
+          <div className="flex justify-end">
             <Button
               onClick={() => {
-                const questionEnvoyee = note.trim() || '(je continue le parcours)';
-                const prochainNiveau = dernierSpu!.reponse!.final!.niveau! + 1;
-                setNiveau(prochainNiveau);
-                setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: questionEnvoyee }]);
-                void appeler({ reponse: note.trim(), niveau: prochainNiveau });
-                setNote('');
+                if (reponseLecture.trim()) {
+                  setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: reponseLecture.trim() }]);
+                  void appeler({ reponse: reponseLecture.trim(), etape: 2 });
+                  setReponseLecture('');
+                }
               }}
+              disabled={!reponseLecture.trim()}
               className="rounded-full min-h-[44px]"
             >
-              <ArrowDown className="h-4 w-4 mr-2" aria-hidden /> Descendre au niveau {dernierSpu!.reponse!.final!.niveau! + 1}
+              <Send className="h-4 w-4 mr-2" aria-hidden /> Je dis ce que je comprends
             </Button>
           </div>
         </div>
       )}
 
-      {dernierSpu?.reponse?.final?.niveau === 3 && !reponse && (
+      {/* Après l'analyse : nouveau parcours */}
+      {analyseFaite && !reponse && (
         <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => { setNiveau(1); setMessages([]); }} className="rounded-full">
-            <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Remonter — nouveau parcours
+          <Button variant="outline" onClick={() => { setMessages([]); setTheme(''); setReponseLecture(''); }} className="rounded-full">
+            <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouvelle parabole
           </Button>
         </div>
       )}
 
       {messages.length === 0 && !reponse && (
         <div className="mt-6">
-          <ZoneQuestion onEnvoyer={poser} enCours={false} placeholder="Quelle question t'accompagne en ce moment ?" modeDeep />
+          <ZoneQuestion
+            onEnvoyer={(q) => {
+              setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: q || '(je reçois une parabole libre)' }]);
+              void appeler({ theme: q, etape: 1 });
+            }}
+            enCours={false}
+            placeholder="Si tu veux, note ce qui te traverse en ce moment (facultatif) — ou envoie vide pour recevoir une parabole libre"
+            modeLong
+            boutonLibre="Recevoir ma parabole"
+          />
         </div>
+      )}
+      {messages.length === 0 && !reponse && (
+        <p className="mt-2 text-xs text-[--muted-foreground] text-center">
+          {ttsActive ? 'La lecture complète sera lue à voix haute par le narrateur.' : ''}
+        </p>
       )}
     </div>
   );

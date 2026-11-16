@@ -15,18 +15,21 @@ export interface ProfilVoix {
   emoji: string;
 }
 
-// ── Les 10 voix du SPU ────────────────────────────────────────────────────────
+// ── Les 12 voix principales du SPU (v6.0 — exigence du concepteur : 12 timbres
+//    NETTEMENT distinctibles, hommes et femmes, hébergés dans le cloud) ─────────
 export const VOIX_SPU: ProfilVoix[] = [
   { id: 'narrateur', nom: 'Narrateur', role: 'Voix principale — raconte tout le récit', pitch: 0.85, rate: 0.92, emoji: '🎭' },
-  { id: 'sage', nom: 'Le Sage', role: 'Vieil homme posé — mentors, aïeuls', pitch: 0.72, rate: 0.82, emoji: '🧙' },
+  { id: 'conteur', nom: 'Conteur du soir', role: 'Alternance du narrateur — ton feutré pour les passages de transition', pitch: 0.78, rate: 0.88, emoji: '🕯️' },
+  { id: 'sage', nom: 'Le Sage', role: 'Vieil homme posé — mentors, aïeuls, maîtres exhortants', pitch: 0.72, rate: 0.82, emoji: '🧙' },
+  { id: 'homme-jeune', nom: 'Jeune homme', role: 'Adulte homme — voyageurs, apprentis, héros', pitch: 0.95, rate: 1.0, emoji: '👨' },
+  { id: 'homme-mure', nom: 'Homme mûr', role: 'Adulte homme — pères, artisans', pitch: 0.8, rate: 0.94, emoji: '🧔' },
+  { id: 'homme-vigoureux', nom: 'Homme vigoureux', role: 'Adulte homme — guerriers, chefs, voisins solides', pitch: 0.88, rate: 1.0, emoji: '💪' },
+  { id: 'femme-jeune', nom: 'Jeune femme', role: 'Adulte femme — héroïnes, compagnes', pitch: 1.28, rate: 1.0, emoji: '👩' },
+  { id: 'femme-mure', nom: 'Femme expérimentée', role: 'Adulte femme — mères, guides', pitch: 1.05, rate: 0.95, emoji: '👩‍🦳' },
+  { id: 'femme-conteuse', nom: 'Raconteuse', role: 'Femme conteuse — transitions douces, voix du soir', pitch: 1.15, rate: 0.9, emoji: '📖' },
   { id: 'vieille-femme', nom: 'Aïeule', role: 'Femme âgée — grands-mères, sages-femmes', pitch: 1.12, rate: 0.8, emoji: '👵' },
   { id: 'enfant-fille', nom: 'Petite fille', role: 'Enfant (6-12 ans) — voix claire et vive', pitch: 1.65, rate: 1.08, emoji: '👧' },
   { id: 'enfant-garcon', nom: 'Petit garçon', role: 'Enfant (6-12 ans) — voix gauche et curieuse', pitch: 1.45, rate: 1.04, emoji: '👦' },
-  { id: 'femme-jeune', nom: 'Jeune femme', role: 'Adulte femme — héroïnes, compagnes', pitch: 1.28, rate: 1.0, emoji: '👩' },
-  { id: 'femme-mure', nom: 'Femme expérimentée', role: 'Adulte femme — mères, guides', pitch: 1.05, rate: 0.95, emoji: '👩‍🦳' },
-  { id: 'homme-jeune', nom: 'Jeune homme', role: 'Adulte homme — voyageurs, apprentis', pitch: 0.95, rate: 1.0, emoji: '👨' },
-  { id: 'homme-mure', nom: 'Homme mûr', role: 'Adulte homme — pères, artisans', pitch: 0.8, rate: 0.94, emoji: '🧔' },
-  { id: 'conteur', nom: 'Conteur du soir', role: 'Alternance du narrateur — ton feutré pour les passages de transition', pitch: 0.78, rate: 0.88, emoji: '🕯️' },
 ];
 
 export const VOIX_PAR_DEFAUT = {

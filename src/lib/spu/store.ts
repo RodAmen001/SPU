@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { VOIX_PAR_DEFAUT } from './tts';
+import type { ScenarioBoost } from './boost';
 
 interface EtatSpu {
   sessionId: string | null;
@@ -92,6 +93,8 @@ export interface ReponseVue {
   reflexion: string;
   perspective: string;
   questionOuverte: string | null;
+  boost: ScenarioBoost | null; // v6.0 — théâtre BOOST reçu du serveur (Mentor/Enfant)
+  oracle: { comprehension: string; appreciation: string; autres: string[] } | null; // v6.0 — Oracle Inversé : analyse de la lecture de la personne
   final: { echangeId: string; sessionId: string; etape?: number; niveau?: number; perspectiveDisponible?: boolean; suiteDisponible?: boolean } | null;
   enCours: boolean;
   heure: string | null; // horodatage de fin de réponse (type messagerie)
@@ -108,6 +111,8 @@ export const REPONSE_VIDE: ReponseVue = {
   reflexion: '',
   perspective: '',
   questionOuverte: null,
+  boost: null,
+  oracle: null,
   final: null,
   enCours: false,
   heure: null,
@@ -127,11 +132,14 @@ export function dateHeureComplete(d: Date | string): string {
 }
 
 /** Script de narration complet : parabole + interprétation + histoire + mise en
- *  perspective — TOUTE la réponse est lue par le narrateur (exigence v4.5). */
+ *  perspective — TOUTE la réponse est lue par le narrateur (exigence v4.5).
+ *  v6.0 — Oracle Inversé : l'appréciation de la lecture de la personne est lue
+ *  avant l'interprétation (c'est son moment, jamais rabaisser). */
 export function texteNarrationComplete(r: ReponseVue): string {
   const parties: string[] = [];
   if (r.parabole?.enonce) {
     parties.push(`La parabole. « ${r.parabole.enonce} »`);
+    if (r.oracle?.appreciation) parties.push(`Ta lecture. ${r.oracle.appreciation}`);
     if (r.parabole.interpretation) parties.push(`L'interprétation. ${r.parabole.interpretation}`);
   }
   if (r.histoire && r.histoire.trim()) parties.push(`L'histoire. ${r.histoire}`);

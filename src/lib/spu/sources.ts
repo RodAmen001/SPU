@@ -278,8 +278,10 @@ const SOURCES_SPU: { nom: string; delai: number; fn: (q: string) => Promise<stri
 export const SEUIL_CONFIANCE_SOURCES = 0.5; // 50 % — critère d'escalade du concepteur
 
 /**
- * Orchestration ADAPTIVE (critère du concepteur v4.5) :
+ * Orchestration ADAPTIVE (critère du concepteur v4.5, règle v6.0) :
  *   • on démarre avec 2 sources et on synthétise ;
+ *   • v6.0 — RÈGLE DURE : JAMAIS de synthèse livrée avec moins de 2 sources
+ *     (trois passes de patience, rafale finale, synthèse exigeant 2 sources) ;
  *   • confiance < 50 % → on ajoute une 3ᵉ source et on re-synthétise ;
  *     si ≥ 50 % avec 3 sources → on garde ces 3 sources ;
  *   • sinon → 4ᵉ source ; si ≥ 50 % avec 4 → on garde ces 4 sources ;
@@ -296,13 +298,14 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
   // (2 sources, puis toutes) — les niveaux intermédiaires ne font que collecter.
   const paliersSynthese = new Set([2, SOURCES_SPU.length]);
 
-  // v5.0 — PATIENCE RÉELLE (exigence du concepteur : « à tout prix ») : les
-  // moteurs gratuits appliquent leurs fenêtres (Pollinations : 1 réponse / 45 s
-  // par IP ; GitHub : fenêtres à la minute). Si le premier balayage ne ramène
-  // AUCUNE source, on attend ~20 s (le temps d'une fenêtre) et on re-balaie —
-  // jusqu'à trois passes dans le budget de 90 s. Une réponse honnête est
-  // toujours servie au bout, mais les sources ont eu TOUTES leurs chances.
-  for (let passe = 0; passe < 3 && !consultees.length; passe++) {
+  // v6.0 — RÈGLE DURE DU CONCEPTEUR : CHAQUE réponse porte AU MOINS DEUX SOURCES.
+  // PATIENCE RÉELLE (exigence du concepteur : « à tout prix ») : les moteurs
+  // gratuits appliquent leurs fenêtres (Pollinations : 1 réponse / 45 s par IP ;
+  // GitHub : fenêtres à la minute). Si moins de DEUX sources ont répondu, on
+  // attend ~20 s (le temps d'une fenêtre) et on re-balaie — jusqu'à trois passes
+  // dans le budget de 90 s. Une seule source ne suffit JAMAIS à livrer la réponse
+  // tant que des sources restent à tenter et que le budget le permet.
+  for (let passe = 0; passe < 3 && consultees.length < 2; passe++) {
     // le budget restant décide : jamais de passe qui mettrait la réponse en danger
     if (budgetEpuise(35000)) break;
     if (passe > 0) await new Promise((r) => setTimeout(r, 20000));
@@ -328,7 +331,7 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
         if (r.status === 'fulfilled' && r.value) consultees.push(r.value);
       }
     }
-    if (!consultees.length) continue; // aucune source vivante pour l'instant
+    if (consultees.length < 2) continue; // v6.0 : la synthèse exige AU MOINS 2 sources
     if (!paliersSynthese.has(cible)) continue; // collecte seule (économie de quota)
 
     // Garde-fou : un échec de synthèse (quota, budget épuisé…) ne doit jamais
@@ -350,6 +353,31 @@ export async function orchestrerSources(question: string): Promise<ResultatOrche
 
     // critère d'arrêt : confiance ≥ 50 % pour ce niveau de sources
     if (synthese.confiance >= SEUIL_CONFIANCE_SOURCES) break;
+    }
+  }
+
+  // v6.0 — RAFANLE FINALE : moins de 2 sources ont répondu en trois passes ?
+  // On tente TOUTES les sources jamais essayées (délais courts) pour saisir une
+  // deuxième voix — puis on re-synthétise si le budget le permet.
+  if (consultees.length === 1 && !budgetEpuise(25000)) {
+    const restantes = SOURCES_SPU.filter((s) => s.nom !== consultees[0].nom);
+    const resultats = await Promise.allSettled(
+      restantes.map((s) => avecCache(question, s.nom, () => s.fn(question), 8000))
+    );
+    const nouvelles: SourceResultat[] = [];
+    for (const r of resultats) {
+      if (r.status === 'fulfilled' && r.value) nouvelles.push(r.value);
+    }
+    if (nouvelles.length) {
+      consultees.push(...nouvelles);
+      try {
+        const resynthese = await synthetiser(question, consultees);
+        syntheses.push({ niveau: consultees.length, synthese: resynthese });
+        historique.push({ niveau: consultees.length, confiance: resynthese.confiance });
+        console.error('[orchestrateur] rafale finale :', nouvelles.length, 'source(s) récupérée(s) — total', consultees.length);
+      } catch {
+        /* la synthèse initiale (une source) reste retenue — honnêteté préservée */
+      }
     }
   }
 
@@ -438,6 +466,7 @@ Réponses des sources :
 ${extraits}
 
 Réponds UNIQUEMENT avec un JSON exact : {"synthese": "…", "sources_utilisees": [1, 2], "confiance": 0.0 à 1.0}
+Cite AU MOINS DEUX sources dans sources_utilisees (numéros tirés des sources ci-dessus).
 Confiance = cohérence entre sources (1.0 = convergentes, 0.3 = contradictoires, plus bas si sources pauvres).`;
   let reponse = '';
   try {
@@ -450,7 +479,16 @@ Confiance = cohérence entre sources (1.0 = convergentes, 0.3 = contradictoires,
   }
   const json = extractJson<{ synthese: string; sources_utilisees: number[]; confiance: number }>(reponse);
   if (json?.synthese) {
-    const idxUtil = (json.sources_utilisees || []).map((n) => sources[n - 1]?.nom).filter(Boolean) as string[];
+    let idxUtil = (json.sources_utilisees || []).map((n) => sources[n - 1]?.nom).filter(Boolean) as string[];
+    // v6.0 — règle du concepteur : AU MOINS DEUX SOURCES citées dans chaque réponse.
+    // Si le modèle n'en retient qu'une (ou zéro) alors que plusieurs ont répondu,
+    // la ou les sources suivantes sont réintégrées à la liste citée.
+    if (sources.length >= 2 && idxUtil.length < 2) {
+      for (const s of sources) {
+        if (idxUtil.length >= 2) break;
+        if (!idxUtil.includes(s.nom)) idxUtil.push(s.nom);
+      }
+    }
     return {
       texte: json.synthese.trim(),
       sources: idxUtil.length ? idxUtil : sources.map((s) => s.nom),

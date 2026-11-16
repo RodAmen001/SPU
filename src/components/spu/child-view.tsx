@@ -8,9 +8,11 @@ import { Card } from '@/components/ui/card';
 import { Volume2, VolumeX, ArrowLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { streamSSE } from '@/lib/spu/sse-client';
 import { useSpuStore, REPONSE_VIDE, heureMaintenant, texteNarrationComplete, type ReponseVue } from '@/lib/spu/store';
+import type { ScenarioBoost } from '@/lib/spu/boost';
 import { getMoteurAudio } from '@/lib/spu/audio-engine';
 import { ttsStop, ttsParler, profilParId } from '@/lib/spu/tts';
 import { EtapesEnDirect } from './reponse-view';
+import { TheatreBoost } from './theatre-boost';
 import { BulleUtilisateur, BulleSpu, type MessageFil } from './fil-discussion';
 
 const SUGGESTIONS = [
@@ -71,6 +73,11 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         r.current.perspective = String(d.text || '');
         setReponse({ ...r.current });
       },
+      // v6.0 — LE BOOST enfant : la série corrélative est soldée par un théâtre
+      boost: (d) => {
+        r.current.boost = ((d as { scenario?: ScenarioBoost }).scenario || null) as ScenarioBoost | null;
+        setReponse({ ...r.current });
+      },
       erreur: (d) => {
         r.current.erreur = String(d.message || '');
         setReponse({ ...r.current });
@@ -89,14 +96,14 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
         r.current.erreur = String(d.error || 'Erreur');
         setReponse({ ...r.current });
       },
-    });
-    // Stream terminé → bulle horodatée + jingle + TOUTE la réponse lue par le narrateur
-    // (parabole, interprétation, histoire, mise en perspective) si la voix est activée.
+    }, 240000); // le BOOST a son propre temps : garde-fou allongé
+    // Stream terminé → bulle horodatée + jingle + lecture complète par le narrateur,
+    // SAUF si un BOOST est orchestré : le théâtre multi-voix prend le relais.
     r.current.enCours = false;
     const finie = { ...r.current };
     setMessages((m) => [...m, { id: uid(), role: 'spu', heure: heureMaintenant(), reponse: { ...finie, heure: null } }]);
     if (getMoteurAudio().volume > 0) getMoteurAudio().jingleReponse();
-    if (ttsActive) {
+    if (ttsActive && !finie.boost) {
       const texte = texteNarrationComplete(finie);
       if (texte.trim()) void ttsParler(texte, { profil: profilParId(voixNarrateur), debitGlobal: debitVoix });
     }
@@ -181,6 +188,7 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
               key={m.id}
               message={m}
               enfants={
+                <>
                 <Card className="p-6 sm:p-8" aria-live="polite">
                   {m.reponse?.parabole && (
                     <div className="mb-5">
@@ -222,6 +230,8 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
                     </details>
                   )}
                 </Card>
+                {m.reponse?.boost && <TheatreBoost scenario={m.reponse.boost} enfant />}
+                </>
               }
             />
           )

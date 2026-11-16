@@ -10,7 +10,7 @@
 
 import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
 
-export type ModeMusique = 'oracle' | 'mentor' | 'deep' | 'enfant' | 'accueil';
+export type ModeMusique = 'oracle' | 'mentor' | 'deep' | 'enfant' | 'boost' | 'accueil';
 
 interface PisteLibre {
   titre: string;
@@ -31,6 +31,7 @@ const REPLI_LOCAL: Record<ModeMusique, string> = {
   mentor: '/audio/fond-mentor.mp3',
   deep: '/audio/fond-deep.mp3',
   enfant: '/audio/fond-enfant.mp3',
+  boost: '/audio/fond-oracle.mp3',
   accueil: '/audio/fond-oracle.mp3',
 };
 
@@ -86,8 +87,19 @@ function scoreParabole(p: PisteLibre, culture?: string, famille?: string): numbe
   return score;
 }
 
-/** Pistes d'un mode (usage peut être composé : "deep+oracle") — sac jamais vide. */
+/** Pistes d'un mode (usage peut être composé : "deep+oracle") — sac jamais vide.
+ *  v6.0 — le mode BOOST a son sac SPÉCIAL : les pistes épiques, héroïques,
+ *  triomphantes et lumineuses du catalogue (mots-clés d'ambiance), choisies pour
+ *  satisfaire les attentes du BOOST : monter l'émotion, porter la déclaration. */
 function sacDePistes(mode: ModeMusique): PisteLibre[] {
+  if (mode === 'boost') {
+    const clesBoost = ['epic', 'heroic', 'brave', 'triumph', 'courage', 'determined', 'uplifting', 'bright', 'energetic', 'hopeful', 'advent', 'victory', 'powerful', 'march', 'drum'];
+    const sacBoost = MUSIQUES.filter((m) => {
+      const texte = normaliser(`${m.ambiance} ${m.titre}`);
+      return clesBoost.some((c) => texte.includes(c));
+    });
+    if (sacBoost.length >= 2) return sacBoost;
+  }
   const sac = MUSIQUES.filter((m) => m.usage.split('+').includes(mode));
   return sac.length ? sac : MUSIQUES;
 }
@@ -98,7 +110,7 @@ export class MoteurAudio {
   private modeActuel: ModeMusique | null = null;
   private fonduTimer: ReturnType<typeof setInterval> | null = null;
   private _volume = 0.3;
-  private rotation: Record<ModeMusique, number> = { oracle: 0, mentor: 0, deep: 0, enfant: 0, accueil: 0 };
+  private rotation: Record<ModeMusique, number> = { oracle: 0, mentor: 0, deep: 0, enfant: 0, boost: 0, accueil: 0 };
   private dernieresJouees: string[] = []; // URLs récentes (anti-répétition immédiate)
   private infoCourante: PisteLibre | null = null;
   private paraboleCourante: { culture?: string; famille?: string } | null = null;
@@ -240,6 +252,21 @@ export class MoteurAudio {
     this.paraboleCourante = { culture: parabole.culture, famille: parabole.famille };
     // retente uniquement si la musique est effectivement en cours de lecture
     if (this.modeActuel && this.fond && !this.fond.paused) this.jouerMode(this.modeActuel);
+  }
+
+  /**
+   * v6.0 — le fond épouse CHAQUE SCÈNE du BOOST :
+   * « douce » → discret, « tension » → présent, « declaration » → très atténué
+   * (la parole forte domine), « triomphe » → plein volume au retour de la joie.
+   */
+  ajusterScene(hint: 'douce' | 'tension' | 'declaration' | 'triomphe') {
+    if (!this.fond) return;
+    const facteur = hint === 'douce' ? 0.5 : hint === 'tension' ? 0.8 : hint === 'declaration' ? 0.3 : 1.0;
+    try {
+      this.fond.volume = Math.max(0, Math.min(1, this.volumeEffective * facteur));
+    } catch {
+      /* élément libéré */
+    }
   }
 
   /** Son de transition doux : joué une seule fois, par-dessus le fond légèrement atténué. */
