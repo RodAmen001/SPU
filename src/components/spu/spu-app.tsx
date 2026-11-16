@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Sparkles, Compass, Baby, NotebookPen, Library, Eye, ShieldCheck,
   Volume2, VolumeX, ArrowLeft, RefreshCw, Send, AudioLines, Music4,
-  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf, Repeat, SkipForward,
+  Menu, X, LogOut, Newspaper, HeartHandshake, Leaf, Repeat, SkipForward, Zap,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { streamSSE } from '@/lib/spu/sse-client';
@@ -716,6 +716,7 @@ function FluxMentor() {
   const [reponse, setReponse] = useState<ReponseVue | null>(null);
   const [brouillon, setBrouillon] = useState('');
   const [boostScenario, setBoostScenario] = useState<ScenarioBoost | null>(null);
+  const [boostEnAttente, setBoostEnAttente] = useState<{ echangeId: string } | null>(null);
   const finaliser = useFinalisation();
 
   const appeler = async (corps: Record<string, unknown>) => {
@@ -792,15 +793,48 @@ function FluxMentor() {
         ? `Étape ${r.final.etape}/3 — ${r.final.etape === 1 ? 'OUVERTURE' : r.final.etape === 2 ? 'APPROFONDISSEMENT' : 'SYNTHÈSE'}`
         : undefined;
       const msg = finaliser(r);
+      const finalBoost = (r.final as { boostEnPreparation?: boolean } | undefined) || undefined;
       if (boostRecu) {
-        // v6.1 — le BOOST est PROPOSÉ sous la réponse : la narration normale se
-        // joue, et la personne décide si (et quand) elle lance le théâtre.
+        // scénario reçu dans le flux (compatibilité) : offre directe
         setBoostScenario(boostRecu);
+      } else if (finalBoost?.boostEnPreparation && r.final?.echangeId) {
+        // v6.2 — le BOOST est préparé en arrière-plan : la carte « en préparation »
+        // s'affiche, le polling /api/boost ramène le scénario dès qu'il est écrit.
+        setBoostEnAttente({ echangeId: r.final.echangeId });
       }
       setMessages((m) => [...m, { ...msg, etiquette }]);
     }
     setReponse(null);
   };
+
+  // v6.2 — polling du BOOST préparé en arrière-plan : toutes les 5 s, jusqu'à
+  // 4 min. Dès que le scénario est prêt → l'offre « Lancer le BOOST ». En cas
+  // d'échec, la carte s'efface discrètement — jamais au détriment de la réponse.
+  useEffect(() => {
+    if (!boostEnAttente) return;
+    let vivant = true;
+    let essais = 0;
+    const id = setInterval(async () => {
+      essais++;
+      try {
+        const res = await fetch(`/api/boost?echangeId=${encodeURIComponent(boostEnAttente.echangeId)}`);
+        const j = (await res.json()) as { pret: boolean; echec?: boolean; scenario?: ScenarioBoost };
+        if (!vivant) return;
+        if (j.pret && j.scenario) {
+          setBoostScenario(j.scenario);
+          setBoostEnAttente(null);
+          return;
+        }
+        if (j.echec || essais >= 48) setBoostEnAttente(null);
+      } catch {
+        /* le prochain tick réessaiera */
+      }
+    }, 5000);
+    return () => {
+      vivant = false;
+      clearInterval(id);
+    };
+  }, [boostEnAttente]);
 
   const poser = (q: string) => {
     setMessages((m) => [...m, { id: uid(), role: 'utilisateur', heure: heureMaintenant(), question: q }]);
@@ -881,12 +915,26 @@ function FluxMentor() {
         </div>
       )}
 
+      {/* v6.2 — le BOOST se prépare en arrière-plan : carte d'attente */}
+      {boostEnAttente && !boostScenario && (
+        <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-4 mt-5 flex items-start gap-3">
+          <Zap className="h-5 w-5 mt-0.5 text-amber-600 animate-pulse shrink-0" aria-hidden />
+          <div>
+            <p className="font-semibold text-sm">⚡ BOOST en préparation…</p>
+            <p className="text-xs text-[--muted-foreground] mt-0.5">
+              Ton théâtre du courage est en train d&apos;être écrit pour ce chemin parcouru — l&apos;offre s&apos;affichera ici dans un instant.
+              Ta réponse, elle, est complète ci-dessus.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* v6.0 — LE BOOST : théâtre courageux après la toute dernière question */}
       {boostScenario && <TheatreBoost scenario={boostScenario} />}
 
       {dialogueFini && !reponse && (
         <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
+          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); setBoostEnAttente(null); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
             <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouveau dialogue
           </Button>
         </div>

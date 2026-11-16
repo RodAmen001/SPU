@@ -11,18 +11,16 @@ export async function GET() {
   return NextResponse.json(
     {
       app: 'SPU Pocket',
-      apk: { version: '1.2.0', code: 3 },
+      apk: { version: '1.3.0', code: 4 },
       serveur: { version: VERSION_SPU, nom: 'Système Parabolique Universel' },
       ameliorations: true,
       note: 'Le SPU évolue régulièrement : nouvelles paraboles, voix enrichies, mode création. Reviens sur ta page de distribution pour récupérer la dernière version de l\'application.',
       nouveautes: [
-        'v4.9 — corpus 100 paraboles sourcées, Wikipédia consultée en direct (identification conforme), IA de secours en chaîne multi-moteurs (~20 s acceptées, réflexives d\'abord), bannière honnête si les sources sont en panne, sonde de santé active, accueil vivant en couleurs',
-        'v4.8 — barre de menu complète, narration activée par défaut (bouton pour la couper), 51 musiques libres variées, bouton de sortie, paraboles orientées vers la synthèse avec repli en ligne sourcé, écrans modernisés, historique des versions',
-        'v4.7 — grande fluidité : réponse plafonnée à 90 s, parabole recherchée pendant la consultation des sources, histoire et perspective en parallèle',
-        'v4.6 — horodatage complet de toutes les conversations (date + heure) + serveur plus résilient',
+        'v1.3 — corpus porté à 100 textes (75 paraboles + 25 fables, même base que le serveur) et ORACLE INVERSÉ hors ligne : une parabole nue, ta lecture analysée (appréciation, bonne interprétation, éclairages, orientation)',
         'v1.2 — mode nomade : pose tes questions sans aucun serveur, réponse directe 🌤️',
-        'v1.1 — écran « Poser une question » avec serveur : synthèse sourcée, parabole, histoire',
-        'À venir — paraboles mensuelles, voix enrichies, mode communautaire',
+        'Web v6.2 — le théâtre BOOST est toujours proposé après la 3ᵉ question du Mentor (préparé en coulisses, joué seulement si tu le décides)',
+        'Web v6.1 — narration continue sans silences, bouton « Musique suivante » toujours visible, mode Enfant en fil continu (jamais de nouvelle discussion obligatoire)',
+        'À venir — le BOOST jouable via un serveur SPU connecté, voix neuronales enrichies, mode communautaire',
       ],
     },
     { headers: { 'Access-Control-Allow-Origin': '*' } },

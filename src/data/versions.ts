@@ -15,10 +15,21 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.2',
+    date: '16/11/2026',
+    titre: 'Le BOOST toujours au rendez-vous : préparé en coulisses, proposé juste après la réponse',
+    actuelle: true,
+    points: [
+      "CORRECTION MAJEURE — le BOOST n'apparaissait pas en mode Mentor : la préparation du théâtre était bridée par le budget de la réponse (elle ne partait que si la 3ᵉ question se terminait en moins de ~52 s, ce qui arrive presque jamais) — le BOOST était donc presque toujours sauté en silence.",
+      "NOUVELLE ARCHITECTURE : le scénario du BOOST est écrit EN ARRIÈRE-PLAN, après la fermeture de la réponse (plus jamais de 502, plus jamais de budget amputé) et stocké en base de données ; l'interface affiche « ⚡ BOOST en préparation… » dès la fin de la synthèse et récupère le théâtre par polling léger (GET /api/boost, 1 requête toutes les 5 s).",
+      'Le BOOST est TOUJOURS proposé après la 3ᵉ question du Mentor (et après chaque série corrélative de 3 questions Enfant) — joué uniquement quand la personne clique « Lancer le BOOST », rejouable à volonté.',
+      'Mode Enfant : si la préparation échoue, la série reste en place et un nouvel essai part automatiquement à la question suivante — aucun théâtre perdu définitivement.',
+    ],
+  },
+  {
     version: 'v6.1',
     date: '16/11/2026',
     titre: 'La voix qui coule sans silence, la musique qui se passe, le BOOST qui se choisit',
-    actuelle: true,
     points: [
       'NARRATION CONTINUE (exigence du concepteur) : chaque segment du texte est généré par les voix neuronales PENDANT que le précédent se joue (file de préchargement, 3 segments en avance) — plus aucun blanc de « génération » entre deux phrases ; segments allongés à ~300 caractères, pauses intercalées supprimées, même fluidité pour le théâtre du BOOST.',
       "Bouton « MUSIQUE SUIVANTE » (exigence du concepteur) : toujours visible dans la barre du haut dès que la musique joue — une piste qui déplait se passe d'un clic, en fondu doux, sans couper l'ambiance.",

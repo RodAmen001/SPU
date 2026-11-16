@@ -98,10 +98,13 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
       },
     }, 240000); // garde-fou allongé (flux + préparation du BOOST)
     // Stream terminé → bulle horodatée + jingle + lecture complète par le narrateur.
-    // v6.1 — le BOOST est PROPOSÉ (carte « Lancer le BOOST » dans la bulle) : la
-    // narration normale se joue toujours, et l'enfant décide de lancer le théâtre.
+    // v6.2 — le BOOST est préparé en arrière-plan : la bulle affiche « se prépare… »
+    // et le polling /api/boost verse le scénario dès qu'il est écrit. L'enfant
+    // décide ensuite de lancer le théâtre ou non (jamais automatique).
     r.current.enCours = false;
     const finie = { ...r.current };
+    const finalBoost = (finie.final as { boostEnPreparation?: boolean; echangeId?: string } | undefined) || undefined;
+    if (finalBoost?.boostEnPreparation && finalBoost.echangeId) finie.boostEnAttente = finalBoost.echangeId;
     setMessages((m) => [...m, { id: uid(), role: 'spu', heure: heureMaintenant(), reponse: { ...finie, heure: null } }]);
     if (getMoteurAudio().volume > 0) getMoteurAudio().jingleReponse();
     if (ttsActive) {
@@ -112,6 +115,48 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
   };
 
   const dernierSpu = [...messages].reverse().find((m) => m.role === 'spu');
+
+  // v6.2 — polling du BOOST enfant préparé en arrière-plan : toutes les 5 s,
+  // jusqu'à 4 min. Dès que le scénario est prêt, il est versé DANS la bulle qui
+  // l'a demandé (l'offre « Lancer le BOOST » apparaît, l'enfant décide).
+  useEffect(() => {
+    const attente = messages.find((m) => m.role === 'spu' && m.reponse?.boostEnAttente && !m.reponse?.boost);
+    if (!attente?.reponse) return;
+    const echangeId = attente.reponse.boostEnAttente!;
+    const sid = (attente.reponse.final as { sessionId?: string } | undefined)?.sessionId || useSpuStore.getState().sessionId || '';
+    let vivant = true;
+    let essais = 0;
+    const id = setInterval(async () => {
+      essais++;
+      try {
+        const res = await fetch(`/api/boost?sessionId=${encodeURIComponent(sid)}&echangeId=${encodeURIComponent(echangeId)}`);
+        const j = (await res.json()) as { pret: boolean; scenario?: ScenarioBoost };
+        if (!vivant) return;
+        if (j.pret && j.scenario) {
+          setMessages((ms) =>
+            ms.map((mm) =>
+              mm.id === attente.id && mm.reponse
+                ? { ...mm, reponse: { ...mm.reponse, boost: j.scenario as ScenarioBoost, boostEnAttente: undefined } }
+                : mm
+            )
+          );
+          return;
+        }
+        if (essais >= 48) {
+          setMessages((ms) =>
+            ms.map((mm) => (mm.id === attente.id && mm.reponse ? { ...mm, reponse: { ...mm.reponse, boostEnAttente: undefined } } : mm))
+          );
+          return;
+        }
+      } catch {
+        /* le prochain tick réessaiera */
+      }
+    }, 5000);
+    return () => {
+      vivant = false;
+      clearInterval(id);
+    };
+  }, [messages]);
 
   // v6.1 — la zone de question est disponible AVANT et APRÈS le fil : l'enfant
   // pose une nouvelle question juste après la réponse, dans la MÊME session —
@@ -246,6 +291,14 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
                     </details>
                   )}
                 </Card>
+                {m.reponse?.boostEnAttente && !m.reponse?.boost && (
+                  <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-4">
+                    <p className="font-semibold text-sm">⚡ Ton théâtre se prépare…</p>
+                    <p className="text-xs text-[--muted-foreground] mt-1">
+                      Un petit dessin animé sonore sur ta question est en train d&apos;être écrit — il va apparaître ici dans un instant.
+                    </p>
+                  </div>
+                )}
                 {m.reponse?.boost && <TheatreBoost scenario={m.reponse.boost} enfant />}
                 </>
               }

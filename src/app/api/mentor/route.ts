@@ -10,7 +10,7 @@ import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif } from '@/lib/spu/flux';
 import { genererBoost, cheminBoost } from '@/lib/spu/boost';
-import { avecBudget, budgetRestant, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
+import { avecBudget, BUDGET_MENTOR_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -61,34 +61,13 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       const status = (step: string) => send('status', { step });
 
+      // v6.2 — BOOST à préparer en arrière-plan (capturé dans le flux, lancé
+      // APRÈS la fermeture de la réponse — hors budget, hors délai proxy).
+      let boostAPreparer: { echangeId: string; chemin: string } | null = null;
+
       // Budget global de l'étape Mentor : au-delà, les appels IA cèdent la place
       // aux modèles locaux — la réponse complète est toujours servie.
       await avecBudget(BUDGET_MENTOR_MS, async () => {
-      // v6.1 — LE BOOST est prêt DÈS QUE LA 3ᵉ QUESTION TROUVE SA RÉPONSE : il est
-      // généré DANS le flux (jamais après le final — un travail post-réponse
-      // dépassait le délai du proxy et faisait tomber la requête en 502), puis
-      // PROPOSÉ à la personne — jamais lancé automatiquement.
-      const orchestrerBoost = async (cheminBoostTexte: string, echangeId: string) => {
-        try {
-          if (budgetRestant() < 58000) {
-            console.error('[api/mentor] boost sauté (budget restant', Math.round(budgetRestant() / 1000), 's) — la réponse passe avant tout');
-            return;
-          }
-          status('boost');
-          const delaiBoost = Math.max(25000, Math.min(38000, budgetRestant() - 15000));
-          const scenario = await genererBoost(cheminBoostTexte, 'adulte', { timeoutMs: delaiBoost });
-          if (scenario) {
-            send('boost', { scenario, mode: 'mentor' });
-            db.echange.update({
-              where: { id: echangeId },
-              data: { payload: JSON.stringify({ type: 'mentor-boost', titre: scenario.titre, heros: scenario.heros }) },
-            }).catch(() => {});
-          }
-        } catch (e) {
-          console.error('[api/mentor] boost (silencieux) :', e instanceof Error ? e.message : e);
-        }
-      };
-
       try {
         // Session + état — rattachée au compte SPU si l'utilisateur est connecté
         const compte = await utilisateurDeReq(req).catch(() => null);
@@ -297,8 +276,14 @@ export async function POST(req: NextRequest) {
           etat.etape = 1;
           await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
           // v6.1 — le BOOST est prêt (proposé, jamais imposé) puis le final part
-          await orchestrerBoost([etat.questionInitiale, ...(etat.partages || [])].filter(Boolean).join('\n'), echLibre3.id);
-          send('final', { echangeId: echLibre3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
+          // v6.2 — la 3ᵉ question est close : le BOOST part en préparation
+          // d'arrière-plan, le final part tout de suite (l'offre s'affichera
+          // dès que le scénario est prêt — polling /api/boost).
+          boostAPreparer = {
+            echangeId: echLibre3.id,
+            chemin: [etat.questionInitiale, ...(etat.partages || [])].filter(Boolean).join('\n'),
+          };
+          send('final', { echangeId: echLibre3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false, boostEnPreparation: true });
           return;
         }
         const p0 = await phase0(reponse);
@@ -335,10 +320,10 @@ export async function POST(req: NextRequest) {
 
         etat.etape = 1; // prêt pour un nouveau cycle
         await db.session.update({ where: { id: session.id }, data: { mentorState: JSON.stringify(etat) } });
-        // v6.1 — la 3ᵉ question vient de trouver sa réponse : le BOOST est prêt
-        // (généré dans le flux, PROPOSÉ à la personne, jamais imposé)
-        await orchestrerBoost(chemin, echange3.id);
-        send('final', { echangeId: echange3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false });
+        // v6.2 — la 3ᵉ question vient de trouver sa réponse : le BOOST part en
+        // préparation d'arrière-plan (l'offre s'affichera dès qu'il est prêt)
+        boostAPreparer = { echangeId: echange3.id, chemin };
+        send('final', { echangeId: echange3.id, sessionId: session.id, etape: 3, perspectiveDisponible: false, boostEnPreparation: true });
       } catch (err) {
         console.error('[api/mentor]', err);
         send('erreur', { message: MESSAGE_ERREUR_SOURCES });
@@ -346,6 +331,40 @@ export async function POST(req: NextRequest) {
         controller.close();
       }
       });
+
+      // ── v6.2 — PRÉPARATION DU BOOST EN ARRIÈRE-PLAN ──
+      // La réponse est déjà partie (flux fermé, aucun délai proxy en jeu) et le
+      // budget AsyncLocalStorage est terminé : les appels IA disposent de tout
+      // leur temps. Le scénario est stocké dans le payload de l'échange — le
+      // client le récupère en polling sur /api/boost.
+      if (boostAPreparer) {
+        const { echangeId, chemin: cheminBoost } = boostAPreparer;
+        void (async () => {
+          const debut = Date.now();
+          try {
+            const scenario = await genererBoost(cheminBoost, 'adulte', { timeoutMs: 50000 });
+            if (scenario) {
+              await db.echange.update({
+                where: { id: echangeId },
+                data: { payload: JSON.stringify({ type: 'mentor-boost-pret', scenario }) },
+              });
+              console.error(`[api/mentor] boost prêt en ${Math.round((Date.now() - debut) / 1000)} s : ${scenario.titre}`);
+            } else {
+              await db.echange.update({
+                where: { id: echangeId },
+                data: { payload: JSON.stringify({ type: 'mentor-boost-echec' }) },
+              }).catch(() => {});
+              console.error(`[api/mentor] boost : aucune scène exploitable après ${Math.round((Date.now() - debut) / 1000)} s`);
+            }
+          } catch (e) {
+            console.error('[api/mentor] boost arrière-plan (silencieux) :', e instanceof Error ? e.message : e);
+            db.echange.update({
+              where: { id: echangeId },
+              data: { payload: JSON.stringify({ type: 'mentor-boost-echec' }) },
+            }).catch(() => {});
+          }
+        })();
+      }
     },
   });
 

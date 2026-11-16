@@ -8,7 +8,18 @@ import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif, type EvenementSSE, type ResultatFlux } from '@/lib/spu/flux';
 import { genererBoost, cheminBoost, serieSoldeeParBoost } from '@/lib/spu/boost';
-import { avecBudget, budgetRestant, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
+import type { ScenarioBoost } from '@/lib/spu/boost';
+
+// État BOOST du mode enfant (colonne session.boostState) — v6.2 :
+// la série corrélative (q + resumes), la préparation en cours (enCours) et le
+// théâtre prêt à être proposé (pret, rattaché à l'échange qui l'a demandé).
+interface EtatBoostEnfant {
+  q: string[];
+  resumes: string[];
+  enCours?: { echangeId: string; chemin: string };
+  pret?: { scenario: ScenarioBoost; echangeId: string };
+}
+import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -58,6 +69,9 @@ export async function POST(req: NextRequest) {
       let echangeId = '';
       let sessionId = corps.sessionId || '';
       let resultat: ResultatFlux = { synthese: null, sources: [], parabole: null, histoire: null, perspective: null, erreur: null };
+      // v6.2 — BOOST enfant : la préparation d'arrière-plan à lancer APRÈS la
+      // fermeture du flux (capturée ici, exécutée après le `await avecBudget`).
+      let boostAPreparerEnfant: { sessionId: string; echangeId: string; chemin: string } | null = null;
       // Budget global de la requête : au-delà, tous les appels IA cèdent la place
       // aux modèles locaux — une réponse complète est toujours servie.
       await avecBudget(BUDGET_ORACLE_MS, async () => {
@@ -208,35 +222,32 @@ export async function POST(req: NextRequest) {
           console.error('[api/ask] journalisation (BD indisponible):', errBd);
         }
 
-        // ── v6.1 — LE BOOST ENFANT, prêt DÈS LA RÉPONSE (dans le flux, jamais
-        // après le final : un travail post-réponse dépassait le délai du proxy
-        // et faisait tomber la requête en 502). La série des questions juste
-        // passées (≥ 3, corrélatives, MÊME SESSION — jamais de nouvelle
-        // discussion forcée) peut être soldée d'un BOOST : le scénario part avec
-        // la réponse, et l'ENFANT DÉCIDE de le lancer ou non.
+        // ── v6.2 — LE BOOST ENFANT : préparé EN ARRIÈRE-PLAN après la réponse ──
+        // La série des questions juste passées (≥ 3, corrélatives, MÊME SESSION —
+        // jamais de nouvelle discussion forcée) peut être soldée d'un BOOST. Le
+        // scénario est écrit APRÈS la fermeture du flux (plus jamais de 502, plus
+        // jamais de budget amputé) et stocké dans boostState ; le client le
+        // récupère par polling sur /api/boost et propose « Lancer le BOOST » —
+        // l'enfant décide, le théâtre n'est jamais lancé automatiquement.
+        let boostEnfantEnPreparation = false;
         if (mode === 'enfant' && sessionId) {
           try {
             const sessionBoost = await db.session.findUnique({ where: { id: sessionId } }).catch(() => null);
-            let etatBoost = sessionBoost?.boostState
-              ? (JSON.parse(sessionBoost.boostState) as { q: string[]; resumes: string[] })
+            const etatBoost = sessionBoost?.boostState
+              ? (JSON.parse(sessionBoost.boostState) as EtatBoostEnfant)
               : { q: [], resumes: [] };
             etatBoost.q.push(question);
             etatBoost.resumes.push(resultat?.parabole?.interpretationChoisie?.slice(0, 220) || '');
             etatBoost.q = etatBoost.q.slice(-3);
             etatBoost.resumes = etatBoost.resumes.slice(-3);
-            let boostDonne = false;
-            if (etatBoost.q.length >= 3 && serieSoldeeParBoost(etatBoost.q) && budgetRestant() >= 50000) {
+            if (etatBoost.q.length >= 3 && serieSoldeeParBoost(etatBoost.q) && !etatBoost.enCours) {
+              // la série peut être soldée : le théâtre part en préparation
+              etatBoost.enCours = { echangeId, chemin: cheminBoost(etatBoost.q, etatBoost.resumes) };
+              boostEnfantEnPreparation = true;
               status('boost'); // l'interface annonce la préparation du théâtre
-              const delaiBoost = Math.max(25000, Math.min(36000, budgetRestant() - 12000));
-              const scenario = await genererBoost(cheminBoost(etatBoost.q, etatBoost.resumes), 'enfant', { timeoutMs: delaiBoost });
-              if (scenario) {
-                send('boost', { scenario, mode: 'enfant' });
-                etatBoost = { q: [], resumes: [] }; // la série est soldée : nouvelle série
-                boostDonne = true;
-              }
             }
             db.session.update({ where: { id: sessionId }, data: { boostState: JSON.stringify(etatBoost) } }).catch(() => {});
-            console.error('[api/ask] boost enfant :', boostDonne ? 'prêt (proposé)' : 'série en cours', etatBoost.q.length);
+            console.error('[api/ask] boost enfant :', boostEnfantEnPreparation ? 'en préparation (arrière-plan)' : 'série en cours', etatBoost.q.length);
           } catch (e) {
             console.error('[api/ask] boost enfant (silencieux) :', e instanceof Error ? e.message : e);
           }
@@ -245,6 +256,7 @@ export async function POST(req: NextRequest) {
           echangeId,
           sessionId,
           perspectiveDisponible: mode === 'oracle' && !!resultat.parabole,
+          boostEnPreparation: boostEnfantEnPreparation,
         });
       } catch (err) {
         console.error('[api/ask]', err);
@@ -253,6 +265,40 @@ export async function POST(req: NextRequest) {
         controller.close();
       }
       });
+
+      // ── v6.2 — PRÉPARATION DU BOOST ENFANT EN ARRIÈRE-PLAN ──
+      // La réponse est partie, le budget est terminé (AsyncLocalStorage : les
+      // appels hors requête disposent de tout leur temps). Le scénario est
+      // stocké dans boostState.pret — le client le récupère via /api/boost.
+      if (boostAPreparerEnfant) {
+        const prep = boostAPreparerEnfant;
+        void (async () => {
+          const debut = Date.now();
+          try {
+            const scenario = await genererBoost(prep.chemin, 'enfant', { timeoutMs: 50000 });
+            const sessionBoost = await db.session.findUnique({ where: { id: prep.sessionId } }).catch(() => null);
+            const etatBoost: EtatBoostEnfant = sessionBoost?.boostState ? JSON.parse(sessionBoost.boostState) : { q: [], resumes: [] };
+            if (etatBoost.enCours?.echangeId !== prep.echangeId) return; // déjà soldé autrement
+            if (scenario) {
+              // série soldée : nouvelle série + théâtre prêt pour CE échange
+              await db.session.update({
+                where: { id: prep.sessionId },
+                data: { boostState: JSON.stringify({ q: [], resumes: [], pret: { scenario, echangeId: prep.echangeId } }) },
+              });
+              console.error(`[api/ask] boost enfant prêt en ${Math.round((Date.now() - debut) / 1000)} s : ${scenario.titre}`);
+            } else {
+              // échec : la série reste en place, nouvel essai à la prochaine question
+              await db.session.update({
+                where: { id: prep.sessionId },
+                data: { boostState: JSON.stringify({ q: etatBoost.q, resumes: etatBoost.resumes }) },
+              }).catch(() => {});
+              console.error(`[api/ask] boost enfant : aucune scène exploitable après ${Math.round((Date.now() - debut) / 1000)} s — réessai à la prochaine question`);
+            }
+          } catch (e) {
+            console.error('[api/ask] boost enfant arrière-plan (silencieux) :', e instanceof Error ? e.message : e);
+          }
+        })();
+      }
     },
   });
 

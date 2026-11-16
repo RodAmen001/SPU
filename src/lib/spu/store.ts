@@ -94,6 +94,7 @@ export interface ReponseVue {
   perspective: string;
   questionOuverte: string | null;
   boost: ScenarioBoost | null; // v6.0 — théâtre BOOST reçu du serveur (Mentor/Enfant)
+  boostEnAttente?: string; // v6.2 — echangeId du BOOST préparé en arrière-plan (polling)
   oracle: { comprehension: string; appreciation: string; autres: string[] } | null; // v6.0 — Oracle Inversé : analyse de la lecture de la personne
   final: { echangeId: string; sessionId: string; etape?: number; niveau?: number; perspectiveDisponible?: boolean; suiteDisponible?: boolean } | null;
   enCours: boolean;
