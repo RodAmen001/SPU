@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { llmChat } from '@/lib/spu/llm';
 import { verifierRateLimit } from '@/lib/spu/sources';
+import { corrigerFrancais } from '@/lib/spu/francais';
 
 export const maxDuration = 60;
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
         {
           role: 'system',
           content:
-            "Tu es le SPU en mode \"mise en perspective\". À partir de la question, de la parabole et de l'histoire, offre un regard complémentaire de 80 à 120 mots en français : un autre angle, une résonance inattendue, sans conseil, sans jugement, sans position. Ne répète pas l'histoire. Termine par une phrase qui rend la parole à l'utilisateur (sans question pressante). Réponds avec le texte seul.",
+            "Tu es le SPU en mode \"mise en perspective\". À partir de la question, de la parabole et de l'histoire, offre un regard complémentaire de 80 à 120 mots en français : un autre angle, une résonance inattendue, sans conseil, sans jugement, sans position. Ne répète pas l'histoire. Termine par une phrase qui rend la parole à l'utilisateur (sans question pressante). FRANÇAIS IMPECCABLE, exigence absolue : accords justes (on dit « ta question », « cette réponse », « ma démarche » — JAMAIS « ton question » ni « mon question »), syntaxe naturelle, phrases complètes — relis-toi avant de répondre et corrige toute faute d'accord ou de genre. Réponds avec le texte seul.",
         },
         {
           role: 'user',
@@ -32,7 +33,9 @@ export async function POST(req: NextRequest) {
       { timeoutMs: 25000, temperature: 0.8, maxTokens: 300 }
     );
 
-    return NextResponse.json({ perspective: perspective.trim() });
+    // v6.7 — correcteur déterministe des accords les plus fréquents (filet de
+    // sécurité sous la consigne : aucune faute de genre ne doit atteindre l'écran)
+    return NextResponse.json({ perspective: corrigerFrancais(perspective.trim()) });
   } catch (err) {
     console.error('[api/perspective]', err);
     return NextResponse.json({ error: "La perspective n'est pas disponible pour l'instant. Réessaie dans un instant." }, { status: 503 });

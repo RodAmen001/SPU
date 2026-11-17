@@ -16,7 +16,7 @@ export type NoteValidee =
   | { ok: true; titre: string; artiste: string | null; note: number; mode: string | null }
   | { ok: false; erreur: string };
 
-const MODES_CONNUS = new Set(['accueil', 'oracle', 'mentor', 'oracle-inverse', 'enfant', 'boost', 'musiques', 'journal']);
+const MODES_CONNUS = new Set(['accueil', 'oracle', 'mentor', 'deep', 'oracle-inverse', 'enfant', 'boost', 'musiques', 'journal']);
 
 /** Valide et nettoie une note d'auditeur contre le catalogue réel. */
 export function validerNoteMusique(

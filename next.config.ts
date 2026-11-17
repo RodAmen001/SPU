@@ -31,7 +31,10 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
-              "media-src 'self' data: blob:",
+              // v6.7 — https: pour media-src : les MP3 du catalogue (incompetech.com)
+              // sont distants — sans lui, la musique de fond se replie sur la boucle
+              // locale et ne change plus jamais (rétrogression v6.6 corrigée).
+              "media-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https:",
               "worker-src 'self' blob:",

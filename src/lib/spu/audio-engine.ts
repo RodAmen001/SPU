@@ -295,9 +295,15 @@ export class MoteurAudio {
       }, { once: true });
     };
     const audio = new Audio(info.url);
-    audio.loop = true;
+    // v6.7 — la piste distante NE boucle PLUS : quand elle finit, la SUIVANTE du
+    // sac démarre toute seule (la musique change, comme l'attendent les auditeurs).
+    // (le repli local, lui, reste en boucle : c'est une ambiance sans titre)
+    audio.loop = false;
     audio.volume = 0.0001;
     audio.preload = 'auto';
+    audio.addEventListener('ended', () => {
+      if (this.fond === audio) this.pisteSuivante();
+    });
     lancer(audio, info);
   }
 

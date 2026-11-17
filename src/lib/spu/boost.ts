@@ -17,6 +17,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { llmChat, extractJson } from './llm';
+import { corrigerFrancais } from './francais';
 
 // ── Types du scénario ─────────────────────────────────────────────────────────
 export interface LigneTheatre {
@@ -171,91 +172,208 @@ export async function genererBoost(
   opts: { timeoutMs?: number } = {}
 ): Promise<ScenarioBoost | null> {
   const timeoutMs = opts.timeoutMs ?? 55000;
-  // deux tentatives : les moteurs gratuits ont des fenêtres de quota — un seul
-  // échec ne doit pas priver la personne de son BOOST.
-  for (let essai = 0; essai < 2; essai++) {
+  // v6.7 — TROIS tentatives (au lieu de deux) et surtout : une réponse
+  // inutilisable RECOMMENCE au lieu d'abandonner — l'ancien code faisait
+  // `return null` dès le premier JSON tronqué ou incomplet (la 2ᵉ tentative
+  // n'était jamais atteinte). Et après tout : un scénario LOCAL de secours
+  // garantit que le BOOST est toujours proposé, même moteurs saturés.
+  for (let essai = 0; essai < 3; essai++) {
     try {
       const brut = await llmChat([{ role: 'user', content: promptBoost(chemin, audience) }], {
         timeoutMs,
         temperature: essai === 0 ? 0.85 : 0.75,
         maxTokens: 2800,
       });
-    const extrait = brut.slice(brut.indexOf('{'), brut.lastIndexOf('}') + 1);
-    const j = extractJson<{
-      titre?: string;
-      resume?: string;
-      heros?: string;
-      declaration?: string;
-      personnages?: { nom?: string; role?: string; voix?: string }[];
-      scenes?: { phase?: string; titre?: string; image?: string; musique?: string; lignes?: { perso?: string; voix?: string; didascalie?: string; texte?: string }[] }[];
-    }>(brut);
-    if (!j?.scenes?.length || !j.personnages?.length) {
-      console.error(
-        '[boost] réponse inutilisable (longueur', brut.length, ') :',
-        brut.slice(0, 220).replace(/\s+/g, ' '),
-        '… extrait fin :', brut.slice(-160).replace(/\s+/g, ' ')
-      );
-      return null;
-    }
-
-    const personnages = attribuerVoix(
-      j.personnages.filter((p) => p.nom && p.nom.trim()).map((p) => ({ nom: p.nom!.trim(), role: (p.role || 'personnage').trim(), voix: p.voix }))
-    );
-    if (personnages.length < 2) return null;
-    const voixDe = new Map(personnages.map((p) => [p.nom.toLowerCase(), p.voix]));
-
-    // scènes validées, ordonnées selon la séquence imposée des phases
-    const scenesBrutes = j.scenes
-      .filter((s) => s.phase && (s.lignes?.length || 0) >= 1)
-      .sort((a, b) => PHASES_ORDRE.indexOf(a.phase!) - PHASES_ORDRE.indexOf(b.phase!));
-    if (!scenesBrutes.length) return null;
-
-    // LA phase 2 doit contenir la déclaration forte : si le modèle l'a oubliée,
-    // on l'insère comme réplique du héros.
-    const phase2 = scenesBrutes.find((s) => s.phase === '2');
-    const declaration = (j.declaration || '').trim();
-    if (phase2 && declaration) {
-      const presente = phase2.lignes!.some((l) => (l.texte || '').toUpperCase().includes(declaration.slice(0, 40).toUpperCase()));
-      if (!presente && j.heros) {
-        phase2.lignes!.push({ perso: j.heros, voix: voixDe.get(j.heros.toLowerCase()) || 'homme-jeune', didascalie: 'debout, la voix qui ne tremble plus', texte: declaration });
+      const j = extractJson<{
+        titre?: string;
+        resume?: string;
+        heros?: string;
+        declaration?: string;
+        personnages?: { nom?: string; role?: string; voix?: string }[];
+        scenes?: { phase?: string; titre?: string; image?: string; musique?: string; lignes?: { perso?: string; voix?: string; didascalie?: string; texte?: string }[] }[];
+      }>(brut);
+      if (!j?.scenes?.length || !j.personnages?.length) {
+        console.error(
+          '[boost] tentative', essai + 1, 'inutilisable (longueur', brut.length, ') — reprise :',
+          brut.slice(0, 200).replace(/\s+/g, ' ')
+        );
+        continue; // v6.7 — REPRISE (l'ancien code renonçait définitivement ici)
       }
-    }
 
-    const scenes: SceneBoost[] = scenesBrutes.map((s) => ({
-      phase: s.phase!,
-      titre: (s.titre || `Phase ${s.phase}`).trim(),
-      image: (s.image || '🎬').trim().slice(0, 4),
-      musique: ['douce', 'tension', 'declaration', 'triomphe'].includes(s.musique || '') ? (s.musique as SceneBoost['musique']) : 'douce',
-      lignes: s.lignes!
-        .filter((l) => l.perso && l.texte)
-        .map((l) => ({
-          perso: l.perso!.trim(),
-          voix: (l.voix && VOIX_BOOST_DISPONIBLES.includes(l.voix) && !voixDe.has(l.voix)) ? l.voix : (voixDe.get(l.perso!.trim().toLowerCase()) || 'narrateur'),
-          didascalie: (l.didascalie || '').trim(),
-          texte: l.texte!.trim(),
-        })),
-    }));
+      const personnages = attribuerVoix(
+        j.personnages.filter((p) => p.nom && p.nom.trim()).map((p) => ({ nom: p.nom!.trim(), role: (p.role || 'personnage').trim(), voix: p.voix }))
+      );
+      if (personnages.length < 2) {
+        console.error('[boost] tentative', essai + 1, ': moins de deux personnages nommés — reprise');
+        continue;
+      }
+      const voixDe = new Map(personnages.map((p) => [p.nom.toLowerCase(), p.voix]));
 
-    const heros = (j.heros || personnages[0].nom).trim();
-    const scenario = {
-      titre: (j.titre || 'Le BOOST').trim(),
-      resume: (j.resume || '').trim(),
-      heros,
-      declaration,
-      personnages,
-      scenes,
-      dureeEstimeeSec: estimerDuree(scenes),
-    };
-    // v6.4 — PASSE DE RELECTURE IA avant stockage : français impeccable,
-    // didascalies parlables, répliques serrées (structure intacte).
-    return await reviserScenario(scenario, audience);
+      // scènes validées, ordonnées selon la séquence imposée des phases
+      const scenesBrutes = j.scenes
+        .filter((s) => s.phase && (s.lignes?.length || 0) >= 1)
+        .sort((a, b) => PHASES_ORDRE.indexOf(a.phase!) - PHASES_ORDRE.indexOf(b.phase!));
+      if (!scenesBrutes.length) {
+        console.error('[boost] tentative', essai + 1, ': aucune scène avec phase valide — reprise');
+        continue;
+      }
+
+      // LA phase 2 doit contenir la déclaration forte : si le modèle l'a oubliée,
+      // on l'insère comme réplique du héros.
+      const phase2 = scenesBrutes.find((s) => s.phase === '2');
+      const declaration = corrigerFrancais((j.declaration || '').trim());
+      if (phase2 && declaration) {
+        const presente = phase2.lignes!.some((l) => (l.texte || '').toUpperCase().includes(declaration.slice(0, 40).toUpperCase()));
+        if (!presente && j.heros) {
+          phase2.lignes!.push({ perso: j.heros, voix: voixDe.get(j.heros.toLowerCase()) || 'homme-jeune', didascalie: 'debout, la voix qui ne tremble plus', texte: declaration });
+        }
+      }
+
+      const scenes: SceneBoost[] = scenesBrutes.map((s) => ({
+        phase: s.phase!,
+        titre: corrigerFrancais((s.titre || `Phase ${s.phase}`).trim()),
+        image: (s.image || '🎬').trim().slice(0, 4),
+        musique: ['douce', 'tension', 'declaration', 'triomphe'].includes(s.musique || '') ? (s.musique as SceneBoost['musique']) : 'douce',
+        lignes: s.lignes!
+          .filter((l) => l.perso && l.texte)
+          .map((l) => ({
+            perso: l.perso!.trim(),
+            voix: (l.voix && VOIX_BOOST_DISPONIBLES.includes(l.voix) && !voixDe.has(l.voix)) ? l.voix : (voixDe.get(l.perso!.trim().toLowerCase()) || 'narrateur'),
+            didascalie: corrigerFrancais((l.didascalie || '').trim()),
+            texte: corrigerFrancais(l.texte!.trim()),
+          })),
+      }));
+
+      const heros = (j.heros || personnages[0].nom).trim();
+      const scenario: ScenarioBoost = {
+        titre: corrigerFrancais((j.titre || 'Le BOOST').trim()),
+        resume: corrigerFrancais((j.resume || '').trim()),
+        heros,
+        declaration,
+        personnages,
+        scenes,
+        dureeEstimeeSec: estimerDuree(scenes),
+      };
+      // v6.4 — PASSE DE RELECTURE IA avant stockage : français impeccable,
+      // didascalies parlables, répliques serrées (structure intacte).
+      return await reviserScenario(scenario, audience);
     } catch (e) {
       console.error('[boost] tentative', essai + 1, 'en échec :', e instanceof Error ? e.message : e);
-      // une seule tentative de plus, puis on renonce en silence — le BOOST ne
-      // doit JAMAIS amputer ni retarder la réponse principale.
     }
+    if (essai < 2) await new Promise((r) => setTimeout(r, 1500)); // les moteurs gratuits ont des fenêtres de quota
   }
-  return null;
+  // v6.7 — TOUS les moteurs ont échoué : le théâtre LOCAL de secours prend la
+  // relève — le BOOST est TOUJOURS proposé, jamais amputé.
+  return scenarioLocalDeSecours(chemin, audience);
+}
+
+// ── v6.7 — LE THÉÂTRE LOCAL DE SECOURS ────────────────────────────────────────
+// Tous les moteurs IA peuvent être saturés en même temps : le BOOST ne doit
+// JAMAIS disparaître pour autant. Ce scénario honnête, construit SANS IA à
+// partir du chemin parcouru (la question réelle de la personne), garde la
+// structure imposée (déclencheur, péripéties avec LA DÉCLARATION FORTE,
+// dénouement, nouvel équilibre) et trois voix nettement distinctes.
+export function scenarioLocalDeSecours(chemin: string, audience: 'adulte' | 'enfant'): ScenarioBoost {
+  const extraitQuestions = [...chemin.matchAll(/«\s*([^»]{4,240})\s*»/g)].map((m) => m[1].trim());
+  const question =
+    extraitQuestions[0] ||
+    chemin.split('\n').find((l) => l.trim().length > 8)?.slice(0, 240) ||
+    'Comment avancer quand la réponse se fait attendre ?';
+  const enfant = audience === 'enfant';
+  const fille = Math.random() < 0.5;
+  const heros = enfant ? (fille ? 'Zeyna' : 'Tiaki') : (fille ? 'Amani' : 'Kossi');
+  const voixHeros = enfant ? (fille ? 'enfant-fille' : 'enfant-garcon') : (fille ? 'femme-jeune' : 'homme-jeune');
+  const declaration = enfant
+    ? 'JE N\u2019ABANDONNE PAS : je vais essayer, encore et encore, jusqu\u2019à ce que la réponse vienne !'
+    : 'JE CONTINUE. Ma question a une réponse, et je vais la construire pas à pas, avec ce que je sais déjà.';
+  const scenes: SceneBoost[] = [
+    {
+      phase: '1.2',
+      titre: enfant ? 'La question qui suit partout' : 'La question qui ne dort pas',
+      image: '🌙',
+      musique: 'tension',
+      lignes: [
+        {
+          perso: 'Le Conteur', voix: 'conteur',
+          didascalie: enfant ? 'Zeyna et Tiaki s\u2019assoient au bord du chemin, les pieds fatigués.' : 'Le voyageur s\u2019arrête au bord du chemin, la main posée sur la question du jour.',
+          texte: `Une question l\u2019accompagne depuis le matin : « ${question} »`,
+        },
+        {
+          perso: heros, voix: voixHeros,
+          didascalie: 'il regarde la route, puis le ciel',
+          texte: enfant ? 'Cette question me suit partout, même dans mes jeux.' : 'Cette question me suit partout, même quand je souris.',
+        },
+      ],
+    },
+    {
+      phase: '2',
+      titre: 'La déclaration',
+      image: '🔥',
+      musique: 'declaration',
+      lignes: [
+        {
+          perso: 'Le Sage', voix: 'sage',
+          didascalie: 'il s\u2019approche, posé comme un vieux baobab',
+          texte: enfant
+            ? 'La réponse ne tombe pas du ciel : elle se construit, pas à pas, avec toi.'
+            : 'La réponse ne tombe pas du ciel : elle se construit, pas à pas, avec ce que tu sais déjà.',
+        },
+        {
+          perso: heros, voix: voixHeros,
+          didascalie: 'debout, la voix qui ne tremble plus',
+          texte: declaration,
+        },
+      ],
+    },
+    {
+      phase: '3.1',
+      titre: 'Le pas décisif',
+      image: '🌅',
+      musique: 'triomphe',
+      lignes: [
+        {
+          perso: 'Le Conteur', voix: 'conteur',
+          didascalie: 'le soleil traverse la brume du matin',
+          texte: 'Alors le voyageur se relève : la marche reprend, et chaque pas pèse plus lourd que le doute.',
+        },
+        {
+          perso: heros, voix: voixHeros,
+          didascalie: 'il fait un pas franc vers la lumière',
+          texte: enfant
+            ? 'Aujourd\u2019hui, je fais mon premier pas : je demande de l\u2019aide et j\u2019essaie.'
+            : 'Aujourd\u2019hui, je fais mon premier pas : j\u2019écris ma question, je la découpe, je commence.',
+        },
+      ],
+    },
+    {
+      phase: '3.2',
+      titre: 'Le nouvel équilibre',
+      image: '🕊️',
+      musique: 'douce',
+      lignes: [
+        {
+          perso: 'Le Conteur', voix: 'conteur',
+          didascalie: 'le chemin s\u2019ouvre, calme et clair',
+          texte: 'La question reste la même, mais le chemin a changé de visage : celui qui la porte sait maintenant d\u2019où vient sa force.',
+        },
+      ],
+    },
+  ];
+  return {
+    titre: enfant ? 'Le petit théâtre du courage' : 'Le théâtre du courage',
+    resume: enfant
+      ? 'Ce petit théâtre vient te rappeler que la réponse se construit pas à pas.'
+      : 'Ce théâtre vient fortifier ton courage : la réponse se construit pas à pas.',
+    heros,
+    declaration,
+    personnages: [
+      { nom: 'Le Conteur', role: 'conteur', voix: 'conteur' },
+      { nom: heros, role: enfant ? 'petit voyageur' : 'voyageur', voix: voixHeros },
+      { nom: 'Le Sage', role: 'maître du chemin', voix: 'sage' },
+    ],
+    scenes,
+    dureeEstimeeSec: estimerDuree(scenes),
+  };
 }
 
 // ── Décision BOOST côté Enfant : corrélation locale de la série ───────────────

@@ -15,10 +15,22 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.7',
+    date: '17/11/2026',
+    titre: 'CORRECTIFS DE VOUS À NOUS : français impeccable, BOOST toujours prêt, musique qui change et que l\'on peut noter partout',
+    actuelle: true,
+    points: [
+      "LA MUSIQUE CHANGE ENFIN : le lecteur ne boucle plus sur la même piste — quand une musique finit, la suivante du sac démarre toute seule ; et la rétrogression v6.6 est réparée (la CSP bloqueait les MP3 du catalogue : repli local en boucle, plus de titre affiché).",
+      "NOTER LA MUSIQUE PARTOUT : les 100 pistes de la liste portent maintenant leurs 5 étoiles — plus besoin que la piste joue pour la noter ; la page Musiques tient enfin sa promesse de la v6.3.",
+      "LE BOOST NE PEUT PLUS ÉCHOUER : une réponse IA inutilisable RECOMMENCE au lieu d'abandonner (3 tentatives), et si tous les moteurs sont saturés, un THÉÂTRE LOCAL DE SECOURS prend la relève — ton théâtre arrive toujours, avec ta vraie question dedans.",
+      "FRANÇAIS IMPECCABLE : un correcteur déterministe répare les fautes d'accord les plus fréquentes (« ton question » → « ta question ») sur la synthèse, l'interprétation, l'histoire, la perspective et le BOOST ; les prompts exigent désormais des accords justes.",
+      "FAUTES DE FRANÇAIS CORRIGÉES DANS LES TEXTES DU SPU lui-même (vérifiées par 7 nouveaux tests).",
+    ],
+  },
+  {
     version: 'v6.6',
     date: '17/11/2026',
     titre: 'Durcissement complet du service avant l\'ouverture aux tiers (correctifs de l\'audit v6.5)',
-    actuelle: true,
     points: [
       "LIMITATION DE DÉBIT PAR IP sur toutes les routes coûteuses (IA 20/min, synthèse 30/min, gravation du BOOST 5/min, notes 30/min) : plus aucune saturation possible du service par des clients automatisés.",
       "LE THÉÂTRE N'EST GRAVÉ QUE POUR UN SCÉNARIO CONNU DU SERVEUR : la conversion MP3 relit le scénario qu'elle a elle-même écrit en base — plus aucun « calcul gratuit » possible, plafonds de taille défensifs.",

@@ -6,6 +6,7 @@ import { orchestrerSources, type Synthese, type SourceResultat } from './sources
 import { trouverParabole, reArbitrerSurSynthese, detecterTonalite, type ParaboleMatch } from './matching';
 import { paraboleEnLigne } from './parabole-en-ligne';
 import { genererHistoire, chunker, type HistoireGeneree } from './story';
+import { corrigerFrancais } from './francais'; // v6.7 — filet anti-fautes d'accord
 import { genererPerspective } from './perspective';
 import { MESSAGE_ERREUR_SOURCES } from './constants';
 import { budgetEpuise } from './budget';
@@ -77,7 +78,8 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     // La synthèse retenue sort directement de l'escalade adaptative 2 → 3 → 4 → 5
     // sources (critère de confiance ≥ 50 %, sinon meilleur score).
     const synthese = orch.synthese!;
-    resultat.synthese = synthese;
+    // v6.7 — correcteur déterministe sur la synthèse (accord de genre certain)
+    resultat.synthese = { ...synthese, texte: corrigerFrancais(synthese.texte) };
     yield {
       type: 'synthesis',
       text: synthese.texte,
@@ -137,6 +139,8 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   }
 
   resultat.parabole = match;
+  // v6.7 — l'interprétation choisie sort d'un arbitrage IA : filet français
+  match.interpretationChoisie = corrigerFrancais(match.interpretationChoisie);
   // v4.9 — la panne des sources est annoncée à l'interface (bannière honnête),
   // la parabole continue d'être servie : jamais de réponse masquée.
   resultat.sourcesEchouees = modeDegrade;
@@ -174,7 +178,8 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
     // résonner avec sa préoccupation précise, jamais générique.
     preoccupation: question,
   });
-  resultat.histoire = histoire;
+  // v6.7 — l'histoire sort d'un moteur IA : filet français avant l'affichage
+  resultat.histoire = { ...histoire, texte: corrigerFrancais(histoire.texte) };
   const chunks = chunker(histoire.texte, 3);
   for (const c of chunks) {
     yield { type: 'histoire', chunk: c };
@@ -185,7 +190,7 @@ export async function* fluxNarratif(question: string, opts: OptionsFlux): AsyncG
   // Exigence du concept : visible dans la réponse, quel que soit le mode.
   // (déjà générée en parallèle de l'histoire — plus d'attente supplémentaire)
   yield { type: 'status', step: 'perspective' };
-  resultat.perspective = await perspectivePromis;
+  resultat.perspective = corrigerFrancais(await perspectivePromis);
   yield { type: 'perspective', text: resultat.perspective };
 
   return resultat;

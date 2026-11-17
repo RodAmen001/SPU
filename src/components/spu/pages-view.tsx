@@ -3,7 +3,7 @@
 // Soutenir le concepteur (v4.8), MUSIQUES + CADRE D'ÉCOUTE (v6.3).
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -465,19 +465,45 @@ export function VueMusiques() {
 
   // notes globales (une seule requête, partagée avec le cadre d'écoute)
   const [notes, setNotes] = useState<NotesGlobales>({});
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/musique', { cache: 'no-store' });
-        const j = (await res.json()) as { pistes: { titre: string; moyenne: number; nb: number }[] };
-        const m: NotesGlobales = {};
-        for (const p of j.pistes || []) m[p.titre] = { moyenne: p.moyenne, nb: p.nb };
-        setNotes(m);
-      } catch {
-        /* liste sans notes si le serveur ne répond pas */
-      }
-    })();
+  const chargerNotes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/musique', { cache: 'no-store' });
+      const j = (await res.json()) as { pistes: { titre: string; moyenne: number; nb: number }[] };
+      const m: NotesGlobales = {};
+      for (const p of j.pistes || []) m[p.titre] = { moyenne: p.moyenne, nb: p.nb };
+      setNotes(m);
+    } catch {
+      /* liste sans notes si le serveur ne répond pas */
+    }
   }, []);
+  useEffect(() => {
+    void chargerNotes();
+  }, [chargerNotes]);
+
+  // v6.7 — NOTER DANS LA LISTE : chaque piste porte ses 5 étoiles — il n'est
+  // plus nécessaire qu'elle joue pour la noter (le texte le promettait depuis
+  // la v6.3 sans que l'interface le permette).
+  const [mesNotes, setMesNotes] = useState<Record<string, number>>({});
+  const [messageNote, setMessageNote] = useState<string | null>(null);
+  const noterPiste = async (p: PisteMusique, mode: ModeMusique, note: number) => {
+    setMesNotes((m) => ({ ...m, [p.titre]: note }));
+    setMessageNote(null);
+    try {
+      const res = await fetch('/api/musique', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titre: p.titre, artiste: p.artiste, note, mode }),
+      });
+      if (res.ok) {
+        setMessageNote(`Merci ! Ta note pour « ${p.titre} » rejoint la note globale.`);
+        void chargerNotes();
+      } else {
+        setMessageNote('Note non transmise — réessaie dans un instant.');
+      }
+    } catch {
+      setMessageNote('Note non transmise — réessaie dans un instant.');
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -487,6 +513,8 @@ export function VueMusiques() {
 
       {/* v6.3 — LE CADRE MUSIQUE : noter, rejouer, pause, suivant */}
       <CadreEcouteMusique />
+
+      {messageNote && <p className="text-xs text-[--primary]">{messageNote}</p>}
 
       <Card className="p-6">
         <p className="text-[15px] leading-relaxed">
@@ -527,6 +555,20 @@ export function VueMusiques() {
                     ★ {String(notes[p.titre].moyenne).replace('.', ',')} ({notes[p.titre].nb})
                   </span>
                 )}
+                {/* v6.7 — noter UNE piste précise de la liste, sans la faire jouer */}
+                <span className="flex items-center gap-0.5 ml-1" role="group" aria-label={`noter ${p.titre} de 1 à 5`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => void noterPiste(p, g.mode, n)}
+                      className="p-0.5"
+                      aria-label={`noter ${p.titre} : ${n} sur 5`}
+                      title={`Noter « ${p.titre} » : ${n} / 5`}
+                    >
+                      <Star className={`h-3.5 w-3.5 ${(mesNotes[p.titre] || 0) >= n ? 'fill-amber-500 text-amber-500' : 'text-[--muted-foreground]'}`} aria-hidden />
+                    </button>
+                  ))}
+                </span>
                 <a href={p.url} target="_blank" rel="noreferrer" className="text-[--primary] underline underline-offset-2 hover:opacity-80">
                   écouter
                 </a>
