@@ -9,13 +9,20 @@ HOSTNAME="${HOSTNAME:-0.0.0.0}"
 DATABASE_URL="${DATABASE_URL:-file:/app/db/custom.db}"
 export PORT HOSTNAME DATABASE_URL
 
+# v6.6 — le chemin de la base SUIT DATABASE_URL : pour rendre les données
+# persistantes (audit §C1), il suffit de monter un disque et de le pointer :
+#   Render Disk  →  mount path /app/db (rien d'autre à changer)
+#   Docker/VPS   →  -v spu-data:/app/db   ou   DATABASE_URL=file:/data/spu.db
+DB_CHEMIN="${DATABASE_URL#file:}"
+DOSSIER_BD=$(dirname "$DB_CHEMIN")
+
 # Si la base a disparu (volume neuf, redémarrage d'espace éphémère…),
-# on restaure la copie construite avec les 65 paraboles.
-if [ ! -f /app/db/custom.db ]; then
-  mkdir -p /app/db
+# on restaure la copie construite avec les 100 textes sourcés.
+if [ ! -f "$DB_CHEMIN" ]; then
+  mkdir -p "$DOSSIER_BD"
   if [ -f /app/db-origine/custom.db ]; then
-    cp /app/db-origine/custom.db /app/db/custom.db
-    echo "[spu] base restaurée depuis db-origine (corpus 65 paraboles)"
+    cp /app/db-origine/custom.db "$DB_CHEMIN"
+    echo "[spu] base restaurée depuis db-origine (corpus 100 textes) → $DB_CHEMIN"
   else
     echo "[spu] ATTENTION : aucune base disponible — le SPU fonctionnera en mode corpus local limité"
   fi

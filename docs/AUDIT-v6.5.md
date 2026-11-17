@@ -5,6 +5,23 @@ sécurité, opérations) et testeur/utilisateur (6 sessions réelles d'utilisati
 **Périmètre** : tout le dépôt — 27 routes API, 21 bibliothèques métier, 15 composants React,
 9 modèles de données, l'app Android (SPU Pocket), les scripts, la CI/CD Render, les docs.
 
+> ## ✅ STATUT DES CORRECTIONS (mise à jour v6.6 — 17 novembre 2026)
+>
+> | Point | Statut |
+> | --- | --- |
+> | **B1** rate limiting | ✅ **implémenté** — `src/lib/spu/rate-limit.ts`, appliqué à `/api/ask`, `/api/mentor`, `/api/repondre` (réponse CORS), `/api/oracle-inverse`, `/api/tts` (30/min), `/api/boost/audio` (5/min), `/api/musique` POST (30/min) ; `/api/perspective` conserve son limiteur historique |
+> | **B2** job BOOST arbitraire | ✅ **implémenté** — le POST ne reçoit plus qu'un identifiant d'échange : le serveur relit le scénario qu'il a lui-même stocké (payload `mentor-boost-pret` ou `boostState.pret`) ; plafonds `scenarioValidePourGravure` (12 scènes, 8 personnages, 20 000 caractères) |
+> | **B3** notes hors catalogue | ✅ **implémenté** — `notes-musique.ts` : titre obligatoirement dans `musiques-libres.json` (100 pistes), note strictement entière 1-5, mode known-list |
+> | **B4** en-têtes de sécurité | ✅ **implémenté** — `next.config.ts` : CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS |
+> | **B5** LogsDetresse non bornés | ✅ **implémenté** — purge 90 jours dans la purge opportuniste RGPD de `/api/ask` (la table ne contient déjà que des empreintes) |
+> | **C1** données éphères | ✅ **prêt côté code** — `docker-entrypoint.sh` suit `DATABASE_URL` : monter un Render Disk sur `/app/db` et tout persiste sans changer une ligne (décision d'achat à faire dans la console Render) |
+> | **C2** latence CPU gratuit | ✅ **atténué côté code** — délai Piper 30 → 45 s (moins de replis navigateur) ; la vraie solution de débit reste le plan Starter (décision produit) |
+> | **C3** BOOST perdu au retour | ✅ **implémenté** — `GET /api/boost?sessionId=…` ressort l'état du dernier dialogue Mentor (prêt / en préparation / échec) ; FluxMentor restaure au montage ; l'identifiant d'échange accompagne le théâtre jusqu'à la gravation |
+> | **C4** zéro test | ✅ **socle posé** — `bun test tests/` (12 tests : limiteur, validation notes, partition BOOST + plafonds, comptes scrypt) + script npm `test` ; les tests E2E Playwright des 3 parcours critiques restent à écrire |
+> | **C5** observabilité | ⏳ externe — Sentry + ping UptimeRobot à brancher sur `/api/health` (comptes gratuits à créer) |
+> | **C6** quotas gratuits | ⏳ décision produit — fournisseur payant de secours (~5 $/mo) |
+> | **C7** documentation | ✅ **fait** — livre blanc Édition 3.0, guide de mise en ligne, présent audit |
+
 ---
 
 ## A. ÉTAT DES LIEUX — CE QUI EST SOLIDE

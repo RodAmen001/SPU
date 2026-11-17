@@ -26,6 +26,8 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 interface Props {
   scenario: ScenarioBoost;
   enfant?: boolean; // bande dessinée défilante synchronisée
+  echangeId?: string; // v6.6 — identifie le scénario en base : le serveur grave
+  sessionId?: string; //         celui QU'IL a écrit (plus aucun scénario arbitraire)
 }
 
 interface SegmentManifestClient {
@@ -55,7 +57,7 @@ interface EntreeFile {
   annonce?: boolean; // réplique du conteur ou du narrateur (ouverture, didascalie, présentation)
 }
 
-export function TheatreBoost({ scenario, enfant }: Props) {
+export function TheatreBoost({ scenario, enfant, echangeId, sessionId }: Props) {
   const [sceneIdx, setSceneIdx] = useState(-1);
   const [ligneIdx, setLigneIdx] = useState(-1);
   const [demarre, setDemarre] = useState(false);
@@ -96,7 +98,9 @@ export function TheatreBoost({ scenario, enfant }: Props) {
         const res = await fetch('/api/boost/audio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scenario }),
+          // v6.6 — le scénario envoyé n'est qu'une COPIE d'affichage : le serveur
+          // relit le scénario qu'il a lui-même stocké en base pour cet échange.
+          body: JSON.stringify({ scenario, echangeId, sessionId }),
           signal: controle.signal,
         });
         if (!res.ok) throw new Error('conversion indisponible');

@@ -15,6 +15,27 @@ export async function GET(req: NextRequest) {
   const echangeId = req.nextUrl.searchParams.get('echangeId') || '';
   const sessionId = req.nextUrl.searchParams.get('sessionId') || '';
   try {
+    // ── v6.6 — RESTAURATION (audit §C3) : retour sur la vue Mentor ──
+    // ?sessionId=… (sans echangeId) : on ressort l'état du dernier dialogue
+    // Mentor de la session — théâtre prêt, échec, ou préparation en cours —
+    // pour que le BOOST soit TOUJOURS réclamé, même après avoir quitté la vue.
+    if (sessionId && !echangeId) {
+      const recents = await db.echange.findMany({
+        where: { sessionId, mode: 'mentor', payload: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        select: { id: true, payload: true },
+      });
+      for (const e of recents) {
+        const p = JSON.parse(e.payload || '{}') as { type?: string; scenario?: unknown };
+        if (p.type === 'mentor-boost-pret' && p.scenario) {
+          return Response.json({ pret: true, scenario: p.scenario, echangeId: e.id });
+        }
+        if (p.type === 'mentor-boost-echec') return Response.json({ pret: false, echec: true, echangeId: e.id });
+        if (p.type === 'mentor-synthese') return Response.json({ pret: false, enPreparation: true, echangeId: e.id });
+      }
+      return Response.json({ pret: false });
+    }
     // ── Mentor : le BOOST est stocké dans le payload de l'échange de synthèse ──
     if (echangeId && !sessionId) {
       const echange = await db.echange.findUnique({ where: { id: echangeId }, select: { payload: true } });

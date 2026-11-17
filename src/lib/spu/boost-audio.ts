@@ -125,6 +125,21 @@ export function planifierBoost(scenario: ScenarioBoost): SegmentPlan[] {
   return plan;
 }
 
+/** v6.6 — plafonds défensifs d'un scénario gravable (audit v6.5 §B2) : le
+ * scénario vient de notre pipeline, mais on borne quand même la taille pour
+ * qu'aucun job ne puisse saturer CPU ni disque (12 scènes, 8 personnages,
+ * 20 000 caractères de dialogue au maximum). */
+export function scenarioValidePourGravure(s: ScenarioBoost): boolean {
+  if (!s?.scenes?.length || !s?.personnages?.length) return false;
+  if (s.scenes.length > 12 || s.personnages.length > 8) return false;
+  let texte = '';
+  for (const sc of s.scenes) {
+    for (const l of sc.lignes || []) texte += `${l.didascalie || ''} ${l.texte || ''}`;
+    texte += ` ${sc.titre || ''}`;
+  }
+  return texte.length <= 20_000;
+}
+
 // ── Exécution ffmpeg (fichiers, pas pipes — concat et conversion MP3) ─────────
 function executerFichier(cmd: string, args: string[], timeoutMs = 60000): Promise<void> {
   return new Promise((resoudre, rejeter) => {

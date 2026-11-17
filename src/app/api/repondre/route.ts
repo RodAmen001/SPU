@@ -9,6 +9,7 @@ import { utilisateurDeReq } from '@/lib/spu/compte';
 import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { fluxNarratif, type EvenementSSE, type ResultatFlux } from '@/lib/spu/flux';
 import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
+import { verifierDebit } from '@/lib/spu/rate-limit';
 import { MESSAGE_DEDETRESSE, MESSAGE_PRUDENT, RESSOURCES_DEDETRESSE, MESSAGE_ERREUR_SOURCES } from '@/lib/spu/constants';
 
 export const maxDuration = 120;
@@ -33,6 +34,15 @@ interface Corps {
 }
 
 export async function POST(req: NextRequest) {
+  // v6.6 — garde-fou anti-saturation par IP (audit v6.5 §B1), réponse CORS
+  // (l'APK Pocket doit pouvoir lire le 429)
+  const debit = verifierDebit(req, 'ia');
+  if (!debit.ok) {
+    return NextResponse.json(
+      { error: `Trop de requêtes — réessaie dans ${Math.ceil(debit.attenteMs / 1000)} s.` },
+      { status: 429, headers: { ...CORS, 'Retry-After': String(Math.ceil(debit.attenteMs / 1000)) } }
+    );
+  }
   let corps: Corps;
   try {
     corps = (await req.json()) as Corps;

@@ -10,8 +10,16 @@
 // ═════════════════════════════════════════════════════════════════════════════
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { reponse429, verifierDebit } from '@/lib/spu/rate-limit';
+import { validerNoteMusique } from '@/lib/spu/notes-musique';
+import CATALOGUE_MUSIQUES from '@/data/musiques-libres.json';
 
 export const dynamic = 'force-dynamic';
+
+// Les titres réellement disponibles — la source de vérité de la validation B3.
+const TITRES_CATALOGUE = new Set<string>(
+  (CATALOGUE_MUSIQUES as { titre: string }[]).map((p) => p.titre)
+);
 
 let tableVerifiee = false;
 async function assurerTable() {
@@ -64,16 +72,20 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // v6.6 — garde-fou anti-spam (audit §B3) : 30 notes/min/IP
+  const debit = verifierDebit(req, 'musique');
+  if (!debit.ok) return reponse429(debit.attenteMs);
   const corps = (await req.json().catch(() => ({}))) as {
     titre?: string; artiste?: string; note?: number; mode?: string;
   };
-  const titre = String(corps.titre || '').trim();
-  const note = Math.round(Number(corps.note));
-  if (!titre || titre.length > 200 || !Number.isFinite(note) || note < 1 || note > 5) {
-    return NextResponse.json({ error: 'Une note (1-5) et le titre de la musique sont requis.' }, { status: 400 });
+  // v6.6 — la note ne peut porter que sur une piste RÉELLE du catalogue
+  // (src/data/musiques-libres.json) : plus aucun titre hors catalogue, plus de
+  // spam de données (audit §B3).
+  const validee = validerNoteMusique(corps, TITRES_CATALOGUE);
+  if (!validee.ok) {
+    return NextResponse.json({ error: validee.erreur }, { status: 400 });
   }
-  const artiste = String(corps.artiste || '').trim().slice(0, 200) || null;
-  const mode = String(corps.mode || '').trim().slice(0, 30) || null;
+  const { titre, artiste, note, mode } = validee;
   try {
     await assurerTable();
     await db.$executeRawUnsafe(

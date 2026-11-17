@@ -16,6 +16,7 @@ import { hashQuestion, verifierRateLimit } from '@/lib/spu/sources';
 import { trouverParabole } from '@/lib/spu/matching';
 import { llmChat, extractJson } from '@/lib/spu/llm';
 import { avecBudget, BUDGET_DEEP_MS } from '@/lib/spu/budget';
+import { reponse429, verifierDebit } from '@/lib/spu/rate-limit';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -42,6 +43,9 @@ interface EtatOracleInverse {
 }
 
 export async function POST(req: NextRequest) {
+  // v6.6 — garde-fou anti-saturation par IP (audit v6.5 §B1) : 20 requêtes/min
+  const debit = verifierDebit(req, 'ia');
+  if (!debit.ok) return reponse429(debit.attenteMs);
   let corps: Corps;
   try {
     corps = (await req.json()) as Corps;

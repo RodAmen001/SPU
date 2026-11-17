@@ -15,10 +15,22 @@ export interface EntreeVersion {
 
 export const VERSIONS: EntreeVersion[] = [
   {
+    version: 'v6.6',
+    date: '17/11/2026',
+    titre: 'Durcissement complet du service avant l\'ouverture aux tiers (correctifs de l\'audit v6.5)',
+    actuelle: true,
+    points: [
+      "LIMITATION DE DÉBIT PAR IP sur toutes les routes coûteuses (IA 20/min, synthèse 30/min, gravation du BOOST 5/min, notes 30/min) : plus aucune saturation possible du service par des clients automatisés.",
+      "LE THÉÂTRE N'EST GRAVÉ QUE POUR UN SCÉNARIO CONNU DU SERVEUR : la conversion MP3 relit le scénario qu'elle a elle-même écrit en base — plus aucun « calcul gratuit » possible, plafonds de taille défensifs.",
+      "LES NOTES MUSICALES NE PORTENT QUE SUR LE CATALOGUE RÉEL : titres hors catalogue refusés, note strictement entière 1-5.",
+      "LE BOOST EST RESTAURÉ AU RETOUR : si tu quittes la vue pendant la préparation, le théâtre te réapparaît en revenant sur le Mentor (prêt, en préparation ou échec annoncé) — jamais perdu.",
+      "EN-TÊTES DE SÉCURITÉ STANDARD (CSP, anti-clicjacking, HSTS, référent limité) + purge RGPD à 90 jours des logs de détresse + délai de synthèse étendu à 45 s (moins de replis navigateur) + premiers tests automatisés (12 tests du noyau).",
+    ],
+  },
+  {
     version: 'v6.5',
     date: '16/11/2026',
     titre: 'Volume et titre de la musique toujours à portée de main, et le BOOST toujours au rendez-vous après 3 requêtes',
-    actuelle: true,
     points: [
       "LE VOLUME DE LA MUSIQUE DE FOND SE RÈGLE DANS LE CADRE DE NOTATION : un curseur directement sous le titre — le même réglage que celui de la barre du haut.",
       "LE TITRE DE LA CHANSON QUI PASSE EST TOUJOURS LISIBLE : sur smartphone le cadre est FIXÉ sous la barre du haut (épinglé à toute profondeur de défilement — plus besoin de remonter au début de la conversation), et le titre n'est jamais tronqué.",

@@ -6,7 +6,7 @@
 #              db/custom.db (données locales), logs, download/
 set -e
 cd /home/z/my-project
-VER="6.5"
+VER="6.6"
 DEST="/home/z/my-project/download"
 DIST="$DEST/SPU-v$VER-complet.zip"
 
@@ -28,7 +28,7 @@ echo "── contrôle secrets (doit être vide) ──"
 # aucun vrai token (placeholders ghp_… / ghp_xxx tolérés)
 python3 - <<'EOF'
 import zipfile, re
-z = zipfile.ZipFile('/home/z/my-project/download/SPU-v6.5-complet.zip')
+z = zipfile.ZipFile('/home/z/my-project/download/SPU-v6.6-complet.zip')
 motifs = [r'gsk_[A-Za-z0-9]{30,}', r'ghp_[A-Za-z0-9]{30,}', r'hf_[A-Za-z0-9]{30,}', r'rnd_[A-Za-z0-9]{20,}']
 trouves = []
 for n in z.namelist():

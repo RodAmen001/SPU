@@ -4,6 +4,7 @@
 // concepteur (Hugging Face : Rodamen/spu-voix) puis servies 100 % local.
 import { NextRequest, NextResponse } from 'next/server';
 import { etatNeurales, genererVoix, voixDisponibles, nomHumainModele, prechargerVoixCloud } from '@/lib/spu/voix-neurales';
+import { reponse429, verifierDebit } from '@/lib/spu/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // v6.6 — garde-fou anti-saturation par IP (audit v6.5 §B1) : Piper coûte du
+  // CPU — 30 générations / minute / IP maximum
+  const debit = verifierDebit(req, 'tts');
+  if (!debit.ok) return reponse429(debit.attenteMs);
   const corps = (await req.json().catch(() => ({}))) as { voix?: string; texte?: string; debit?: number };
   if (!corps.voix || !corps.texte) {
     return NextResponse.json({ error: 'Paramètres « voix » et « texte » requis.' }, { status: 400 });

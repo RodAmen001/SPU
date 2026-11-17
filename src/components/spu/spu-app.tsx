@@ -782,7 +782,34 @@ function FluxMentor() {
   const [boostScenario, setBoostScenario] = useState<ScenarioBoost | null>(null);
   const [boostEnAttente, setBoostEnAttente] = useState<{ echangeId: string } | null>(null);
   const [boostEchoue, setBoostEchoue] = useState(false); // v6.5 — échec annoncé, jamais silencieux
+  const [boostEchangeId, setBoostEchangeId] = useState<string | null>(null); // v6.6 — id conservé pour la gravation identifiée
+  const restaureRef = useRef(false); // v6.6 — une seule restauration par montage
   const finaliser = useFinalisation();
+
+  // v6.6 — RESTAURATION DU BOOST AU RETOUR (audit v6.5 §C3) : si la personne a
+  // quitté la vue pendant la préparation, le théâtre dort en base — au montage,
+  // on le réclame (prêt → offre, en préparation → reprise du polling, échec →
+  // message honnête). Le BOOST n'est plus jamais perdu parce qu'on a changé de page.
+  useEffect(() => {
+    if (!sessionId || restaureRef.current || boostScenario || boostEnAttente) return;
+    restaureRef.current = true;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/boost?sessionId=${encodeURIComponent(sessionId)}`);
+        const j = (await res.json()) as { pret: boolean; scenario?: ScenarioBoost; echec?: boolean; enPreparation?: boolean; echangeId?: string };
+        if (j.pret && j.scenario) {
+          setBoostScenario(j.scenario);
+          if (j.echangeId) setBoostEchangeId(j.echangeId);
+        } else if (j.enPreparation && j.echangeId) {
+          setBoostEnAttente({ echangeId: j.echangeId });
+        } else if (j.echec) {
+          setBoostEchoue(true);
+        }
+      } catch {
+        /* pas de restauration possible : la vue reste utilisable */
+      }
+    })();
+  }, [sessionId, boostScenario, boostEnAttente]);
 
   const appeler = async (corps: Record<string, unknown>) => {
     ttsStop();
@@ -890,6 +917,7 @@ function FluxMentor() {
         if (!vivant) return;
         if (j.pret && j.scenario) {
           setBoostScenario(j.scenario);
+          setBoostEchangeId(boostEnAttente.echangeId); // v6.6 — id conservé pour la gravation
           setBoostEnAttente(null);
           return;
         }
@@ -1018,11 +1046,11 @@ function FluxMentor() {
       )}
 
       {/* v6.0 — LE BOOST : théâtre courageux après la toute dernière question */}
-      {boostScenario && <TheatreBoost scenario={boostScenario} />}
+      {boostScenario && <TheatreBoost scenario={boostScenario} echangeId={boostEchangeId || undefined} />}
 
       {dialogueFini && !reponse && (
         <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); setBoostEnAttente(null); setBoostEchoue(false); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
+          <Button variant="outline" onClick={() => { setEtape(1); setMessages([]); setBoostScenario(null); setBoostEnAttente(null); setBoostEchoue(false); setBoostEchangeId(null); ttsStop(); getMoteurAudio().jouerMode('mentor'); }} className="rounded-full">
             <RefreshCw className="h-4 w-4 mr-2" aria-hidden /> Nouveau dialogue
           </Button>
         </div>

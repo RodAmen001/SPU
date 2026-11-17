@@ -20,6 +20,7 @@ interface EtatBoostEnfant {
   pret?: { scenario: ScenarioBoost; echangeId: string };
 }
 import { avecBudget, BUDGET_ORACLE_MS } from '@/lib/spu/budget';
+import { reponse429, verifierDebit } from '@/lib/spu/rate-limit';
 import {
   MESSAGE_DEDETRESSE,
   MESSAGE_PRUDENT,
@@ -39,6 +40,9 @@ interface Corps {
 }
 
 export async function POST(req: NextRequest) {
+  // v6.6 — garde-fou anti-saturation par IP (audit v6.5 §B1) : 20 requêtes/min
+  const debit = verifierDebit(req, 'ia');
+  if (!debit.ok) return reponse429(debit.attenteMs);
   let corps: Corps;
   try {
     corps = (await req.json()) as Corps;
@@ -98,8 +102,13 @@ export async function POST(req: NextRequest) {
             session = await db.session.update({ where: { id: session.id }, data: { userId: compte.id, anonymized: false, userConsent: true } });
           }
           sessionId = session.id;
-          // purge opportuniste RGPD des sessions expirées
+          // purge opportuniste RGPD des sessions expirées + logs de détresse
+          // (v6.6, audit §B5 : même politique de 90 jours ; la table ne contient
+          // de toute façon que des empreintes de question — jamais le texte brut)
           db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
+          db.logsDetresse
+            .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 24 * 3600 * 1000) } } })
+            .catch(() => {});
         } catch (errBd) {
           console.error('[api/ask] session (BD indisponible, on continue sans journal):', errBd);
         }

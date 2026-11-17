@@ -258,7 +258,9 @@ export async function genererVoix(
   const enVol = EN_COURS.get(cle);
   if (enVol) return enVol;
 
-  const delai = opts.timeoutMs ?? 30000;
+  // v6.6 — 45 s (audit §C2) : sur le CPU gratuit, les segments narratifs longs
+  // dépassaient 30 s et tombaient en repli navigateur (voix plus pauvres)
+  const delai = opts.timeoutMs ?? 45000;
   const promesse = (async () => {
     const args = ['-m', join(DIR_MODELES, `${cfg.modele}.onnx`), '--length-scale', longueurEffective.toFixed(3), '-f', '-'];
     if (cfg.locuteur !== undefined) args.push('--speaker', String(cfg.locuteur));

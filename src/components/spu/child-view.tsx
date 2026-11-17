@@ -136,7 +136,7 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
           setMessages((ms) =>
             ms.map((mm) =>
               mm.id === attente.id && mm.reponse
-                ? { ...mm, reponse: { ...mm.reponse, boost: j.scenario as ScenarioBoost, boostEnAttente: undefined } }
+                ? { ...mm, reponse: { ...mm.reponse, boost: j.scenario as ScenarioBoost, boostEchangeId: echangeId, boostEnAttente: undefined } }
                 : mm
             )
           );
@@ -301,7 +301,14 @@ export function VueEnfant({ surRetour }: { surRetour: () => void }) {
                     </p>
                   </div>
                 )}
-                {m.reponse?.boost && <TheatreBoost scenario={m.reponse.boost} enfant />}
+                {m.reponse?.boost && (
+                  <TheatreBoost
+                    scenario={m.reponse.boost}
+                    enfant
+                    echangeId={m.reponse.boostEchangeId || m.reponse.boostEnAttente}
+                    sessionId={sessionId || undefined}
+                  />
+                )}
                 </>
               }
             />

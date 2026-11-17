@@ -8,16 +8,46 @@
 // ═════════════════════════════════════════════════════════════════════════════
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
-import { lancerConversion, etatJob, fichierMp3 } from '@/lib/spu/boost-audio';
+import { lancerConversion, etatJob, fichierMp3, scenarioValidePourGravure } from '@/lib/spu/boost-audio';
+import { reponse429, verifierDebit } from '@/lib/spu/rate-limit';
+import { db } from '@/lib/db';
 import type { ScenarioBoost } from '@/lib/spu/boost';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const corps = (await req.json().catch(() => null)) as { scenario?: ScenarioBoost } | null;
-  const scenario = corps?.scenario;
-  if (!scenario || !scenario.scenes?.length || !scenario.personnages?.length) {
-    return NextResponse.json({ error: 'Scénario BOOST requis.' }, { status: 400 });
+  // v6.6 — garde anti-saturation (audit §B1 : 5 lancements/min/IP) + LE SCÉNARIO
+  // VIENT TOUJOURS DE LA BASE (audit §B2) : le client identifie l'échange, le
+  // serveur relit le scénario qu'IL a écrit lui-même — plus aucun « calcul
+  // gratuit » possible avec un scénario arbitraire.
+  const debit = verifierDebit(req, 'boost-audio');
+  if (!debit.ok) return reponse429(debit.attenteMs);
+  const corps = (await req.json().catch(() => null)) as { echangeId?: string; sessionId?: string; scenario?: ScenarioBoost } | null;
+  const echangeId = String(corps?.echangeId || '');
+  const sessionId = String(corps?.sessionId || '');
+  let scenario: ScenarioBoost | null = null;
+  try {
+    if (sessionId && echangeId) {
+      // mode Enfant : le théâtre prêt est stocké dans boostState de la session
+      const session = await db.session.findUnique({ where: { id: sessionId }, select: { boostState: true } });
+      const b = session?.boostState
+        ? (JSON.parse(session.boostState) as { pret?: { scenario?: ScenarioBoost; echangeId?: string } })
+        : null;
+      if (b?.pret?.scenario && b.pret.echangeId === echangeId) scenario = b.pret.scenario;
+    } else if (echangeId) {
+      // mode Mentor : le théâtre prêt est stocké dans le payload de l'échange
+      const echange = await db.echange.findUnique({ where: { id: echangeId }, select: { payload: true } });
+      const p = echange?.payload ? (JSON.parse(echange.payload) as { type?: string; scenario?: ScenarioBoost }) : null;
+      if (p?.type === 'mentor-boost-pret' && p.scenario) scenario = p.scenario;
+    }
+  } catch (e) {
+    console.error('[api/boost/audio] relecture du scénario en base :', e instanceof Error ? e.message : e);
+  }
+  if (!scenario || !scenarioValidePourGravure(scenario)) {
+    return NextResponse.json(
+      { error: 'Aucun scénario BOOST connu en base pour cet échange — relance un dialogue de 3 requêtes, le théâtre sera proposé à nouveau.' },
+      { status: 403 }
+    );
   }
   const job = lancerConversion(scenario);
   return NextResponse.json({
